@@ -1,0 +1,453 @@
+import React, { useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Modal,
+  TextInput,
+  ActivityIndicator,
+  Image,
+  TouchableOpacity,
+} from 'react-native';
+import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import type { PetOwnerStackParamList } from '../../navigation/types';
+import Toast from 'react-native-toast-message';
+import { ScreenContainer } from '../../components/common/ScreenContainer';
+import { Card } from '../../components/common/Card';
+import { Button } from '../../components/common/Button';
+import { colors } from '../../theme/colors';
+import { spacing } from '../../theme/spacing';
+import { typography } from '../../theme/typography';
+import { useAppointment } from '../../queries/appointmentQueries';
+import { useCancelAppointment } from '../../mutations/appointmentMutations';
+import { useGetOrCreateConversation } from '../../mutations/chatMutations';
+import { useMyAppointmentReview } from '../../queries/reviewQueries';
+import { useCreateReview } from '../../mutations/reviewMutations';
+import { getImageUrl } from '../../config/api';
+import { getErrorMessage } from '../../utils/errorUtils';
+
+type Route = RouteProp<PetOwnerStackParamList, 'PetOwnerAppointmentDetails'>;
+
+const STATUS_COLORS: Record<string, string> = {
+  CONFIRMED: colors.info,
+  PENDING: colors.warning,
+  COMPLETED: colors.success,
+  CANCELLED: colors.error,
+  REJECTED: colors.error,
+  NO_SHOW: colors.textSecondary,
+};
+
+export function PetOwnerAppointmentDetailScreen() {
+  const route = useRoute<Route>();
+  const navigation = useNavigation<any>();
+  const appointmentId = route.params?.appointmentId ?? null;
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewText, setReviewText] = useState('');
+
+  const { data: appointmentResponse, isLoading, refetch } = useAppointment(appointmentId);
+  const cancelAppointment = useCancelAppointment();
+  const getOrCreateConversation = useGetOrCreateConversation();
+  const createReview = useCreateReview();
+  const { data: myReviewRes } = useMyAppointmentReview(appointmentId, {
+    enabled: !!appointmentId,
+  });
+  const existingReview = useMemo(
+    () => (myReviewRes as { data?: unknown })?.data ?? null,
+    [myReviewRes]
+  );
+
+  const appointment = useMemo(() => {
+    const body = appointmentResponse as { data?: unknown };
+    return body?.data ?? appointmentResponse;
+  }, [appointmentResponse]) as Record<string, unknown> | null;
+
+  const vet = (appointment?.veterinarianId as Record<string, unknown>) || {};
+  const pet = (appointment?.petId as Record<string, unknown>) || {};
+  const status = String((appointment?.status as string) || '').toUpperCase();
+  const dateStr = appointment?.appointmentDate
+    ? new Date(appointment.appointmentDate as string).toLocaleDateString(undefined, {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })
+    : '';
+  const timeStr = (appointment?.appointmentTime as string) || '';
+  const vetImage = getImageUrl((vet.profileImage as string) || undefined);
+  const statusColor = STATUS_COLORS[status] || colors.warning;
+
+  const canCancel = ['PENDING', 'CONFIRMED'].includes(status);
+  const canJoinVideo =
+    status === 'CONFIRMED' && (appointment?.bookingType as string) === 'ONLINE';
+  const vetId = (vet as { _id?: string })?._id ?? (appointment?.veterinarianId as string) ?? '';
+  const ownerId = (appointment?.petOwnerId as { _id?: string })?._id ?? (appointment?.petOwnerId as string) ?? '';
+
+  const openChat = async () => {
+    if (status !== 'CONFIRMED' || !appointmentId || !vetId || !ownerId) return;
+    try {
+      const res = await getOrCreateConversation.mutateAsync({
+        veterinarianId: vetId,
+        petOwnerId: ownerId,
+        appointmentId,
+      });
+      const conv = (res as { _id?: string; data?: { _id?: string } })?.data ?? (res as { _id?: string });
+      const conversationId = conv?._id;
+      if (!conversationId) {
+        Toast.show({ type: 'error', text1: 'Could not open chat' });
+        return;
+      }
+      const stackNav = navigation.getParent();
+      stackNav?.navigate('PetOwnerChatDetail', {
+        conversationId: String(conversationId),
+        veterinarianId: vetId,
+        petOwnerId: ownerId,
+        appointmentId,
+        conversationType: 'VETERINARIAN_PET_OWNER',
+        title: (vet.name as string) || (vet.fullName as string) || 'Veterinarian',
+        subtitle: 'Chat',
+        peerImageUri: vetImage ?? undefined,
+      });
+    } catch (err) {
+      Toast.show({ type: 'error', text1: getErrorMessage(err) });
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!appointmentId) return;
+    try {
+      await cancelAppointment.mutateAsync({
+        appointmentId,
+        data: { reason: cancelReason || undefined },
+      });
+      Toast.show({ type: 'success', text1: 'Appointment cancelled successfully' });
+      setShowCancelModal(false);
+      refetch();
+    } catch (err) {
+      Toast.show({ type: 'error', text1: getErrorMessage(err) });
+    }
+  };
+
+  const handleReviewSubmit = async () => {
+    if (!reviewText.trim()) {
+      Toast.show({ type: 'error', text1: 'Please provide a review' });
+      return;
+    }
+    const veterinarianId = (appointment?.veterinarianId as { _id?: string })?._id ?? (appointment?.veterinarianId as string);
+    if (!veterinarianId) {
+      Toast.show({ type: 'error', text1: 'Veterinarian not found' });
+      return;
+    }
+    try {
+      await createReview.mutateAsync({
+        veterinarianId,
+        appointmentId: appointmentId!,
+        petId: (appointment?.petId as { _id?: string })?._id ?? (appointment?.petId as string),
+        rating: reviewRating,
+        reviewText: reviewText.trim(),
+        reviewType: 'APPOINTMENT',
+      });
+      Toast.show({ type: 'success', text1: 'Review submitted' });
+      setShowReviewModal(false);
+      setReviewRating(5);
+      setReviewText('');
+      refetch();
+    } catch (err) {
+      Toast.show({ type: 'error', text1: getErrorMessage(err) });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <ScreenContainer padded>
+        <View style={styles.loading}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading appointment...</Text>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
+  if (!appointmentId || !appointment) {
+    return (
+      <ScreenContainer padded>
+        <View style={styles.empty}>
+          <Text style={styles.emptyTitle}>Appointment not found</Text>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
+  return (
+    <ScreenContainer scroll padded>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Card>
+          <Text style={styles.appointmentNumber}>
+            {(appointment.appointmentNumber as string) || (appointment._id as string)}
+          </Text>
+          <View style={[styles.statusBadge, { backgroundColor: statusColor + '25' }]}>
+            <Text style={[styles.statusText, { color: statusColor }]}>{status}</Text>
+          </View>
+
+          <View style={styles.vetRow}>
+            {vetImage ? (
+              <Image source={{ uri: vetImage }} style={styles.vetImage} />
+            ) : (
+              <View style={styles.vetImagePlaceholder}>
+<Text style={styles.vetImageLetter}>
+                {(vet.name as string)?.charAt(0) || 'V'}
+              </Text>
+              </View>
+            )}
+            <View style={styles.vetInfo}>
+              <Text style={styles.label}>Veterinarian</Text>
+              <Text style={styles.value}>
+                {(vet.name as string) || (vet.fullName as string) || 'Veterinarian'}
+              </Text>
+              <Text style={styles.contact}>{(vet.email as string) || '—'}</Text>
+              <Text style={styles.contact}>{(vet.phone as string) || '—'}</Text>
+            </View>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.label}>Pet</Text>
+            <Text style={styles.value}>
+              {(pet.name as string) || 'Pet'}
+              {(pet.breed as string) ? ` (${pet.breed})` : ''}
+            </Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.label}>Date & Time</Text>
+            <Text style={styles.value}>{`${dateStr} ${timeStr}`}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.label}>Type</Text>
+            <Text style={styles.value}>
+              {(appointment.bookingType as string) === 'ONLINE'
+                ? 'Video Call'
+                : 'Clinic Visit'}
+            </Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.label}>Reason</Text>
+            <Text style={styles.value}>
+              {(appointment.reason as string) || 'Consultation'}
+            </Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.label}>Consultation fee</Text>
+            <Text style={styles.value}>€50</Text>
+          </View>
+          {(appointment.petSymptoms as string) && (
+            <View style={styles.detailRow}>
+              <Text style={styles.label}>Pet symptoms</Text>
+              <Text style={styles.value}>{appointment.petSymptoms as string}</Text>
+            </View>
+          )}
+          {(appointment.notes as string) && (
+            <View style={styles.detailRow}>
+              <Text style={styles.label}>Notes</Text>
+              <Text style={styles.value}>{appointment.notes as string}</Text>
+            </View>
+          )}
+
+          {canJoinVideo && (
+            <Button
+              title="Join Video Call"
+              onPress={() => {
+                navigation.navigate('PetOwnerVideoCall', { appointmentId });
+              }}
+              style={styles.btn}
+            />
+          )}
+          {status === 'CONFIRMED' && (
+            <Button
+              title="💬 Chat with veterinarian"
+              variant="outline"
+              onPress={openChat}
+              style={styles.btn}
+              disabled={getOrCreateConversation.isPending}
+            />
+          )}
+          {status === 'COMPLETED' && (
+            <>
+              <Button
+                title="View / Download prescription"
+                onPress={() => navigation.navigate('PetOwnerPrescription', { appointmentId })}
+                style={styles.btn}
+              />
+              {existingReview ? (
+                <View style={styles.reviewBadge}>
+                  <Text style={styles.reviewBadgeText}>Review submitted</Text>
+                </View>
+              ) : (
+                <Button
+                  title="Write a review"
+                  onPress={() => setShowReviewModal(true)}
+                  style={styles.btn}
+                />
+              )}
+            </>
+          )}
+          {canCancel && (
+            <Button
+              title="Cancel appointment"
+              variant="outline"
+              onPress={() => setShowCancelModal(true)}
+              style={[styles.btn, styles.cancelBtn]}
+              disabled={cancelAppointment.isPending}
+            />
+          )}
+        </Card>
+      </ScrollView>
+
+      <Modal visible={showReviewModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Write a review</Text>
+            <Text style={styles.inputLabel}>Rating (1-5)</Text>
+            <View style={styles.ratingRow}>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <TouchableOpacity
+                  key={n}
+                  style={[styles.starBtn, reviewRating >= n && styles.starBtnActive]}
+                  onPress={() => setReviewRating(n)}
+                >
+                  <Text style={[styles.starText, reviewRating >= n && styles.starTextActive]}>
+                    ★
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={styles.inputLabel}>Your review *</Text>
+            <TextInput
+              style={styles.textArea}
+              placeholder="Write your review..."
+              placeholderTextColor={colors.textLight}
+              value={reviewText}
+              onChangeText={setReviewText}
+              multiline
+              numberOfLines={4}
+            />
+            <View style={styles.modalActions}>
+              <Button
+                title="Cancel"
+                variant="outline"
+                onPress={() => setShowReviewModal(false)}
+                style={styles.modalBtn}
+              />
+              <Button
+                title={createReview.isPending ? 'Submitting...' : 'Submit review'}
+                onPress={handleReviewSubmit}
+                style={styles.modalBtn}
+                disabled={createReview.isPending}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showCancelModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Cancel appointment</Text>
+            <Text style={styles.modalText}>
+              Are you sure you want to cancel this appointment?
+            </Text>
+            <Text style={styles.inputLabel}>Reason (optional)</Text>
+            <TextInput
+              style={styles.textArea}
+              placeholder="Enter reason..."
+              placeholderTextColor={colors.textLight}
+              value={cancelReason}
+              onChangeText={setCancelReason}
+              multiline
+              numberOfLines={3}
+            />
+            <View style={styles.modalActions}>
+              <Button
+                title="Keep appointment"
+                variant="outline"
+                onPress={() => setShowCancelModal(false)}
+                style={styles.modalBtn}
+              />
+              <Button
+                title={cancelAppointment.isPending ? 'Cancelling...' : 'Cancel appointment'}
+                onPress={handleCancel}
+                style={[styles.modalBtn, styles.modalCancelBtn]}
+                disabled={cancelAppointment.isPending}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </ScreenContainer>
+  );
+}
+
+const styles = StyleSheet.create({
+  scrollContent: { paddingBottom: spacing.xxl },
+  loading: { paddingVertical: spacing.xxl, alignItems: 'center', gap: spacing.sm },
+  loadingText: { ...typography.bodySmall, color: colors.textSecondary },
+  empty: { paddingVertical: spacing.xxl, alignItems: 'center' },
+  emptyTitle: { ...typography.h3 },
+  appointmentNumber: { ...typography.caption, color: colors.textSecondary, marginBottom: 4 },
+  statusBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginBottom: spacing.md,
+  },
+  statusText: { ...typography.label },
+  vetRow: { flexDirection: 'row', marginBottom: spacing.md },
+  vetImage: { width: 56, height: 56, borderRadius: 12, marginRight: spacing.sm },
+  vetImagePlaceholder: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: colors.primaryLight + '30',
+    marginRight: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  vetImageLetter: { ...typography.h2, color: colors.primary },
+  vetInfo: { flex: 1 },
+  label: { ...typography.caption, color: colors.textSecondary },
+  value: { ...typography.body, marginTop: 2 },
+  contact: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  detailRow: { marginBottom: spacing.sm },
+  btn: { marginTop: spacing.lg },
+  cancelBtn: { borderColor: colors.error },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: spacing.lg,
+  },
+  modalBox: { backgroundColor: colors.background, borderRadius: 16, padding: spacing.lg },
+  modalTitle: { ...typography.h3, marginBottom: spacing.sm },
+  modalText: { ...typography.bodySmall, marginBottom: spacing.md },
+  inputLabel: { ...typography.label, marginBottom: spacing.xs },
+  textArea: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    padding: spacing.md,
+    ...typography.body,
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  modalActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg },
+  modalBtn: { flex: 1 },
+  modalCancelBtn: { borderColor: colors.error },
+  reviewBadge: { marginTop: spacing.md, padding: spacing.sm, backgroundColor: colors.success + '25', borderRadius: 12, alignSelf: 'flex-start' },
+  reviewBadgeText: { ...typography.label, color: colors.success },
+  ratingRow: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.sm },
+  starBtn: { padding: spacing.sm },
+  starBtnActive: {},
+  starText: { fontSize: 28, color: colors.border },
+  starTextActive: { color: colors.warning },
+});

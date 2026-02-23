@@ -1,0 +1,230 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableOpacity,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { AuthStackScreenProps } from '../../navigation/types';
+import { ScreenContainer } from '../../components/common/ScreenContainer';
+import { Input } from '../../components/common/Input';
+import { Button } from '../../components/common/Button';
+import { useAuth } from '../../contexts/AuthContext';
+import type { UserRole } from '../../contexts/AuthContext';
+import { getErrorMessage, getFieldErrors } from '../../utils/errorUtils';
+import { colors } from '../../theme/colors';
+import { spacing } from '../../theme/spacing';
+import { typography } from '../../theme/typography';
+
+type Nav = AuthStackScreenProps<'Register'>['navigation'];
+
+const ROLE_OPTIONS: { role: UserRole; label: string }[] = [
+  { role: 'VETERINARIAN', label: 'Register as Veterinarian' },
+  { role: 'PET_STORE', label: 'Register as Pharmacy' },
+  { role: 'PARAPHARMACY', label: 'Register as Parapharmacy' },
+];
+
+export function RegisterScreen() {
+  const navigation = useNavigation<Nav>();
+  const { register, logout } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validate = () => {
+    const next: Record<string, string> = {};
+    if (!name.trim()) next.name = 'Name is required';
+    else if (name.trim().length < 2) next.name = 'Name must be at least 2 characters';
+    else if (name.trim().length > 50) next.name = 'Name must be less than 50 characters';
+    if (!email.trim()) next.email = 'Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = 'Invalid email';
+    if (!phone.trim()) next.phone = 'Phone is required';
+    if (!password) next.password = 'Password is required';
+    else if (password.length < 6) next.password = 'Password must be at least 6 characters';
+    if (password !== confirmPassword) next.confirmPassword = 'Passwords must match';
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
+  const submitWithRole = async (role: UserRole) => {
+    if (!validate()) return;
+    setLoading(true);
+    setErrors({});
+    try {
+      await register({ name, email, phone, password }, role);
+      // Success toast is shown by AuthContext
+      if (role === 'PET_OWNER') {
+        await logout();
+        navigation.replace('Login');
+      }
+      // For VETERINARIAN / PET_STORE / PARAPHARMACY, RootNavigator shows Pending stack
+      // with DoctorVerificationUpload or PetStoreVerificationUpload as initial screen
+    } catch (err: unknown) {
+      const message = getErrorMessage(err, 'Registration failed. Try again.');
+      const fieldErrs = getFieldErrors(err);
+      if (fieldErrs._form) {
+        setErrors({ email: fieldErrs._form });
+      } else if (Object.keys(fieldErrs).length > 0) {
+        setErrors({ ...fieldErrs } as Record<string, string>);
+      } else {
+        setErrors({ email: message });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onSubmitPetOwner = async () => {
+    await submitWithRole('PET_OWNER');
+  };
+
+  return (
+    <ScreenContainer scroll padded style={styles.bg}>
+      <KeyboardAvoidingView
+        style={styles.keyboard}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
+            <View style={styles.logoWrap}>
+              <Text style={styles.logoIcon}>🐾</Text>
+            </View>
+            <Text style={styles.title}>Join PetCare</Text>
+            <Text style={styles.subtitle}>Create your pet health account</Text>
+          </View>
+
+          <View style={styles.form}>
+            <Input
+              label="Full Name"
+              placeholder="Enter your full name"
+              value={name}
+              onChangeText={setName}
+              error={errors.name}
+            />
+            <Input
+              label="Email Address"
+              placeholder="Enter your email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              error={errors.email}
+            />
+            <Input
+              label="Phone Number"
+              placeholder="Enter your phone"
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              error={errors.phone}
+            />
+            <Input
+              label="Password"
+              placeholder="Min 6 characters"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              error={errors.password}
+            />
+            <Input
+              label="Confirm Password"
+              placeholder="Confirm your password"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+              error={errors.confirmPassword}
+            />
+
+            <Button
+              title={loading ? 'Creating Account...' : 'Create PetCare Account'}
+              onPress={onSubmitPetOwner}
+              loading={loading}
+              style={styles.submitBtn}
+            />
+
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}> or </Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {ROLE_OPTIONS.map(({ role, label }) => (
+              <Button
+                key={role}
+                title={label}
+                onPress={() => submitWithRole(role)}
+                variant="outline"
+                style={styles.altBtn}
+                disabled={loading}
+              />
+            ))}
+
+            <View style={styles.registerRow}>
+              <Text style={styles.registerText}>Already have an account? </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                <Text style={styles.registerLink}>Login to PetCare</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </ScreenContainer>
+  );
+}
+
+const styles = StyleSheet.create({
+  bg: { backgroundColor: colors.backgroundSecondary },
+  keyboard: { flex: 1 },
+  scrollContent: { paddingBottom: spacing.xxl, paddingHorizontal: spacing.xs, flexGrow: 1 },
+  header: {
+    alignItems: 'center',
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.lg,
+  },
+  logoWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.primaryLight + '25',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+  },
+  logoIcon: { fontSize: 38 },
+  title: { ...typography.h1, color: colors.primary, marginBottom: spacing.xs, textAlign: 'center' },
+  subtitle: { ...typography.body, color: colors.textSecondary, textAlign: 'center', paddingHorizontal: spacing.lg },
+  form: {
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xl,
+    borderRadius: 24,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  submitBtn: { marginTop: spacing.sm, marginBottom: spacing.md },
+  divider: { flexDirection: 'row', alignItems: 'center', marginVertical: spacing.lg },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  dividerText: { ...typography.caption, marginHorizontal: spacing.sm, color: colors.textLight },
+  altBtn: { marginBottom: spacing.sm },
+  registerRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: spacing.xl },
+  registerText: { ...typography.bodySmall },
+  registerLink: { ...typography.bodySmall, color: colors.primary, fontWeight: '600' },
+});
