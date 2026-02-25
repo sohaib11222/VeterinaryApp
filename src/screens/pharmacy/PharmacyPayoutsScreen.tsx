@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -9,20 +9,17 @@ import {
   TextInput,
   Pressable,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
+import { useBalance, useWithdrawalRequests, useRequestWithdrawal } from '../../queries/balanceQueries';
+import { getErrorMessage } from '../../utils/errorUtils';
+import Toast from 'react-native-toast-message';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-
-const MOCK_BALANCE = 1250.5;
-const MOCK_WITHDRAWALS = [
-  { id: '1', date: '2024-02-10', paymentMethod: 'STRIPE', amount: 450, netAmount: 441, withdrawalFeePercent: 2, withdrawalFeeAmount: 9, totalDeducted: 9, status: 'APPROVED' },
-  { id: '2', date: '2024-01-31', paymentMethod: 'BANK_TRANSFER', amount: 380, netAmount: 380, withdrawalFeePercent: 0, withdrawalFeeAmount: 0, totalDeducted: 0, status: 'COMPLETED' },
-  { id: '3', date: '2024-02-14', paymentMethod: 'STRIPE', amount: 200, netAmount: null as number | null, withdrawalFeePercent: null as number | null, withdrawalFeeAmount: null as number | null, totalDeducted: null as number | null, status: 'PENDING' },
-];
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   STRIPE: 'Stripe',
@@ -35,9 +32,10 @@ function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en', { style: 'currency', currency: 'EUR' }).format(amount);
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string | undefined): string {
+  if (!dateStr) return '—';
   const d = new Date(dateStr);
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -60,22 +58,40 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function extractRequests(payload: unknown): any[] {
+  const outer = (payload as { data?: unknown })?.data ?? payload;
+  const d = (outer as { data?: unknown })?.data ?? outer;
+  const list = (d as { requests?: unknown[] })?.requests;
+  return Array.isArray(list) ? list : [];
+}
+
 export function PharmacyPayoutsScreen() {
-  const [refreshing, setRefreshing] = useState(false);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'STRIPE' | 'BANK_TRANSFER' | 'PAYPAL'>('STRIPE');
   const [payoutDetails, setPayoutDetails] = useState('');
   const [page, setPage] = useState(1);
 
-  const balance = MOCK_BALANCE;
-  const requests = MOCK_WITHDRAWALS;
-  const pagination = { page: 1, pages: 1, total: requests.length, limit: 10 };
+  const { data: balanceData, isLoading: balanceLoading, refetch: refetchBalance } = useBalance();
+  const { data: requestsData, isLoading: requestsLoading } = useWithdrawalRequests({ page, limit: 20 });
+  const requestWithdrawal = useRequestWithdrawal();
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setRefreshing(false);
+  const balance = useMemo(() => {
+    const d = (balanceData as { data?: { balance?: number } })?.data ?? balanceData as { balance?: number };
+    return Number(d?.balance ?? 0);
+  }, [balanceData]);
+
+  const requests = useMemo(() => extractRequests(requestsData), [requestsData]);
+  const pagination = useMemo(() => {
+    const d = (requestsData as { data?: { pagination?: { page: number; pages: number; total: number; limit: number } } })?.data ?? requestsData as { pagination?: { page: number; pages: number; total: number; limit: number } };
+    const p = d?.pagination;
+    return { page: p?.page ?? 1, pages: p?.pages ?? 1, total: p?.total ?? requests.length, limit: p?.limit ?? 10 };
+  }, [requestsData, requests.length]);
+
+  const refreshing = balanceLoading || requestsLoading;
+
+  const onRefresh = () => {
+    refetchBalance();
   };
 
   const openWithdrawModal = () => {
@@ -85,21 +101,37 @@ export function PharmacyPayoutsScreen() {
     setWithdrawModalOpen(true);
   };
 
-  const submitWithdrawal = () => {
+  const submitWithdrawal = async () => {
     const n = parseFloat(amount);
-    if (!Number.isFinite(n) || n <= 0) return;
-    if (n > balance) return;
-    if (!payoutDetails.trim()) return;
-    setWithdrawModalOpen(false);
-    setAmount('');
-    setPayoutDetails('');
+    if (!Number.isFinite(n) || n <= 0) {
+      Toast.show({ type: 'error', text1: 'Enter a valid amount' });
+      return;
+    }
+    if (n > balance) {
+      Toast.show({ type: 'error', text1: 'Amount exceeds balance' });
+      return;
+    }
+    if (!payoutDetails.trim()) {
+      Toast.show({ type: 'error', text1: 'Payout details required' });
+      return;
+    }
+    try {
+      await requestWithdrawal.mutateAsync({ amount: n, paymentMethod, paymentDetails: payoutDetails.trim() });
+      Toast.show({ type: 'success', text1: 'Withdrawal requested' });
+      setWithdrawModalOpen(false);
+      setAmount('');
+      setPayoutDetails('');
+    } catch (err) {
+      Toast.show({ type: 'error', text1: 'Failed', text2: getErrorMessage(err, 'Could not submit request') });
+    }
   };
 
   const canSubmit =
     amount.trim() &&
     Number(parseFloat(amount)) > 0 &&
     Number(parseFloat(amount)) <= balance &&
-    payoutDetails.trim().length > 0;
+    payoutDetails.trim().length > 0 &&
+    !requestWithdrawal.isPending;
 
   return (
     <ScreenContainer scroll padded>
@@ -136,21 +168,23 @@ export function PharmacyPayoutsScreen() {
         </Card>
 
         <Text style={styles.sectionTitle}>Withdrawal Requests</Text>
-        {requests.length === 0 ? (
+        {requestsLoading && requests.length === 0 ? (
+          <View style={styles.loadingRow}><ActivityIndicator size="small" color={colors.primary} /></View>
+        ) : requests.length === 0 ? (
           <Card style={styles.card}>
             <Text style={styles.emptyText}>No withdrawal requests found</Text>
           </Card>
         ) : (
           <>
-            {requests.map((r) => (
-              <Card key={r.id} style={styles.requestCard}>
+            {requests.map((r: any) => (
+              <Card key={r._id ?? r.id} style={styles.requestCard}>
                 <View style={styles.requestHeader}>
-                  <Text style={styles.requestDate}>{formatDate(r.date)}</Text>
-                  <StatusBadge status={r.status} />
+                  <Text style={styles.requestDate}>{formatDate(r.requestedAt ?? r.createdAt ?? r.date)}</Text>
+                  <StatusBadge status={r.status ?? '—'} />
                 </View>
                 <View style={styles.requestDetailRow}>
                   <Text style={styles.requestDetailLabel}>Payment Method</Text>
-                  <Text style={styles.requestDetailValue}>{PAYMENT_METHOD_LABELS[r.paymentMethod] || r.paymentMethod}</Text>
+                  <Text style={styles.requestDetailValue}>{PAYMENT_METHOD_LABELS[r.paymentMethod ?? ''] ?? r.paymentMethod ?? '—'}</Text>
                 </View>
                 <View style={styles.requestDetailRow}>
                   <Text style={styles.requestDetailLabel}>Amount</Text>
@@ -264,7 +298,7 @@ export function PharmacyPayoutsScreen() {
             </ScrollView>
             <View style={styles.modalFooter}>
               <Button title="Cancel" variant="outline" onPress={() => setWithdrawModalOpen(false)} style={styles.modalBtn} />
-              <Button title="Submit Request" onPress={submitWithdrawal} disabled={!canSubmit} style={styles.modalBtn} />
+              <Button title="Submit Request" onPress={submitWithdrawal} disabled={!canSubmit} loading={requestWithdrawal.isPending} style={styles.modalBtn} />
             </View>
           </Pressable>
         </Pressable>
@@ -275,6 +309,7 @@ export function PharmacyPayoutsScreen() {
 
 const styles = StyleSheet.create({
   scroll: { paddingBottom: spacing.xxl },
+  loadingRow: { padding: spacing.lg, alignItems: 'center' },
   card: { marginBottom: spacing.md },
   sectionTitle: { ...typography.h3, marginBottom: 4 },
   sectionSubtitle: { ...typography.bodySmall, color: colors.textSecondary, marginBottom: spacing.md },

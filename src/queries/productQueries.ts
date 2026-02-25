@@ -38,3 +38,15 @@ export function useProduct(productId: string | null | undefined) {
     enabled: !!productId,
   });
 }
+
+/** Products for current pharmacy/parapharmacy. */
+export function useMyProducts(params: { page?: number; limit?: number; isActive?: string; search?: string } = {}) {
+  return useQuery({
+    queryKey: ['products', 'mine', params],
+    queryFn: () =>
+      api.get<{ success: boolean; data?: { products?: unknown[]; items?: unknown[]; pagination?: { total?: number }; total?: number } }>(
+        API_ROUTES.PRODUCTS.MINE,
+        { params }
+      ),
+  });
+}

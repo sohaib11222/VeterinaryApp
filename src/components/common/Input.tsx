@@ -19,7 +19,7 @@ interface InputProps {
   onBlur?: () => void;
   secureTextEntry?: boolean;
   error?: string;
-  keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad';
+  keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad' | 'decimal-pad';
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   style?: ViewStyle;
   editable?: boolean;

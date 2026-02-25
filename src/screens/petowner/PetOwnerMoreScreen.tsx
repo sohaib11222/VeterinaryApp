@@ -15,7 +15,7 @@ const MENU_SECTIONS: { title: string; items: { label: string; icon: string; scre
     items: [
       { label: 'My Pets', icon: '🐾', screen: 'PetOwnerMyPets' },
       { label: 'Pet Medical Records', icon: '📋', screen: 'PetOwnerMedicalRecords' },
-      { label: 'Pet Vitals', icon: '❤️', screen: 'PetOwnerMedicalDetails' },
+      // { label: 'Pet Vitals', icon: '❤️', screen: 'PetOwnerMedicalDetails' },
       { label: 'Weight Records', icon: '⚖️', screen: 'PetOwnerWeightRecords' },
     ],
   },
@@ -30,10 +30,10 @@ const MENU_SECTIONS: { title: string; items: { label: string; icon: string; scre
   {
     title: 'Finance & Orders',
     items: [
-      { label: 'Wallet', icon: '💳', screen: 'PetOwnerWallet' },
+      // { label: 'Wallet', icon: '💳', screen: 'PetOwnerWallet' },
       { label: 'Veterinary Invoices', icon: '📄', screen: 'PetOwnerInvoices' },
       { label: 'Pet Supply Orders', icon: '🛒', screen: 'PetOwnerOrderHistory' },
-      { label: 'Pet Documents', icon: '📥', screen: 'PetOwnerDocuments' },
+      // { label: 'Pet Documents', icon: '📥', screen: 'PetOwnerDocuments' },
     ],
   },
   {
@@ -58,7 +58,11 @@ export function PetOwnerMoreScreen() {
   }, []));
 
   const onMenuPress = (screen: string) => {
-    stackNav?.navigate(screen as never);
+    if (stackNav) {
+      stackNav.navigate(screen as never);
+      return;
+    }
+    navigation.navigate(screen as never);
   };
 
   return (

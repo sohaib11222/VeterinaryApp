@@ -13,6 +13,7 @@ const TITLES: Record<string, { title: string; subtitle?: string }> = {
   PharmacyProductList: { title: 'Products', subtitle: 'Manage your products' },
   PharmacyAddProduct: { title: 'Add Product', subtitle: 'New product' },
   PharmacyEditProduct: { title: 'Edit Product', subtitle: 'Update product' },
+  PharmacyProductDetails: { title: 'Product Details', subtitle: '' },
 };
 
 function Header({ navigation, route }: { navigation: any; route: { name: string } }) {

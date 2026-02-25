@@ -26,6 +26,7 @@ import { useMyAppointmentReview } from '../../queries/reviewQueries';
 import { useCreateReview } from '../../mutations/reviewMutations';
 import { getImageUrl } from '../../config/api';
 import { getErrorMessage } from '../../utils/errorUtils';
+import { useEligibleRescheduleAppointments } from '../../queries/scheduleQueries';
 
 type Route = RouteProp<PetOwnerStackParamList, 'PetOwnerAppointmentDetails'>;
 
@@ -52,6 +53,7 @@ export function PetOwnerAppointmentDetailScreen() {
   const cancelAppointment = useCancelAppointment();
   const getOrCreateConversation = useGetOrCreateConversation();
   const createReview = useCreateReview();
+  const eligibleRescheduleQuery = useEligibleRescheduleAppointments();
   const { data: myReviewRes } = useMyAppointmentReview(appointmentId, {
     enabled: !!appointmentId,
   });
@@ -64,6 +66,21 @@ export function PetOwnerAppointmentDetailScreen() {
     const body = appointmentResponse as { data?: unknown };
     return body?.data ?? appointmentResponse;
   }, [appointmentResponse]) as Record<string, unknown> | null;
+
+  const eligibleAppointmentIds = useMemo(() => {
+    const outer = (eligibleRescheduleQuery.data as { data?: unknown })?.data ?? eligibleRescheduleQuery.data;
+    const payload = (outer as { data?: unknown })?.data ?? outer;
+    const list = Array.isArray(payload)
+      ? payload
+      : Array.isArray((payload as { appointments?: unknown[] })?.appointments)
+        ? (payload as { appointments: unknown[] }).appointments
+        : [];
+    return new Set(
+      (list || [])
+        .map((a) => String((a as { _id?: unknown })?._id ?? ''))
+        .filter(Boolean)
+    );
+  }, [eligibleRescheduleQuery.data]);
 
   const vet = (appointment?.veterinarianId as Record<string, unknown>) || {};
   const pet = (appointment?.petId as Record<string, unknown>) || {};
@@ -82,6 +99,23 @@ export function PetOwnerAppointmentDetailScreen() {
   const canCancel = ['PENDING', 'CONFIRMED'].includes(status);
   const canJoinVideo =
     status === 'CONFIRMED' && (appointment?.bookingType as string) === 'ONLINE';
+
+  const canRequestReschedule = useMemo(() => {
+    if (!appointmentId || !appointment) return false;
+    if (status !== 'CONFIRMED') return false;
+    if ((appointment?.bookingType as string) !== 'ONLINE') return false;
+    if (!appointment?.appointmentDate || !appointment?.appointmentTime) return false;
+
+    const dt = new Date(appointment.appointmentDate as string);
+    const [h, m] = String(appointment.appointmentTime || '00:00')
+      .split(':')
+      .map(Number);
+    dt.setHours(h || 0, m || 0, 0, 0);
+    const hasPassed = dt.getTime() < Date.now();
+    if (!hasPassed) return false;
+
+    return eligibleAppointmentIds.has(String(appointmentId));
+  }, [appointment, appointmentId, eligibleAppointmentIds, status]);
   const vetId = (vet as { _id?: string })?._id ?? (appointment?.veterinarianId as string) ?? '';
   const ownerId = (appointment?.petOwnerId as { _id?: string })?._id ?? (appointment?.petOwnerId as string) ?? '';
 
@@ -262,6 +296,22 @@ export function PetOwnerAppointmentDetailScreen() {
               style={styles.btn}
             />
           )}
+
+          {canRequestReschedule && (
+            <Card style={styles.rescheduleCard}>
+              <Text style={styles.rescheduleTitle}>Missed Appointment?</Text>
+              <Text style={styles.rescheduleText}>
+                If no video call was initiated, you can request a reschedule.
+              </Text>
+              <Button
+                title="Request Reschedule"
+                onPress={() =>
+                  navigation.navigate('PetOwnerRequestReschedule', { appointmentId: String(appointmentId) })
+                }
+                style={styles.rescheduleBtn}
+              />
+            </Card>
+          )}
           {status === 'CONFIRMED' && (
             <Button
               title="💬 Chat with veterinarian"
@@ -296,7 +346,7 @@ export function PetOwnerAppointmentDetailScreen() {
               title="Cancel appointment"
               variant="outline"
               onPress={() => setShowCancelModal(true)}
-              style={[styles.btn, styles.cancelBtn]}
+              style={StyleSheet.flatten([styles.btn, styles.cancelBtn])}
               disabled={cancelAppointment.isPending}
             />
           )}
@@ -376,7 +426,7 @@ export function PetOwnerAppointmentDetailScreen() {
               <Button
                 title={cancelAppointment.isPending ? 'Cancelling...' : 'Cancel appointment'}
                 onPress={handleCancel}
-                style={[styles.modalBtn, styles.modalCancelBtn]}
+                style={StyleSheet.flatten([styles.modalBtn, styles.modalCancelBtn])}
                 disabled={cancelAppointment.isPending}
               />
             </View>
@@ -420,6 +470,10 @@ const styles = StyleSheet.create({
   contact: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
   detailRow: { marginBottom: spacing.sm },
   btn: { marginTop: spacing.lg },
+  rescheduleCard: { marginTop: spacing.lg, backgroundColor: colors.warning + '10', borderColor: colors.warning + '40' },
+  rescheduleTitle: { ...typography.h3, marginBottom: 4 },
+  rescheduleText: { ...typography.bodySmall, color: colors.textSecondary },
+  rescheduleBtn: { marginTop: spacing.md },
   cancelBtn: { borderColor: colors.error },
   modalOverlay: {
     flex: 1,

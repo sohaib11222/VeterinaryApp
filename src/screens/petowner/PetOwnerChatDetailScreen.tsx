@@ -27,6 +27,7 @@ import { API_BASE_URL } from '../../config/api';
 import { useMessages } from '../../queries/chatQueries';
 import { useSendMessage, useMarkConversationRead } from '../../mutations/chatMutations';
 import { useUploadChatFile } from '../../mutations/uploadMutations';
+import { copyToCacheUri, deleteCacheFiles, getExtensionFromMime } from '../../utils/fileUpload';
 import Toast from 'react-native-toast-message';
 
 type Route = RouteProp<PetOwnerStackParamList, 'PetOwnerChatDetail'>;
@@ -147,36 +148,46 @@ export function PetOwnerChatDetailScreen() {
 
   const handleAttach = async () => {
     try {
+      if (!conversationId || !veterinarianId || !petOwnerId || !appointmentId) {
+        Toast.show({ type: 'error', text1: 'Invalid conversation' });
+        return;
+      }
       const result = await DocumentPicker.getDocumentAsync({
         type: '*/*',
         copyToCacheDirectory: true,
       });
       if (result.canceled) return;
       const file = result.assets[0];
-      const formData = new FormData();
-      formData.append('file', {
-        uri: file.uri,
-        name: file.name ?? 'file',
-        type: file.mimeType ?? 'application/octet-stream',
-      } as any);
-      const res = await uploadChatFile.mutateAsync(formData);
-      const data = res as { data?: { url?: string } };
-      const url = data?.data?.url;
-      if (!url) {
-        Toast.show({ type: 'error', text1: 'Upload failed' });
-        return;
+      const tempUris: string[] = [];
+      const mime = file.mimeType ?? 'application/octet-stream';
+      const name = file.name ?? 'file';
+      try {
+        const ext = getExtensionFromMime(mime);
+        const uri = await copyToCacheUri(file.uri, 0, ext);
+        tempUris.push(uri);
+        const res = await uploadChatFile.mutateAsync({ uri, name, type: mime } as any);
+        const data = res as { data?: { url?: string } };
+        const url = data?.data?.url;
+        if (!url) {
+          Toast.show({ type: 'error', text1: 'Upload failed' });
+          return;
+        }
+        await sendMessage.mutateAsync({
+          conversationId,
+          veterinarianId,
+          petOwnerId,
+          appointmentId,
+          fileUrl: url,
+          fileName: file.name ?? 'File',
+          type: 'FILE',
+          message: (message ?? '').trim() || undefined,
+        });
+        setMessage('');
+      } finally {
+        if (tempUris.length > 0) {
+          await deleteCacheFiles(tempUris).catch(() => {});
+        }
       }
-      await sendMessage.mutateAsync({
-        conversationId,
-        veterinarianId,
-        petOwnerId,
-        appointmentId,
-        fileUrl: url,
-        fileName: file.name ?? 'File',
-        type: 'FILE',
-        message: (message ?? '').trim() || undefined,
-      });
-      setMessage('');
     } catch (err) {
       Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? 'Failed to send file' });
     }
@@ -202,7 +213,13 @@ export function PetOwnerChatDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenContainer style={[styles.screenWrap, keyboardHeight > 0 && { paddingBottom: keyboardHeight }]} padded={false}>
+      <ScreenContainer
+        style={{
+          ...styles.screenWrap,
+          ...(keyboardHeight > 0 ? { paddingBottom: keyboardHeight } : {}),
+        }}
+        padded={false}
+      >
           {messagesLoading ? (
             <View style={styles.centered}>
               <ActivityIndicator size="large" color={colors.primary} />

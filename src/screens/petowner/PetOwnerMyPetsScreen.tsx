@@ -27,13 +27,12 @@ type PetItem = {
 
 export function PetOwnerMyPetsScreen() {
   const navigation = useNavigation<any>();
-  const stackNav = navigation.getParent();
   const [searchQuery, setSearchQuery] = useState('');
 
   const { data: petsResponse, isLoading } = usePets();
   const pets = useMemo(() => {
-    const raw = (petsResponse as { data?: PetItem[] })?.data ?? (petsResponse as PetItem[]);
-    return Array.isArray(raw) ? raw : [];
+    const raw = (petsResponse as { data?: unknown } | undefined)?.data;
+    return Array.isArray(raw) ? (raw as PetItem[]) : [];
   }, [petsResponse]);
 
   const filtered = useMemo(() => {
@@ -98,7 +97,7 @@ export function PetOwnerMyPetsScreen() {
           </View>
         </View>
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.editBtn} onPress={() => stackNav?.navigate('PetOwnerEditPet', { petId: item._id })}>
+          <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('PetOwnerEditPet', { petId: item._id })}>
             <Text style={styles.editBtnText}>Edit</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item)} disabled={deletePet.isPending}>
@@ -131,7 +130,7 @@ export function PetOwnerMyPetsScreen() {
           onChangeText={setSearchQuery}
         />
       </View>
-      <Button title="Add Pet" onPress={() => stackNav?.navigate('PetOwnerAddPet')} style={styles.addBtn} />
+      <Button title="Add Pet" onPress={() => navigation.navigate('PetOwnerAddPet')} style={styles.addBtn} />
       <FlatList
         data={filtered}
         keyExtractor={(item) => item._id}

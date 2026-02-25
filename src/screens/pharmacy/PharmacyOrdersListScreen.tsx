@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -8,24 +8,34 @@ import {
   TextInput,
   Modal,
   Pressable,
+  ActivityIndicator,
+  Image,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { getImageUrl } from '../../config/api';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
-import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
+import { useOrders } from '../../queries/orderQueries';
+import { useUpdateShippingFee } from '../../mutations/orderMutations';
+import { getErrorMessage } from '../../utils/errorUtils';
+import Toast from 'react-native-toast-message';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import type { PharmacyOrdersStackParamList } from '../../navigation/types';
+
+type Route = RouteProp<PharmacyOrdersStackParamList, 'PharmacyOrdersList'>;
 
 const STATUS_OPTIONS = ['', 'PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED'];
 const PAYMENT_OPTIONS = ['', 'PAID', 'PENDING', 'REFUNDED'];
 
-const MOCK_ORDERS = [
-  { id: '1', orderNumber: 'ORD-1001', customer: 'John Doe', total: 45.99, shipping: 5, paymentStatus: 'PAID', status: 'DELIVERED', date: '12 Feb 2024' },
-  { id: '2', orderNumber: 'ORD-1002', customer: 'Jane Smith', total: 32.5, shipping: null as number | null, paymentStatus: 'PENDING', status: 'PENDING', date: '14 Feb 2024' },
-  { id: '3', orderNumber: 'ORD-1003', customer: 'Bob Wilson', total: 28, shipping: 3.5, paymentStatus: 'PAID', status: 'SHIPPED', date: '13 Feb 2024' },
-];
+function extractOrders(payload: unknown): any[] {
+  const outer = (payload as { data?: unknown })?.data ?? payload;
+  const d = (outer as { data?: unknown })?.data ?? outer;
+  const list = (d as { orders?: unknown[] })?.orders ?? (d as { items?: unknown[] })?.items;
+  return Array.isArray(list) ? list : [];
+}
 
 function getStatusColor(status: string) {
   const map: Record<string, string> = {
@@ -40,26 +50,48 @@ function getStatusColor(status: string) {
   return map[status] || colors.textSecondary;
 }
 
+function formatDate(val: string | Date | null | undefined): string {
+  if (!val) return '—';
+  const d = typeof val === 'string' ? new Date(val) : val;
+  return isNaN(d.getTime()) ? String(val) : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 export function PharmacyOrdersListScreen() {
+  const route = useRoute<Route>();
   const navigation = useNavigation<any>();
-  const [statusFilter, setStatusFilter] = useState('');
+  const initialStatus = (route.params as { status?: string } | undefined)?.status;
+  const [statusFilter, setStatusFilter] = useState(initialStatus ?? '');
   const [paymentFilter, setPaymentFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [shippingModal, setShippingModal] = useState<{ orderId: string; orderNumber: string } | null>(null);
+  const [shippingModal, setShippingModal] = useState<{ orderId: string; orderNumber: string; currentShipping?: number } | null>(null);
   const [shippingFee, setShippingFee] = useState('');
 
-  const filtered = MOCK_ORDERS.filter((o) => {
-    const matchStatus = !statusFilter || o.status === statusFilter;
-    const matchPayment = !paymentFilter || o.paymentStatus === paymentFilter;
-    const matchSearch = !searchQuery.trim() ||
-      o.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      o.customer.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchStatus && matchPayment && matchSearch;
-  });
+  const queryParams = useMemo(() => ({
+    page: 1,
+    limit: 50,
+    status: statusFilter || undefined,
+    paymentStatus: paymentFilter || undefined,
+  }), [statusFilter, paymentFilter]);
 
-  const openShippingModal = (order: typeof MOCK_ORDERS[0]) => {
-    setShippingModal({ orderId: order.id, orderNumber: order.orderNumber });
-    setShippingFee(order.shipping != null ? String(order.shipping) : '');
+  const { data, isLoading, isError } = useOrders(queryParams);
+  const updateShipping = useUpdateShippingFee();
+  const orders = useMemo(() => extractOrders(data), [data]);
+
+  const filtered = useMemo(() => {
+    if (!searchQuery.trim()) return orders;
+    const q = searchQuery.trim().toLowerCase();
+    return orders.filter((o: any) => {
+      const orderNo = o?.orderNumber ?? o?._id ?? '';
+      const customer = o?.petOwnerId?.name ?? o?.petOwner?.name ?? '';
+      return String(orderNo).toLowerCase().includes(q) || String(customer).toLowerCase().includes(q);
+    });
+  }, [orders, searchQuery]);
+
+  const openShippingModal = (order: any) => {
+    const id = order?._id ?? order?.id;
+    const orderNo = order?.orderNumber ?? id;
+    setShippingModal({ orderId: String(id), orderNumber: String(orderNo), currentShipping: order?.shipping });
+    setShippingFee(order?.shipping != null ? String(order.shipping) : '');
   };
 
   const closeShippingModal = () => {
@@ -67,10 +99,19 @@ export function PharmacyOrdersListScreen() {
     setShippingFee('');
   };
 
-  const saveShippingFee = () => {
+  const saveShippingFee = async () => {
     const n = parseFloat(shippingFee);
-    if (Number.isFinite(n) && n >= 0) {
+    if (!Number.isFinite(n) || n < 0) {
+      Toast.show({ type: 'error', text1: 'Enter a valid shipping fee (≥ 0)' });
+      return;
+    }
+    if (!shippingModal) return;
+    try {
+      await updateShipping.mutateAsync({ orderId: shippingModal.orderId, data: { shippingFee: n } });
+      Toast.show({ type: 'success', text1: 'Shipping fee updated' });
       closeShippingModal();
+    } catch (err) {
+      Toast.show({ type: 'error', text1: 'Failed', text2: getErrorMessage(err, 'Could not update shipping fee') });
     }
   };
 
@@ -121,19 +162,35 @@ export function PharmacyOrdersListScreen() {
           <Text style={styles.emptyText}>No orders found.</Text>
         </Card>
       ) : (
-        filtered.map((o) => {
-          const shippingDisplay = o.shipping === null || o.shipping === undefined ? 'Waiting' : `€${Number(o.shipping).toFixed(2)}`;
-          const isPaid = o.paymentStatus === 'PAID';
+        filtered.map((o: any) => {
+          const id = o?._id ?? o?.id;
+          const orderNo = o?.orderNumber ?? id;
+          const customer = o?.petOwnerId?.name ?? o?.petOwner?.name ?? '—';
+          const total = o?.total ?? o?.finalTotal ?? o?.initialTotal ?? 0;
+          const shippingVal = o?.shipping;
+          const shippingDisplay = shippingVal === null || shippingVal === undefined ? 'Waiting' : `€${Number(shippingVal).toFixed(2)}`;
+          const paymentStatus = o?.paymentStatus ?? '—';
+          const status = o?.status ?? '—';
+          const isPaid = String(paymentStatus).toUpperCase() === 'PAID';
+          const dateStr = formatDate(o?.createdAt);
+          const firstItem = Array.isArray(o?.items) && o.items[0] ? o.items[0] : null;
+          const productImg = firstItem?.productId?.images?.[0];
+          const thumbUri = productImg ? getImageUrl(productImg) : null;
           return (
-            <Card key={o.id} style={styles.orderCard}>
-              <TouchableOpacity onPress={() => navigation.navigate('PharmacyOrderDetails', { orderId: o.id })} activeOpacity={0.9}>
+            <Card key={id} style={styles.orderCard}>
+              <TouchableOpacity onPress={() => navigation.navigate('PharmacyOrderDetails', { orderId: String(id) })} activeOpacity={0.9}>
                 <View style={styles.orderRow}>
+                  {thumbUri ? (
+                    <Image source={{ uri: thumbUri }} style={styles.orderThumb} />
+                  ) : (
+                    <View style={styles.orderThumbPlaceholder} />
+                  )}
                   <View style={styles.orderMain}>
-                    <Text style={styles.orderNo}>{o.orderNumber}</Text>
-                    <Text style={styles.orderCustomer}>{o.customer}</Text>
-                    <Text style={styles.orderDate}>{o.date}</Text>
+                    <Text style={styles.orderNo}>{orderNo}</Text>
+                    <Text style={styles.orderCustomer}>{customer}</Text>
+                    <Text style={styles.orderDate}>{dateStr}</Text>
+                    <Text style={styles.orderTotal}>€{Number(total).toFixed(2)}</Text>
                   </View>
-                  <Text style={styles.orderTotal}>€{Number(o.total).toFixed(2)}</Text>
                 </View>
                 <View style={styles.metaRow}>
                   <View style={styles.metaItem}>
@@ -142,17 +199,17 @@ export function PharmacyOrdersListScreen() {
                   </View>
                   <View style={styles.metaItem}>
                     <Text style={styles.metaLabel}>Payment</Text>
-                    <Text style={[styles.metaValue, isPaid ? styles.paid : styles.unpaid]}>{o.paymentStatus}</Text>
+                    <Text style={[styles.metaValue, isPaid ? styles.paid : styles.unpaid]}>{paymentStatus}</Text>
                   </View>
                   <View style={styles.metaItem}>
                     <Text style={styles.metaLabel}>Status</Text>
-                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(o.status) + '25' }]}>
-                      <Text style={[styles.statusText, { color: getStatusColor(o.status) }]}>{o.status}</Text>
+                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(status) + '25' }]}>
+                      <Text style={[styles.statusText, { color: getStatusColor(status) }]}>{status}</Text>
                     </View>
                   </View>
                 </View>
                 <View style={styles.actionsRow}>
-                  <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('PharmacyOrderDetails', { orderId: o.id })}>
+                  <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('PharmacyOrderDetails', { orderId: String(id) })}>
                     <Text style={styles.actionBtnText}>View</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -193,7 +250,7 @@ export function PharmacyOrdersListScreen() {
             </View>
             <View style={styles.modalFooter}>
               <Button title="Cancel" variant="outline" onPress={closeShippingModal} style={styles.modalBtn} />
-              <Button title="Save" onPress={saveShippingFee} style={styles.modalBtn} />
+              <Button title="Save" onPress={saveShippingFee} loading={updateShipping.isPending} style={styles.modalBtn} />
             </View>
           </Pressable>
         </Pressable>
@@ -223,13 +280,16 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { ...typography.bodySmall },
   chipTextActive: { color: colors.textInverse, fontWeight: '600' },
+  loadingRow: { padding: spacing.xl, alignItems: 'center' },
   orderCard: { marginBottom: spacing.sm },
-  orderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.sm },
+  orderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
+  orderThumb: { width: 56, height: 56, borderRadius: 8, marginRight: spacing.sm },
+  orderThumbPlaceholder: { width: 56, height: 56, borderRadius: 8, marginRight: spacing.sm, backgroundColor: colors.backgroundTertiary },
   orderMain: { flex: 1 },
   orderNo: { ...typography.body, fontWeight: '600' },
   orderCustomer: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
   orderDate: { ...typography.caption, color: colors.textLight, marginTop: 2 },
-  orderTotal: { ...typography.h3, color: colors.primary },
+  orderTotal: { ...typography.h3, color: colors.primary, marginTop: 2 },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.borderLight },
   metaItem: {},
   metaLabel: { ...typography.caption, color: colors.textSecondary },

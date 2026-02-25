@@ -11,7 +11,7 @@ export function useSubscriptionPlans(params?: Record<string, unknown>) {
   return useQuery({
     queryKey: hasParams ? ['subscription-plans', params] : ['subscription-plans'],
     queryFn: () =>
-      api.get<{ success?: boolean; data?: unknown[] }>(
+      api.get<{ success?: boolean; data?: unknown[] | { plans?: unknown[] } }>(
         API_ROUTES.SUBSCRIPTION_PLANS.ACTIVE,
         hasParams ? { params } : undefined
       ),

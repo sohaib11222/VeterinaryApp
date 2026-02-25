@@ -14,6 +14,8 @@ export const API_ROUTES = {
     FORGOT_PASSWORD: '/auth/forgot-password',
     VERIFY_RESET_CODE: '/auth/verify-reset-code',
     RESET_PASSWORD: '/auth/reset-password',
+    SEND_PHONE_OTP: '/auth/phone-otp/send',
+    VERIFY_PHONE_OTP: '/auth/phone-otp/verify',
     APPROVE_VETERINARIAN: '/auth/approve-veterinarian',
     REJECT_VETERINARIAN: '/auth/reject-veterinarian',
     APPROVE_PET_STORE: '/auth/approve-pet-store',
@@ -42,6 +44,9 @@ export const API_ROUTES = {
   UPLOAD: {
     VETERINARIAN_DOCS: '/upload/veterinarian-docs',
     PET_STORE_DOCS: '/upload/pet-store-docs',
+    PET_STORE: '/upload/pet-store',
+    PRODUCT: '/upload/product',
+    PET: '/upload/pet',
     PROFILE: '/upload/profile',
     MEDICAL_RECORDS: '/upload/medical-records',
     CHAT: '/upload/chat',
@@ -199,6 +204,9 @@ export const API_ROUTES = {
     GET: (id: string) => `/pet-stores/${id}`,
     ME: '/pet-stores/me',
     MY_SUBSCRIPTION: '/pet-stores/my-subscription',
+    BUY_SUBSCRIPTION: '/pet-stores/buy-subscription',
+    CREATE: '/pet-stores',
+    UPDATE: (id: string) => `/pet-stores/${id}`,
   },
 
   PRODUCTS: {
@@ -206,6 +214,9 @@ export const API_ROUTES = {
     LIST: '/products',
     MINE: '/products/mine',
     GET: (id: string) => `/products/${id}`,
+    CREATE: '/products',
+    UPDATE: (id: string) => `/products/${id}`,
+    DELETE: (id: string) => `/products/${id}`,
   },
 
   ORDERS: {

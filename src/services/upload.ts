@@ -13,10 +13,28 @@ export interface FileForUpload {
   type: string;
 }
 
+const NETWORK_ERROR_MESSAGE =
+  'Cannot reach server. Ensure the backend is running and the app is using the correct API URL. ' +
+  'On a physical device, set EXPO_PUBLIC_API_BASE_URL to your computer IP (e.g. http://192.168.1.x:5000/api) in .env and restart.';
+
 function getFullUrl(path: string): string {
   const base = API_BASE_URL.replace(/\/$/, '');
   const p = path.startsWith('/') ? path : `/${path}`;
   return `${base}${p}`;
+}
+
+function parseXhrJson(text: string) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+function buildHttpError(status: number, responseText: string) {
+  const parsed = parseXhrJson(responseText);
+  const msg = (parsed as { message?: string } | null)?.message || `Upload failed: HTTP ${status}`;
+  return Object.assign(new Error(msg), { response: { status, data: parsed ?? { message: msg } } });
 }
 
 /**
@@ -43,18 +61,11 @@ export function uploadVeterinarianDocs(files: FileForUpload[]): Promise<{ succes
             reject(new Error('Invalid response'));
           }
         } else {
-          let errData: { message?: string } = { message: `Upload failed: HTTP ${xhr.status}` };
-          try {
-            const parsed = JSON.parse(xhr.responseText);
-            if (parsed?.message) errData = parsed;
-          } catch {
-            if (xhr.responseText) errData = { message: xhr.responseText };
-          }
-          reject(Object.assign(new Error(errData?.message ?? 'Upload failed'), { response: { status: xhr.status, data: errData } }));
+          reject(buildHttpError(xhr.status, xhr.responseText));
         }
       };
 
-      xhr.onerror = () => reject(new Error('Network error during upload'));
+      xhr.onerror = () => reject(new Error(NETWORK_ERROR_MESSAGE));
       xhr.ontimeout = () => reject(new Error('Upload timeout'));
 
       const formData = new FormData();
@@ -66,6 +77,130 @@ export function uploadVeterinarianDocs(files: FileForUpload[]): Promise<{ succes
         } as any);
       });
 
+      xhr.send(formData as any);
+    }).catch(reject);
+  });
+}
+
+export function uploadChatFile(file: FileForUpload): Promise<{ success: boolean; data?: { url?: string }; message?: string }> {
+  return new Promise((resolve, reject) => {
+    SecureStore.getItemAsync(AUTH_TOKEN_KEY).then((token) => {
+      const url = getFullUrl('/upload/chat');
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', url);
+      xhr.timeout = 60000;
+
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const body = parseXhrJson(xhr.responseText);
+          if (body) resolve(body);
+          else reject(new Error('Invalid response'));
+        } else {
+          reject(buildHttpError(xhr.status, xhr.responseText));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error(NETWORK_ERROR_MESSAGE));
+      xhr.ontimeout = () => reject(new Error('Upload timeout'));
+
+      const formData = new FormData();
+      formData.append('file', { uri: file.uri, type: file.type, name: file.name } as any);
+      xhr.send(formData as any);
+    }).catch(reject);
+  });
+}
+
+export function uploadProfileImage(file: FileForUpload): Promise<{ success: boolean; data?: { url?: string }; message?: string }> {
+  return new Promise((resolve, reject) => {
+    SecureStore.getItemAsync(AUTH_TOKEN_KEY).then((token) => {
+      const url = getFullUrl('/upload/profile');
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', url);
+      xhr.timeout = 60000;
+
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const body = parseXhrJson(xhr.responseText);
+          if (body) resolve(body);
+          else reject(new Error('Invalid response'));
+        } else {
+          reject(buildHttpError(xhr.status, xhr.responseText));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error(NETWORK_ERROR_MESSAGE));
+      xhr.ontimeout = () => reject(new Error('Upload timeout'));
+
+      const formData = new FormData();
+      formData.append('file', { uri: file.uri, type: file.type, name: file.name } as any);
+      xhr.send(formData as any);
+    }).catch(reject);
+  });
+}
+
+export function uploadPetImages(files: FileForUpload[]): Promise<{ success: boolean; data?: { urls?: string[] }; message?: string }> {
+  return new Promise((resolve, reject) => {
+    SecureStore.getItemAsync(AUTH_TOKEN_KEY).then((token) => {
+      const url = getFullUrl('/upload/pet');
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', url);
+      xhr.timeout = 60000;
+
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const body = parseXhrJson(xhr.responseText);
+          if (body) resolve(body);
+          else reject(new Error('Invalid response'));
+        } else {
+          reject(buildHttpError(xhr.status, xhr.responseText));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error(NETWORK_ERROR_MESSAGE));
+      xhr.ontimeout = () => reject(new Error('Upload timeout'));
+
+      const formData = new FormData();
+      files.forEach((f) => {
+        formData.append('pet', { uri: f.uri, type: f.type, name: f.name } as any);
+      });
+      xhr.send(formData as any);
+    }).catch(reject);
+  });
+}
+
+export function uploadMedicalRecordFiles(files: FileForUpload[]): Promise<{ success: boolean; data?: { urls?: string[] }; message?: string }> {
+  return new Promise((resolve, reject) => {
+    SecureStore.getItemAsync(AUTH_TOKEN_KEY).then((token) => {
+      const url = getFullUrl('/upload/medical-records');
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', url);
+      xhr.timeout = 60000;
+
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const body = parseXhrJson(xhr.responseText);
+          if (body) resolve(body);
+          else reject(new Error('Invalid response'));
+        } else {
+          reject(buildHttpError(xhr.status, xhr.responseText));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error(NETWORK_ERROR_MESSAGE));
+      xhr.ontimeout = () => reject(new Error('Upload timeout'));
+
+      const formData = new FormData();
+      files.forEach((f) => {
+        formData.append('medicalRecords', { uri: f.uri, type: f.type, name: f.name } as any);
+      });
       xhr.send(formData as any);
     }).catch(reject);
   });
@@ -98,18 +233,11 @@ export function uploadPetStoreDoc(
             reject(new Error('Invalid response'));
           }
         } else {
-          let errData: { message?: string } = { message: `Upload failed: HTTP ${xhr.status}` };
-          try {
-            const parsed = JSON.parse(xhr.responseText);
-            if (parsed?.message) errData = parsed;
-          } catch {
-            if (xhr.responseText) errData = { message: xhr.responseText };
-          }
-          reject(Object.assign(new Error(errData?.message ?? 'Upload failed'), { response: { status: xhr.status, data: errData } }));
+          reject(buildHttpError(xhr.status, xhr.responseText));
         }
       };
 
-      xhr.onerror = () => reject(new Error('Network error during upload'));
+      xhr.onerror = () => reject(new Error(NETWORK_ERROR_MESSAGE));
       xhr.ontimeout = () => reject(new Error('Upload timeout'));
 
       const formData = new FormData();
@@ -119,6 +247,83 @@ export function uploadPetStoreDoc(
         type: file.type,
         name: file.name,
       } as any);
+
+      xhr.send(formData as any);
+    }).catch(reject);
+  });
+}
+
+/**
+ * Upload pet store logo (single file, field name 'file').
+ */
+export function uploadPetStoreLogo(file: FileForUpload): Promise<{ success: boolean; data?: { url?: string }; url?: string; message?: string }> {
+  return new Promise((resolve, reject) => {
+    SecureStore.getItemAsync(AUTH_TOKEN_KEY).then((token) => {
+      const url = getFullUrl('/upload/pet-store');
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', url);
+      xhr.timeout = 60000;
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const body = JSON.parse(xhr.responseText);
+            resolve(body);
+          } catch {
+            reject(new Error('Invalid response'));
+          }
+        } else {
+          reject(buildHttpError(xhr.status, xhr.responseText));
+        }
+      };
+      xhr.onerror = () => reject(new Error(NETWORK_ERROR_MESSAGE));
+      xhr.ontimeout = () => reject(new Error('Upload timeout'));
+      const formData = new FormData();
+      formData.append('file', { uri: file.uri, type: file.type, name: file.name } as any);
+      xhr.send(formData as any);
+    }).catch(reject);
+  });
+}
+
+/**
+ * Upload product images (multiple files under field name 'product').
+ */
+export function uploadProductImages(files: FileForUpload[]): Promise<{ success: boolean; data?: { urls?: string[] }; urls?: string[]; message?: string }> {
+  return new Promise((resolve, reject) => {
+    SecureStore.getItemAsync(AUTH_TOKEN_KEY).then((token) => {
+      const url = getFullUrl('/upload/product');
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', url);
+      xhr.timeout = 60000;
+
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const body = JSON.parse(xhr.responseText);
+            resolve(body);
+          } catch {
+            reject(new Error('Invalid response'));
+          }
+        } else {
+          reject(buildHttpError(xhr.status, xhr.responseText));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error(NETWORK_ERROR_MESSAGE));
+      xhr.ontimeout = () => reject(new Error('Upload timeout'));
+
+      const formData = new FormData();
+      files.forEach((f) => {
+        formData.append('product', {
+          uri: f.uri,
+          type: f.type,
+          name: f.name,
+        } as any);
+      });
 
       xhr.send(formData as any);
     }).catch(reject);

@@ -12,3 +12,11 @@ export function usePets() {
       api.get<{ success: boolean; data?: unknown }>(API_ROUTES.PETS.LIST),
   });
 }
+
+export function usePet(petId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['pet', petId],
+    queryFn: () => api.get<{ success: boolean; data?: unknown }>(API_ROUTES.PETS.GET(petId!)),
+    enabled: !!petId,
+  });
+}

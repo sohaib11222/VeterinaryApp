@@ -14,6 +14,8 @@ export interface User {
   name: string;
   role: UserRole;
   status?: UserStatus;
+  phone?: string;
+  isPhoneVerified?: boolean;
 }
 
 /** Response from login/register for navigation decisions (role, status) */
@@ -40,12 +42,15 @@ function normalizeUser(u: AuthResponseData['user'] | null): User | null {
   if (!id) return null;
   const roleRaw = String(u.role ?? 'PET_OWNER').toUpperCase();
   const role = (['PET_OWNER', 'VETERINARIAN', 'PET_STORE', 'PARAPHARMACY', 'ADMIN'].includes(roleRaw) ? roleRaw : 'PET_OWNER') as UserRole;
+  const raw = u as { phone?: string; isPhoneVerified?: boolean };
   return {
     id,
     email: u.email ?? '',
     name: u.name ?? '',
     role,
     status: (u.status as User['status']) ?? undefined,
+    phone: raw?.phone ?? undefined,
+    isPhoneVerified: raw?.isPhoneVerified ?? undefined,
   };
 }
 

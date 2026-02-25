@@ -32,11 +32,11 @@ const MENU_SECTIONS: { title: string; items: { label: string; icon: string; scre
   {
     title: 'Content & Settings',
     items: [
-      { label: 'Blog Posts', icon: '📝', screen: 'VetBlogList' },
+      // { label: 'Blog Posts', icon: '📝', screen: 'VetBlogList' },
       { label: 'Clinic Announcements', icon: '📢', screen: 'VetAnnouncements' },
       { label: 'Subscription', icon: '👑', screen: 'VetSubscription' },
       { label: 'Profile Settings', icon: '👤', screen: 'VetProfileSettings' },
-      { label: 'Social Media', icon: '🔗', screen: 'VetSocialMedia' },
+      // { label: 'Social Media', icon: '🔗', screen: 'VetSocialMedia' },
       { label: 'Notifications', icon: '🔔', screen: 'VetNotifications' },
       { label: 'Change Password', icon: '🔒', screen: 'VetChangePassword' },
     ],

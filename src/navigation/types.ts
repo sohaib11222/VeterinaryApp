@@ -129,7 +129,7 @@ export type PharmacyProductsStackParamList = {
 
 // Orders stack (nested under Pharmacy Orders tab)
 export type PharmacyOrdersStackParamList = {
-  PharmacyOrdersList: undefined;
+  PharmacyOrdersList: { status?: string } | undefined;
   PharmacyOrderDetails: { orderId: string };
   PharmacyOrderStatus: { orderId: string };
 };

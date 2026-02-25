@@ -33,6 +33,7 @@ export interface AuthResponseData {
     phone?: string;
     role: string;
     status?: string;
+    isPhoneVerified?: boolean;
   };
   token: string;
   refreshToken: string;
@@ -92,4 +93,16 @@ export function useChangePasswordMutation() {
 /** Forgot password – backend may not send email in dev; still show success */
 export async function forgotPasswordApi(email: string) {
   await api.post(API_ROUTES.AUTH.FORGOT_PASSWORD, { email });
+}
+
+/** Send OTP to phone (pharmacy/parapharmacy). Body: { phone?: string } */
+export async function sendPhoneOtpApi(payload: { phone?: string }) {
+  await api.post(API_ROUTES.AUTH.SEND_PHONE_OTP, payload);
+}
+
+/** Verify phone OTP. Body: { code: string; phone?: string }. Returns backend response (may include user). */
+export async function verifyPhoneOtpApi(payload: { code: string; phone?: string }) {
+  const res = await api.post<BackendSuccess<{ user?: AuthResponseData['user'] }>>(API_ROUTES.AUTH.VERIFY_PHONE_OTP, payload);
+  const envelope = res as BackendSuccess<{ user?: AuthResponseData['user'] }>;
+  return envelope?.data ?? (res as unknown as { user?: AuthResponseData['user'] });
 }

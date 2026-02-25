@@ -9,6 +9,7 @@ import { API_ROUTES } from '../api/apiConfig';
 
 export interface OrderListParams {
   status?: string;
+  paymentStatus?: string;
   page?: number;
   limit?: number;
 }

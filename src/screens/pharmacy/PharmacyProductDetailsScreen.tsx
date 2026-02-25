@@ -1,51 +1,98 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, ActivityIndicator } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { PharmacyProductsStackParamList } from '../../navigation/types';
+import { useProduct } from '../../queries/productQueries';
+import { useDeleteProduct } from '../../mutations/productMutations';
+import { getImageUrl } from '../../config/api';
+import { getErrorMessage } from '../../utils/errorUtils';
+import Toast from 'react-native-toast-message';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 
 type Route = RouteProp<PharmacyProductsStackParamList, 'PharmacyProductDetails'>;
 
-const MOCK_PRODUCT = {
-  id: '1',
-  name: 'Premium Dog Food 5kg',
-  description: 'High-quality nutrition for adult dogs. Complete and balanced diet.',
-  price: 32.99,
-  discountPrice: 24.99,
-  sku: 'SKU-001',
-  stock: 50,
-  category: 'Food & Treats',
-  isActive: true,
-  createdAt: '1 Feb 2024',
-};
+function extractProduct(payload: unknown): any {
+  if (payload == null) return null;
+  const p = payload as Record<string, unknown>;
+  if (p.data != null && typeof p.data === 'object') return p.data;
+  if (p._id != null || p.name != null) return p;
+  return null;
+}
+
+function formatDate(val: string | Date | null | undefined): string {
+  if (!val) return '—';
+  const d = typeof val === 'string' ? new Date(val) : val;
+  return isNaN(d.getTime()) ? String(val) : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
 export function PharmacyProductDetailsScreen() {
   const route = useRoute<Route>();
   const navigation = useNavigation<any>();
-  const productId = route.params?.productId;
-  const product = MOCK_PRODUCT;
+  const productId = route.params?.productId ?? '';
+  const { data, isLoading, isError } = useProduct(productId);
+  const deleteMutation = useDeleteProduct();
+  const product = extractProduct(data);
 
   const discountPercent =
-    product.discountPrice != null && product.price > 0
-      ? Math.round(((product.price - product.discountPrice) / product.price) * 100)
+    product && product.discountPrice != null && Number(product.price) > 0
+      ? Math.round(((Number(product.price) - Number(product.discountPrice)) / Number(product.price)) * 100)
       : 0;
 
   const handleDelete = () => {
-    Alert.alert('Delete product', `Remove "${product.name}"? This cannot be undone.`, [
+    if (!product) return;
+    const name = product?.name ?? 'this product';
+    Alert.alert('Delete product', `Remove "${name}"? This cannot be undone.`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => navigation.goBack() },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteMutation.mutateAsync(productId);
+            Toast.show({ type: 'success', text1: 'Product deleted' });
+            navigation.goBack();
+          } catch (err) {
+            Toast.show({ type: 'error', text1: 'Failed', text2: getErrorMessage(err, 'Could not delete') });
+          }
+        },
+      },
     ]);
   };
+
+  if (isLoading && !product) {
+    return (
+      <ScreenContainer padded>
+        <View style={styles.loadingRow}><ActivityIndicator size="small" color={colors.primary} /></View>
+      </ScreenContainer>
+    );
+  }
+  if (isError || !product) {
+    return (
+      <ScreenContainer padded>
+        <Text style={styles.errorText}>Product not found.</Text>
+        <Button title="Back" onPress={() => navigation.goBack()} />
+      </ScreenContainer>
+    );
+  }
+
+  const imgUrl = Array.isArray(product?.images) && product.images[0] ? getImageUrl(product.images[0]) : null;
+  const displayPrice = Number(product?.discountPrice ?? product?.price ?? 0);
+  const originalPrice = product?.discountPrice != null && Number(product?.price) > Number(product?.discountPrice) ? Number(product.price) : null;
+  const createdAt = product?.createdAt ? formatDate(product.createdAt) : '—';
 
   return (
     <ScreenContainer scroll padded>
       <View style={styles.imageContainer}>
-        <View style={styles.productImage} />
+        {imgUrl ? (
+          <Image source={{ uri: imgUrl }} style={styles.productImage} resizeMode="cover" />
+        ) : (
+          <View style={[styles.productImage, styles.productImagePlaceholder]} />
+        )}
         {discountPercent > 0 && (
           <View style={styles.discountBadge}>
             <Text style={styles.discountText}>{discountPercent}% off</Text>
@@ -54,15 +101,15 @@ export function PharmacyProductDetailsScreen() {
       </View>
 
       <View style={styles.header}>
-        <Text style={styles.productName}>{product.name}</Text>
+        <Text style={styles.productName}>{product?.name ?? '—'}</Text>
         <View style={styles.priceRow}>
-          <Text style={styles.price}>€{Number(product.discountPrice ?? product.price).toFixed(2)}</Text>
-          {product.discountPrice != null && product.discountPrice < product.price && (
-            <Text style={styles.originalPrice}>€{Number(product.price).toFixed(2)}</Text>
+          <Text style={styles.price}>€{displayPrice.toFixed(2)}</Text>
+          {originalPrice != null && (
+            <Text style={styles.originalPrice}>€{originalPrice.toFixed(2)}</Text>
           )}
         </View>
-        <View style={[styles.activeBadge, !product.isActive && styles.activeBadgeInactive]}>
-          <Text style={styles.activeBadgeText}>{product.isActive ? 'Active' : 'Inactive'}</Text>
+        <View style={[styles.activeBadge, product?.isActive === false && styles.activeBadgeInactive]}>
+          <Text style={styles.activeBadgeText}>{product?.isActive !== false ? 'Active' : 'Inactive'}</Text>
         </View>
       </View>
 
@@ -70,23 +117,23 @@ export function PharmacyProductDetailsScreen() {
         <Text style={styles.sectionTitle}>Details</Text>
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>SKU</Text>
-          <Text style={styles.detailValue}>{product.sku}</Text>
+          <Text style={styles.detailValue}>{product?.sku ?? '—'}</Text>
         </View>
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Category</Text>
-          <Text style={styles.detailValue}>{product.category}</Text>
+          <Text style={styles.detailValue}>{product?.category ?? '—'}</Text>
         </View>
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Stock</Text>
-          <Text style={styles.detailValue}>{product.stock} units</Text>
+          <Text style={styles.detailValue}>{product?.stock ?? 0} units</Text>
         </View>
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Added</Text>
-          <Text style={styles.detailValue}>{product.createdAt}</Text>
+          <Text style={styles.detailValue}>{createdAt}</Text>
         </View>
       </Card>
 
-      {product.description ? (
+      {product?.description ? (
         <Card style={styles.section}>
           <Text style={styles.sectionTitle}>Description</Text>
           <Text style={styles.description}>{product.description}</Text>
@@ -97,10 +144,10 @@ export function PharmacyProductDetailsScreen() {
         <Button
           title="Edit product"
           variant="outline"
-          onPress={() => navigation.navigate('PharmacyEditProduct', { productId: product.id })}
+          onPress={() => navigation.navigate('PharmacyEditProduct', { productId })}
           style={styles.actionBtn}
         />
-        <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>
+        <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} disabled={deleteMutation.isPending}>
           <Text style={styles.deleteBtnText}>Delete product</Text>
         </TouchableOpacity>
       </View>
@@ -109,13 +156,15 @@ export function PharmacyProductDetailsScreen() {
 }
 
 const styles = StyleSheet.create({
+  loadingRow: { padding: spacing.xl, alignItems: 'center' },
+  errorText: { ...typography.body, color: colors.error, marginBottom: spacing.md },
   imageContainer: { position: 'relative', marginBottom: spacing.md },
   productImage: {
     width: '100%',
     height: 220,
-    backgroundColor: colors.backgroundTertiary,
     borderRadius: 12,
   },
+  productImagePlaceholder: { backgroundColor: colors.backgroundTertiary },
   discountBadge: {
     position: 'absolute',
     top: spacing.sm,

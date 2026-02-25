@@ -57,3 +57,31 @@ export function useCancelOrder() {
     },
   });
 }
+
+export function useUpdateOrderStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ orderId, data }: { orderId: string; data: { status: string } }) =>
+      api.put<{ success: boolean; data?: unknown }>(API_ROUTES.ORDERS.UPDATE_STATUS(orderId), data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      if (variables?.orderId) {
+        queryClient.invalidateQueries({ queryKey: ['order', variables.orderId] });
+      }
+    },
+  });
+}
+
+export function useUpdateShippingFee() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ orderId, data }: { orderId: string; data: { shippingFee: number } }) =>
+      api.put<{ success: boolean; data?: unknown }>(API_ROUTES.ORDERS.UPDATE_SHIPPING(orderId), data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      if (variables?.orderId) {
+        queryClient.invalidateQueries({ queryKey: ['order', variables.orderId] });
+      }
+    },
+  });
+}

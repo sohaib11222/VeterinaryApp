@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import * as DocumentPicker from 'expo-document-picker';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
+import { useCreatePetWithUpload } from '../../mutations/petsMutations';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -14,7 +16,6 @@ const PET_GENDER = ['MALE', 'FEMALE', 'NEUTERED', 'SPAYED', 'UNKNOWN'];
 
 export function PetOwnerAddPetScreen() {
   const navigation = useNavigation<any>();
-  const stackNav = navigation.getParent();
   const [name, setName] = useState('');
   const [species, setSpecies] = useState('DOG');
   const [breed, setBreed] = useState('');
@@ -23,9 +24,52 @@ export function PetOwnerAddPetScreen() {
   const [weightKg, setWeightKg] = useState('');
   const [microchipNumber, setMicrochipNumber] = useState('');
 
-  const onSave = () => {
-    if (!name.trim()) return;
-    stackNav?.goBack();
+  const [photo, setPhoto] = useState<{ uri: string; name?: string; mimeType?: string } | null>(null);
+
+  const createPet = useCreatePetWithUpload();
+
+  const pickPhoto = async () => {
+    const result = await DocumentPicker.getDocumentAsync({ type: 'image/*', copyToCacheDirectory: true });
+    if (result.canceled) return;
+    setPhoto(result.assets[0]);
+  };
+
+  const onSave = async () => {
+    const nm = name.trim();
+    if (!nm) {
+      Alert.alert('Validation', 'Name is required');
+      return;
+    }
+
+    const age = ageMonths.trim() === '' ? null : Number(ageMonths);
+    const weight = weightKg.trim() === '' ? null : Number(weightKg);
+
+    const data: Record<string, unknown> = {
+      name: nm,
+      species,
+      ...(breed.trim() ? { breed: breed.trim() } : {}),
+      ...(gender ? { gender } : {}),
+      ...(age != null && Number.isFinite(age) ? { age } : {}),
+      ...(weight != null && Number.isFinite(weight) ? { weight } : {}),
+      ...(microchipNumber.trim() ? { microchipNumber: microchipNumber.trim() } : {}),
+    };
+
+    try {
+      await createPet.mutateAsync({
+        data,
+        file: photo
+          ? ({
+              uri: photo.uri,
+              name: photo.name,
+              mimeType: photo.mimeType,
+            } as any)
+          : null,
+      });
+      Alert.alert('Success', 'Pet created');
+      navigation.goBack();
+    } catch (err: unknown) {
+      Alert.alert('Error', (err as { message?: string })?.message ?? 'Failed to create pet');
+    }
   };
 
   return (
@@ -62,10 +106,15 @@ export function PetOwnerAddPetScreen() {
           <Input label="Age (months)" placeholder="e.g. 24" value={ageMonths} onChangeText={setAgeMonths} keyboardType="numeric" />
           <Input label="Weight (kg)" placeholder="Optional" value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" />
           <Input label="Microchip number" placeholder="Optional" value={microchipNumber} onChangeText={setMicrochipNumber} />
-          <View style={styles.photoPlaceholder}>
-            <Text style={styles.photoText}>📷 Add photo (optional)</Text>
-          </View>
-          <Button title="Save Pet" onPress={onSave} style={styles.saveBtn} />
+          <Text style={styles.fieldLabel}>Photo</Text>
+          <TouchableOpacity style={styles.photoPlaceholder} onPress={pickPhoto}>
+            {photo?.uri ? (
+              <Image source={{ uri: photo.uri }} style={styles.photoPreview} />
+            ) : (
+              <Text style={styles.photoText}>📷 Add photo (optional)</Text>
+            )}
+          </TouchableOpacity>
+          <Button title={createPet.isPending ? 'Saving...' : 'Save Pet'} onPress={onSave} style={styles.saveBtn} disabled={createPet.isPending} />
         </Card>
       </ScrollView>
     </ScreenContainer>
@@ -85,5 +134,6 @@ const styles = StyleSheet.create({
   chipTextActive: { color: colors.textInverse },
   photoPlaceholder: { borderWidth: 1, borderStyle: 'dashed', borderColor: colors.border, borderRadius: 12, padding: spacing.lg, alignItems: 'center', marginBottom: spacing.md },
   photoText: { ...typography.bodySmall, color: colors.textSecondary },
+  photoPreview: { width: 160, height: 160, borderRadius: 12 },
   saveBtn: { marginTop: spacing.xs },
 });

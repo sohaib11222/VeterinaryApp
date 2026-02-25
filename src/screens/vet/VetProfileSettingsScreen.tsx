@@ -6,8 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import * as DocumentPicker from 'expo-document-picker';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
 import { Input } from '../../components/common/Input';
@@ -15,12 +17,14 @@ import { Button } from '../../components/common/Button';
 import { useAuth } from '../../contexts/AuthContext';
 import { useVeterinarianProfile } from '../../queries/veterinarianQueries';
 import { useUpdateVeterinarianProfile } from '../../mutations/veterinarianMutations';
+import { useUploadProfileImage } from '../../mutations/userMutations';
 import { api } from '../../api/api';
 import { API_ROUTES } from '../../api/apiConfig';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import Toast from 'react-native-toast-message';
+import { getImageUrl } from '../../config/api';
 
 const PROFILE_SECTIONS = [
   { label: 'Basic Details', screen: 'VetProfileSettings' as const },
@@ -38,12 +42,15 @@ export function VetProfileSettingsScreen() {
   const navigation = useNavigation<any>();
   const { data: profileResponse, isLoading: profileLoading } = useVeterinarianProfile();
   const updateProfile = useUpdateVeterinarianProfile();
+  const uploadProfileImage = useUploadProfileImage();
 
   const profile = useMemo(() => {
     const d = (profileResponse as { data?: Record<string, unknown> })?.data ?? profileResponse as Record<string, unknown>;
     return d ?? null;
   }, [profileResponse]);
   const profileUser = (profile?.userId as Record<string, unknown>) ?? user ?? {};
+
+  const [profileImage, setProfileImage] = useState('');
 
   const [form, setForm] = useState({
     firstName: '',
@@ -57,6 +64,8 @@ export function VetProfileSettingsScreen() {
 
   useEffect(() => {
     if (!profile && !profileUser) return;
+    const img = (profileUser as { profileImage?: string })?.profileImage ?? '';
+    setProfileImage(img);
     const fullName = (profileUser.name as string) || (user?.name as string) || '';
     const [first, ...rest] = fullName.split(' ');
     const last = rest.join(' ') || '';
@@ -74,6 +83,35 @@ export function VetProfileSettingsScreen() {
       memberships: memberships.length > 0 ? memberships : [''],
     });
   }, [profile, profileUser?.name, user?.name]);
+
+  const handleUploadPhoto = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ type: 'image/*', copyToCacheDirectory: true });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      const res = await uploadProfileImage.mutateAsync(asset as any);
+      const url = (res as { data?: { url?: string } })?.data?.url;
+      if (!url) {
+        Toast.show({ type: 'error', text1: 'Upload failed' });
+        return;
+      }
+      await api.put(API_ROUTES.USERS.PROFILE, { profileImage: url });
+      setProfileImage(url);
+      Toast.show({ type: 'success', text1: 'Profile image updated' });
+    } catch (err) {
+      Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? 'Failed to upload' });
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    try {
+      await api.put(API_ROUTES.USERS.PROFILE, { profileImage: null });
+      setProfileImage('');
+      Toast.show({ type: 'success', text1: 'Profile image removed' });
+    } catch (err) {
+      Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? 'Failed to remove' });
+    }
+  };
 
   const update = (key: string) => (value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -199,13 +237,20 @@ export function VetProfileSettingsScreen() {
         <Text style={styles.sectionTitle}>Profile Image</Text>
         <View style={styles.photoRow}>
           <View style={styles.avatarWrap}>
-            <Text style={styles.avatarText}>
-              {form.firstName ? String(form.firstName).charAt(0).toUpperCase() : 'V'}
-            </Text>
+            {profileImage ? (
+              <Image source={{ uri: getImageUrl(profileImage) ?? profileImage }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>
+                {form.firstName ? String(form.firstName).charAt(0).toUpperCase() : 'V'}
+              </Text>
+            )}
           </View>
           <View style={styles.photoActions}>
-            <TouchableOpacity style={styles.photoBtn}>
-              <Text style={styles.photoBtnText}>Upload Photo</Text>
+            <TouchableOpacity style={styles.photoBtn} onPress={handleUploadPhoto} disabled={uploadProfileImage.isPending}>
+              <Text style={styles.photoBtnText}>{uploadProfileImage.isPending ? 'Uploading...' : 'Upload Photo'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleRemovePhoto} disabled={uploadProfileImage.isPending}>
+              <Text style={styles.removeText}>Remove</Text>
             </TouchableOpacity>
             <Text style={styles.photoHint}>Below 4MB, JPG, PNG, SVG</Text>
           </View>
@@ -235,6 +280,7 @@ export function VetProfileSettingsScreen() {
           label="Display Name *"
           placeholder="How you want to be known"
           value={displayName}
+          onChangeText={() => {}}
           editable={false}
         />
         <View style={styles.row}>
@@ -251,6 +297,7 @@ export function VetProfileSettingsScreen() {
               label="Phone Number *"
               placeholder="Phone"
               value={user?.phone || ''}
+              onChangeText={() => {}}
               editable={false}
             />
           </View>
@@ -259,6 +306,7 @@ export function VetProfileSettingsScreen() {
               label="Email Address *"
               placeholder="Email"
               value={user?.email || ''}
+              onChangeText={() => {}}
               editable={false}
             />
           </View>
@@ -356,7 +404,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.backgroundTertiary,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
+  avatarImage: { width: 80, height: 80, borderRadius: 40 },
   avatarText: { ...typography.h2, color: colors.primary },
   photoActions: { marginLeft: spacing.lg },
   photoBtn: {
@@ -367,6 +417,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   photoBtnText: { ...typography.body, color: colors.textInverse, fontWeight: '600' },
+  removeText: { ...typography.body, color: colors.error, marginTop: spacing.xs },
   photoHint: { ...typography.caption, color: colors.textLight, marginTop: spacing.xs },
   row: { flexDirection: 'row', gap: spacing.sm },
   flex1: { flex: 1 },

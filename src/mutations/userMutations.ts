@@ -4,6 +4,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/api';
 import { API_ROUTES } from '../api/apiConfig';
+import { uploadProfileImage as uploadProfileImageXhr } from '../services/upload';
+import { copyToCacheUri, deleteCacheFiles, getExtensionFromMime } from '../utils/fileUpload';
 
 export interface UpdateUserProfilePayload {
   name?: string;
@@ -44,14 +46,27 @@ export type ProfileImageInput = File | { uri: string; name: string; type?: strin
 
 export function useUploadProfileImage() {
   return useMutation({
-    mutationFn: (file: ProfileImageInput) => {
+    mutationFn: async (file: ProfileImageInput) => {
+      const picked = file as { uri?: string; name?: string; type?: string; mimeType?: string };
+      if (picked?.uri) {
+        const tempUris: string[] = [];
+        try {
+          const mime = picked.type ?? picked.mimeType ?? 'application/octet-stream';
+          const name = picked.name ?? `image-${Date.now()}`;
+          const ext = getExtensionFromMime(mime);
+          const uri = await copyToCacheUri(picked.uri, 0, ext);
+          tempUris.push(uri);
+          return uploadProfileImageXhr({ uri, name, type: mime });
+        } finally {
+          if (tempUris.length > 0) {
+            await deleteCacheFiles(tempUris).catch(() => {});
+          }
+        }
+      }
+
       const formData = new FormData();
-      // Web: File; RN: { uri, name, type }
       formData.append('file', file as unknown as Blob & { uri?: string; name?: string; type?: string });
-      return api.upload<{ success?: boolean; data?: { url?: string } }>(
-        API_ROUTES.UPLOAD.PROFILE,
-        formData
-      );
+      return api.upload<{ success?: boolean; data?: { url?: string } }>(API_ROUTES.UPLOAD.PROFILE, formData);
     },
   });
 }

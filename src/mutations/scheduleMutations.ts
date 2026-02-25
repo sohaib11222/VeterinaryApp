@@ -89,6 +89,9 @@ export function useCreateRescheduleRequest() {
       api.post(API_ROUTES.RESCHEDULE_REQUEST.CREATE, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reschedule-requests'] });
+      queryClient.invalidateQueries({
+        queryKey: ['reschedule-requests', 'eligible-appointments'],
+      });
     },
   });
 }
