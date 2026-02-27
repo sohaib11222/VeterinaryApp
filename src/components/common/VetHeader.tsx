@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useVetHeaderSearch } from '../../contexts/VetHeaderSearchContext';
+import { NotificationBell } from './NotificationBell';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -72,11 +73,10 @@ export function VetHeader({
             <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>
           ) : null}
         </View>
-        {rightAction ? (
-          <View style={styles.right}>{rightAction}</View>
-        ) : (
-          <View style={styles.placeholder} />
-        )}
+        <View style={styles.rightRow}>
+          <NotificationBell />
+          {rightAction ? <View style={styles.right}>{rightAction}</View> : null}
+        </View>
       </View>
       {searchConfig ? (
         <View style={styles.searchWrap}>
@@ -195,8 +195,9 @@ const styles = StyleSheet.create({
   right: {
     marginLeft: spacing.xs,
   },
-  placeholder: {
-    width: 40,
+  rightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   searchWrap: {
     marginTop: spacing.sm,

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
@@ -10,20 +10,36 @@ import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useFavorites } from '../../queries/favoriteQueries';
 import { useAppointments } from '../../queries/appointmentQueries';
+import { usePetOwnerDashboard } from '../../queries/petOwnerQueries';
 import { useQueries } from '@tanstack/react-query';
 import { api } from '../../api/api';
 import { API_ROUTES } from '../../api/apiConfig';
-import { getImageUrl } from '../../config/api';
+import { useTranslation } from 'react-i18next';
 
 export function PetOwnerHomeScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<any>();
   const stackNav = navigation.getParent();
   const headerSearch = useVetHeaderSearch();
+  const { t } = useTranslation();
   const userId = (user as { id?: string })?.id ?? (user as { _id?: string })?._id ?? null;
 
+  const dashboardQuery = usePetOwnerDashboard({ enabled: !!userId });
   const { data: favoritesData } = useFavorites(userId, { limit: 10 });
   const { data: appointmentsResponse } = useAppointments({ limit: 20 });
+
+  const dashboard = useMemo(() => {
+    const outer = (dashboardQuery.data as { data?: unknown })?.data ?? dashboardQuery.data;
+    const d = (outer as { data?: unknown })?.data ?? outer;
+    return (d as Record<string, unknown> | null) ?? null;
+  }, [dashboardQuery.data]);
+
+  const petsCount = Number((dashboard as any)?.petsCount ?? 0);
+  const unreadNotificationsCount = Number((dashboard as any)?.unreadNotificationsCount ?? 0);
+  const favoriteVeterinariansCount = Number((dashboard as any)?.favoriteVeterinariansCount ?? 0);
+  const totalVeterinariansVisited = Number((dashboard as any)?.totalVeterinariansVisited ?? 0);
+  const totalCompletedAppointments = Number((dashboard as any)?.totalCompletedAppointments ?? 0);
+  const upcomingCount = Number((dashboard as any)?.upcomingAppointments?.count ?? 0);
 
   const favoritesList = useMemo(() => {
     const raw = (favoritesData as { data?: { favorites?: unknown[] } })?.data;
@@ -47,12 +63,12 @@ export function PetOwnerHomeScreen() {
       const data = (q?.data as { data?: unknown })?.data ?? q?.data;
       const profile = data as Record<string, unknown> | undefined;
       const userObj = (profile?.userId ?? fav.veterinarianId) as { fullName?: string; name?: string };
-      const name = userObj?.fullName ?? userObj?.name ?? 'Veterinarian';
+      const name = userObj?.fullName ?? userObj?.name ?? t('common.veterinarian');
       const specs = profile?.specializations as { name?: string }[] | undefined;
-      const title = specs?.[0]?.name ?? 'Veterinary';
+      const title = specs?.[0]?.name ?? t('petOwnerHome.defaults.specialty');
       return { id: uid ?? fav._id, name, title };
     });
-  }, [favoritesList, vetUserIds, vetQueries]);
+  }, [favoritesList, vetUserIds, vetQueries, t]);
 
   const upcomingAppointments = useMemo(() => {
     const body = appointmentsResponse as { data?: { appointments?: unknown[] } };
@@ -71,11 +87,11 @@ export function PetOwnerHomeScreen() {
           id: (a._id as string) ?? '',
           date: dateStr,
           time: timeStr,
-          vet: vet?.userId?.name ?? 'Veterinarian',
-          pet: pet?.name ?? 'Pet',
+          vet: vet?.userId?.name ?? t('common.veterinarian'),
+          pet: pet?.name ?? t('common.pet'),
         };
       });
-  }, [appointmentsResponse]);
+  }, [appointmentsResponse, t]);
 
   useFocusEffect(React.useCallback(() => {
     headerSearch?.setConfig(null);
@@ -83,28 +99,76 @@ export function PetOwnerHomeScreen() {
   }, []));
 
   return (
-    <ScreenContainer scroll padded>
+    <ScreenContainer padded>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={styles.welcome}>
-          <Text style={styles.welcomeLabel}>Welcome back</Text>
-          <Text style={styles.welcomeName}>{user?.name || 'Pet Owner'}</Text>
+          <Text style={styles.welcomeLabel}>{t('petOwnerHome.welcomeBack')}</Text>
+          <Text style={styles.welcomeName}>{user?.name || t('common.petOwner')}</Text>
         </View>
 
-        <TouchableOpacity style={styles.bookCta} onPress={() => stackNav?.navigate('PetOwnerSearch')}>
-          <Text style={styles.bookCtaIcon}>📅</Text>
-          <Text style={styles.bookCtaTitle}>Book a new Pet Appointment</Text>
-          <Text style={styles.bookCtaSub}>Find a veterinarian</Text>
+        {unreadNotificationsCount > 0 ? (
+          <TouchableOpacity style={styles.noticeBanner} onPress={() => stackNav?.navigate('PetOwnerNotifications')} activeOpacity={0.8}>
+            <Text style={styles.noticeIcon}>🔔</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.noticeTitle}>
+                {t('petOwnerHome.notifications.title', { count: unreadNotificationsCount })}
+              </Text>
+              <Text style={styles.noticeSub}>{t('petOwnerHome.notifications.subtitle')}</Text>
+            </View>
+            <Text style={styles.noticeChevron}>›</Text>
+          </TouchableOpacity>
+        ) : null}
+
+        <TouchableOpacity style={styles.bookCta} onPress={() => stackNav?.navigate('PetOwnerSearch')} activeOpacity={0.85}>
+          <View style={styles.bookCtaIconWrap}>
+            <Text style={styles.bookCtaIcon}>📅</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.bookCtaTitle}>{t('petOwnerHome.cta.bookAppointmentTitle')}</Text>
+            <Text style={styles.bookCtaSub}>{t('petOwnerHome.cta.bookAppointmentSubtitle')}</Text>
+          </View>
+          <Text style={styles.bookCtaChevron}>›</Text>
         </TouchableOpacity>
 
+        <View style={styles.statsGrid}>
+          <View style={[styles.statTile, { backgroundColor: colors.primary + '10' }]}>
+            <Text style={styles.statTileIcon}>🐾</Text>
+            <Text style={styles.statTileValue}>{petsCount}</Text>
+            <Text style={styles.statTileLabel}>{t('menu.myPets')}</Text>
+          </View>
+          <View style={[styles.statTile, { backgroundColor: colors.secondary + '18' }]}>
+            <Text style={styles.statTileIcon}>📅</Text>
+            <Text style={styles.statTileValue}>{upcomingCount}</Text>
+            <Text style={styles.statTileLabel}>{t('appointments.tabs.upcoming')}</Text>
+          </View>
+          <View style={[styles.statTile, { backgroundColor: colors.accent + '14' }]}>
+            <Text style={styles.statTileIcon}>⭐</Text>
+            <Text style={styles.statTileValue}>{favoriteVeterinariansCount}</Text>
+            <Text style={styles.statTileLabel}>{t('menu.favoriteVets')}</Text>
+          </View>
+          <View style={[styles.statTile, { backgroundColor: colors.info + '12' }]}>
+            <Text style={styles.statTileIcon}>🏥</Text>
+            <Text style={styles.statTileValue}>{totalVeterinariansVisited}</Text>
+            <Text style={styles.statTileLabel}>{t('petOwnerHome.stats.clinicsVisited')}</Text>
+          </View>
+        </View>
+
+        {dashboardQuery.isLoading ? (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={styles.loadingText}>{t('petOwnerHome.loading')}</Text>
+          </View>
+        ) : null}
+
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Favorite Veterinarians</Text>
+          <Text style={styles.sectionTitle}>{t('petOwnerHome.sections.favorites.title')}</Text>
           <TouchableOpacity onPress={() => stackNav?.navigate('PetOwnerFavourites')}>
-            <Text style={styles.seeAll}>View All</Text>
+            <Text style={styles.seeAll}>{t('petOwnerHome.actions.viewAll')}</Text>
           </TouchableOpacity>
         </View>
         <Card>
           {favVets.length === 0 ? (
-            <Text style={styles.empty}>No favorite vets. Find one from search.</Text>
+            <Text style={styles.empty}>{t('petOwnerHome.sections.favorites.empty')}</Text>
           ) : (
             favVets.map((v) => (
               <TouchableOpacity
@@ -129,14 +193,22 @@ export function PetOwnerHomeScreen() {
         </Card>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Upcoming Appointments</Text>
-          <TouchableOpacity onPress={() => navigation.getParent()?.navigate('PetOwnerAppointments')}>
-            <Text style={styles.seeAll}>See all</Text>
+          <Text style={styles.sectionTitle}>{t('petOwnerHome.sections.upcoming.title')}</Text>
+          <TouchableOpacity
+            onPress={() => {
+              try {
+                navigation.navigate('PetOwnerAppointments');
+              } catch {
+                stackNav?.navigate('PetOwnerTabs', { screen: 'PetOwnerAppointments' });
+              }
+            }}
+          >
+            <Text style={styles.seeAll}>{t('petOwnerHome.actions.seeAll')}</Text>
           </TouchableOpacity>
         </View>
         <Card>
           {upcomingAppointments.length === 0 ? (
-            <Text style={styles.empty}>No upcoming appointments</Text>
+            <Text style={styles.empty}>{t('petOwnerHome.sections.upcoming.empty')}</Text>
           ) : (
             upcomingAppointments.map((a) => (
               <TouchableOpacity
@@ -159,22 +231,42 @@ export function PetOwnerHomeScreen() {
           )}
         </Card>
 
+        <Card style={styles.insightsCard}>
+          <View style={styles.insightRow}>
+            <View style={styles.insightLeft}>
+              <Text style={styles.insightTitle}>{t('petOwnerHome.activity.title')}</Text>
+              <Text style={styles.insightSub}>{t('petOwnerHome.activity.subtitle')}</Text>
+            </View>
+          </View>
+          <View style={styles.insightStatsRow}>
+            <View style={styles.insightStat}>
+              <Text style={styles.insightValue}>{totalCompletedAppointments}</Text>
+              <Text style={styles.insightLabel}>{t('petOwnerHome.activity.completed')}</Text>
+            </View>
+            <View style={styles.insightDivider} />
+            <View style={styles.insightStat}>
+              <Text style={styles.insightValue}>{unreadNotificationsCount}</Text>
+              <Text style={styles.insightLabel}>{t('petOwnerHome.activity.newAlerts')}</Text>
+            </View>
+          </View>
+        </Card>
+
         <View style={styles.quickGrid}>
           <TouchableOpacity style={styles.quickItem} onPress={() => stackNav?.navigate('PetOwnerMyPets')}>
             <Text style={styles.quickIcon}>🐾</Text>
-            <Text style={styles.quickLabel}>My Pets</Text>
+            <Text style={styles.quickLabel}>{t('menu.myPets')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.quickItem} onPress={() => stackNav?.navigate('PetOwnerMedicalRecords')}>
             <Text style={styles.quickIcon}>📋</Text>
-            <Text style={styles.quickLabel}>Medical Records</Text>
+            <Text style={styles.quickLabel}>{t('menu.petMedicalRecords')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.quickItem} onPress={() => stackNav?.navigate('PetOwnerOrderHistory')}>
             <Text style={styles.quickIcon}>🛒</Text>
-            <Text style={styles.quickLabel}>Orders</Text>
+            <Text style={styles.quickLabel}>{t('menu.petSupplyOrders')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.quickItem} onPress={() => stackNav?.navigate('PetOwnerClinicMap')}>
             <Text style={styles.quickIcon}>📍</Text>
-            <Text style={styles.quickLabel}>Nearby Clinics</Text>
+            <Text style={styles.quickLabel}>{t('menu.nearbyClinics')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -189,6 +281,20 @@ const styles = StyleSheet.create({
   welcome: { marginBottom: spacing.lg },
   welcomeLabel: { ...typography.bodySmall, color: colors.textSecondary },
   welcomeName: { ...typography.h1, color: colors.text },
+  noticeBanner: {
+    backgroundColor: colors.secondary + '22',
+    borderRadius: 16,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.secondary + '40',
+  },
+  noticeIcon: { fontSize: 18, marginRight: spacing.sm },
+  noticeTitle: { ...typography.label, color: colors.text },
+  noticeSub: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  noticeChevron: { ...typography.h3, color: colors.textSecondary, marginLeft: spacing.sm },
   bookCta: {
     backgroundColor: colors.primary,
     borderRadius: 16,
@@ -197,9 +303,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  bookCtaIcon: { fontSize: 32, marginRight: spacing.md },
-  bookCtaTitle: { ...typography.h3, color: colors.textInverse, flex: 1 },
-  bookCtaSub: { ...typography.caption, color: 'rgba(255,255,255,0.9)' },
+  bookCtaIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  bookCtaIcon: { fontSize: 22 },
+  bookCtaTitle: { ...typography.h3, color: colors.textInverse },
+  bookCtaSub: { ...typography.caption, color: 'rgba(255,255,255,0.92)', marginTop: 2 },
+  bookCtaChevron: { ...typography.h2, color: 'rgba(255,255,255,0.85)', marginLeft: spacing.sm },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  statTile: {
+    width: '48%',
+    borderRadius: 16,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  statTileIcon: { fontSize: 18, marginBottom: spacing.xs },
+  statTileValue: { ...typography.h2, fontWeight: '800', color: colors.text },
+  statTileLabel: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.lg },
+  loadingText: { ...typography.bodySmall, color: colors.textSecondary },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   sectionTitle: { ...typography.h3 },
   seeAll: { ...typography.bodySmall, color: colors.primary, fontWeight: '600' },
@@ -224,4 +358,19 @@ const styles = StyleSheet.create({
   quickIcon: { fontSize: 28, marginBottom: spacing.xs },
   quickLabel: { ...typography.caption, color: colors.text, textAlign: 'center' },
   bottomSpacer: { height: spacing.xl },
+  insightsCard: { marginTop: spacing.sm },
+  insightRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  insightLeft: { flex: 1 },
+  insightTitle: { ...typography.h3 },
+  insightSub: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
+  insightStatsRow: {
+    marginTop: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  insightDivider: { width: 1, height: 36, backgroundColor: colors.borderLight },
+  insightStat: { flex: 1, alignItems: 'center' },
+  insightValue: { ...typography.h2, fontWeight: '800', color: colors.text },
+  insightLabel: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
 });

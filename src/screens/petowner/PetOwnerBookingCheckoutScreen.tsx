@@ -15,6 +15,7 @@ import { useCreateAppointment } from '../../mutations/appointmentMutations';
 import { useProcessAppointmentPayment } from '../../mutations/paymentMutations';
 import Toast from 'react-native-toast-message';
 import { getErrorMessage } from '../../utils/errorUtils';
+import { useTranslation } from 'react-i18next';
 
 type Route = RouteProp<PetOwnerStackParamList, 'PetOwnerBookingCheckout'>;
 
@@ -22,6 +23,7 @@ export function PetOwnerBookingCheckoutScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<any>();
   const route = useRoute<Route>();
+  const { t } = useTranslation();
   const params = route.params;
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('CARD');
@@ -30,8 +32,8 @@ export function PetOwnerBookingCheckoutScreen() {
   const { data: petsRes } = usePets();
   const vetProfile = useMemo(() => (vetProfileRes as { data?: unknown })?.data ?? vetProfileRes, [vetProfileRes]) as Record<string, unknown> | null;
   const vetName = vetProfile?.userId
-    ? (vetProfile.userId as { name?: string; fullName?: string }).fullName ?? (vetProfile.userId as { name?: string }).name ?? 'Veterinarian'
-    : 'Veterinarian';
+    ? (vetProfile.userId as { name?: string; fullName?: string }).fullName ?? (vetProfile.userId as { name?: string }).name ?? t('common.veterinarian')
+    : t('common.veterinarian');
 
   const consultationFee = useMemo(() => {
     const fees = vetProfile?.consultationFees as { online?: number; clinic?: number } | undefined;
@@ -51,9 +53,9 @@ export function PetOwnerBookingCheckoutScreen() {
   const isProcessing = createAppointment.isPending || processPayment.isPending;
 
   const handleConfirm = async () => {
-    if (!termsAccepted) { Toast.show({ type: 'error', text1: 'Please accept the terms' }); return; }
-    if (consultationFee == null) { Toast.show({ type: 'error', text1: 'Consultation fee not set' }); return; }
-    if (!params?.veterinarianId || !params?.petId) { Toast.show({ type: 'error', text1: 'Invalid booking' }); return; }
+    if (!termsAccepted) { Toast.show({ type: 'error', text1: t('petOwnerBookingCheckout.validation.acceptTerms') }); return; }
+    if (consultationFee == null) { Toast.show({ type: 'error', text1: t('petOwnerBookingCheckout.validation.consultationFeeNotSet') }); return; }
+    if (!params?.veterinarianId || !params?.petId) { Toast.show({ type: 'error', text1: t('petOwnerBookingCheckout.validation.invalidBooking') }); return; }
     try {
       const appointmentRes = await createAppointment.mutateAsync({
         veterinarianId: params.veterinarianId,
@@ -66,11 +68,13 @@ export function PetOwnerBookingCheckoutScreen() {
         petSymptoms: params.petSymptoms,
         timezoneOffset: params.timezoneOffset,
       });
-      const appointment = (appointmentRes as { data?: { data?: { _id?: string } }; data?: { _id?: string } })?.data?.data ?? (appointmentRes as { data?: { _id?: string } })?.data ?? appointmentRes;
-      const appointmentId = (appointment as { _id?: string })?._id;
-      if (!appointmentId) throw new Error('Failed to create appointment');
+      const appointmentPayload = (appointmentRes as { data?: unknown })?.data ?? appointmentRes;
+      const appointmentObj =
+        (appointmentPayload as { data?: { _id?: string } })?.data ?? (appointmentPayload as { _id?: string });
+      const appointmentId = (appointmentObj as { _id?: string })?._id;
+      if (!appointmentId) throw new Error(t('petOwnerBookingCheckout.errors.createAppointmentFailed'));
       await processPayment.mutateAsync({ appointmentId, amount: consultationFee, paymentMethod });
-      Toast.show({ type: 'success', text1: 'Appointment booked!' });
+      Toast.show({ type: 'success', text1: t('petOwnerBookingCheckout.toasts.booked') });
       navigation.navigate('PetOwnerBookingSuccess', { appointmentId });
     } catch (err) {
       Toast.show({ type: 'error', text1: getErrorMessage(err) });
@@ -81,8 +85,8 @@ export function PetOwnerBookingCheckoutScreen() {
     return (
       <ScreenContainer padded>
         <Card>
-          <Text style={styles.errorText}>No booking details.</Text>
-          <Button title="Find Veterinarian" onPress={() => navigation.navigate('PetOwnerSearch')} style={styles.mt} />
+          <Text style={styles.errorText}>{t('petOwnerBookingCheckout.empty.noDetails')}</Text>
+          <Button title={t('petOwnerBookingCheckout.actions.findVeterinarian')} onPress={() => navigation.navigate('PetOwnerSearch')} style={styles.mt} />
         </Card>
       </ScreenContainer>
     );
@@ -92,35 +96,64 @@ export function PetOwnerBookingCheckoutScreen() {
     <ScreenContainer scroll padded>
       <ScrollView showsVerticalScrollIndicator={false}>
         <Card>
-          <Text style={styles.sectionTitle}>Booking Summary</Text>
+          <Text style={styles.sectionTitle}>{t('petOwnerBookingCheckout.sections.summary')}</Text>
           <View style={styles.vetRow}>
             <View style={styles.avatarWrap}><Text style={styles.avatarLetter}>{vetName.charAt(0)}</Text></View>
-            <Text style={styles.vetName}>{vetLoading ? 'Loading...' : vetName}</Text>
+            <Text style={styles.vetName}>{vetLoading ? t('petOwnerBookingCheckout.loading') : vetName}</Text>
           </View>
-          <Text style={styles.summaryLine}>Date: {params.appointmentDate ? new Date(params.appointmentDate).toLocaleDateString() : '—'}</Text>
-          <Text style={styles.summaryLine}>Time: {params.appointmentTime || '—'}</Text>
-          <Text style={styles.summaryLine}>Type: {params.bookingType === 'ONLINE' ? 'Video' : 'Clinic'}</Text>
-          <Text style={styles.summaryLine}>Pet: {selectedPet ? `${selectedPet.name} (${selectedPet.species ?? selectedPet.breed ?? 'Pet'})` : '—'}</Text>
-          <Text style={styles.summaryLine}>Reason: {params.reason || '—'}</Text>
-          <Text style={styles.feeLine}>Consultation: {consultationFee != null ? `€${consultationFee.toFixed(2)}` : '—'}</Text>
-          <Text style={styles.totalLine}>Total: {consultationFee != null ? `€${consultationFee.toFixed(2)}` : '—'}</Text>
+          <Text style={styles.summaryLine}>
+            {t('petOwnerBookingCheckout.summary.date', { value: params.appointmentDate ? new Date(params.appointmentDate).toLocaleDateString() : t('common.na') })}
+          </Text>
+          <Text style={styles.summaryLine}>
+            {t('petOwnerBookingCheckout.summary.time', { value: params.appointmentTime || t('common.na') })}
+          </Text>
+          <Text style={styles.summaryLine}>
+            {t('petOwnerBookingCheckout.summary.type', { value: params.bookingType === 'ONLINE' ? t('petOwnerBookingCheckout.types.video') : t('petOwnerBookingCheckout.types.clinic') })}
+          </Text>
+          <Text style={styles.summaryLine}>
+            {t('petOwnerBookingCheckout.summary.pet', {
+              value: selectedPet
+                ? `${selectedPet.name} (${selectedPet.species ?? selectedPet.breed ?? t('common.pet')})`
+                : t('common.na'),
+            })}
+          </Text>
+          <Text style={styles.summaryLine}>
+            {t('petOwnerBookingCheckout.summary.reason', { value: params.reason || t('common.na') })}
+          </Text>
+          <Text style={styles.feeLine}>
+            {t('petOwnerBookingCheckout.summary.consultation', { value: consultationFee != null ? `€${consultationFee.toFixed(2)}` : t('common.na') })}
+          </Text>
+          <Text style={styles.totalLine}>
+            {t('petOwnerBookingCheckout.summary.total', { value: consultationFee != null ? `€${consultationFee.toFixed(2)}` : t('common.na') })}
+          </Text>
         </Card>
-        <Text style={styles.sectionTitle}>Payment</Text>
+        <Text style={styles.sectionTitle}>{t('petOwnerBookingCheckout.sections.payment')}</Text>
         <Card>
           <TouchableOpacity style={styles.radioRow} onPress={() => setPaymentMethod('CARD')}>
             <Text style={styles.radioIcon}>{paymentMethod === 'CARD' ? '◉' : '○'}</Text>
-            <Text style={styles.radioLabel}>Card</Text>
+            <Text style={styles.radioLabel}>{t('petOwnerBookingCheckout.paymentMethods.card')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.radioRow} onPress={() => setPaymentMethod('DUMMY')}>
             <Text style={styles.radioIcon}>{paymentMethod === 'DUMMY' ? '◉' : '○'}</Text>
-            <Text style={styles.radioLabel}>Test (Demo)</Text>
+            <Text style={styles.radioLabel}>{t('petOwnerBookingCheckout.paymentMethods.demo')}</Text>
           </TouchableOpacity>
         </Card>
         <TouchableOpacity style={styles.termsRow} onPress={() => setTermsAccepted((a) => !a)}>
           <Text style={styles.radioIcon}>{termsAccepted ? '☑' : '☐'}</Text>
-          <Text style={styles.termsLabel}>I accept the terms</Text>
+          <Text style={styles.termsLabel}>{t('petOwnerBookingCheckout.terms.accept')}</Text>
         </TouchableOpacity>
-        <Button title={isProcessing ? 'Processing...' : (consultationFee != null ? `Pay €${consultationFee.toFixed(2)}` : 'Confirm')} onPress={handleConfirm} disabled={isProcessing || !termsAccepted || consultationFee == null} style={styles.confirmBtn} />
+        <Button
+          title={
+            isProcessing
+              ? t('petOwnerBookingCheckout.actions.processing')
+              : (consultationFee != null
+                  ? t('petOwnerBookingCheckout.actions.payAmount', { amount: consultationFee.toFixed(2) })
+                  : t('petOwnerBookingCheckout.actions.confirm'))
+          }
+          onPress={handleConfirm}
+          disabled={isProcessing || !termsAccepted || consultationFee == null}
+          style={styles.confirmBtn}
+        />
       </ScrollView>
     </ScreenContainer>
   );
@@ -134,13 +167,13 @@ const styles = StyleSheet.create({
   avatarWrap: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm },
   avatarLetter: { ...typography.h3, color: colors.primary },
   vetName: { ...typography.body, fontWeight: '600' },
-  summaryLine: { ...typography.small, marginBottom: 4, color: colors.textSecondary },
+  summaryLine: { ...typography.caption, marginBottom: 4, color: colors.textSecondary },
   feeLine: { ...typography.body, marginTop: spacing.sm },
   totalLine: { ...typography.h3, marginTop: spacing.xs },
   radioRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
   radioIcon: { marginRight: spacing.sm, fontSize: 18 },
   radioLabel: { ...typography.body },
   termsRow: { flexDirection: 'row', alignItems: 'center', marginVertical: spacing.md },
-  termsLabel: { ...typography.small, flex: 1 },
+  termsLabel: { ...typography.caption, flex: 1 },
   confirmBtn: { marginTop: spacing.md, marginBottom: spacing.xl },
 });

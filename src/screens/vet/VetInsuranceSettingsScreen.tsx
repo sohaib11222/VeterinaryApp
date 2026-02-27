@@ -9,6 +9,7 @@ import { typography } from '../../theme/typography';
 import { useVeterinarianProfile } from '../../queries/veterinarianQueries';
 import { useUpdateVeterinarianProfile } from '../../mutations/veterinarianMutations';
 import { useInsuranceCompanies } from '../../queries/insuranceQueries';
+import { useTranslation } from 'react-i18next';
 
 type InsuranceItem = { _id: string; name?: string };
 
@@ -17,6 +18,7 @@ function getInsuranceId(item: InsuranceItem | string): string {
 }
 
 export function VetInsuranceSettingsScreen() {
+  const { t } = useTranslation();
   const { data: profileResponse, isLoading: profileLoading } = useVeterinarianProfile();
   const { data: insuranceResponse, isLoading: insuranceLoading } = useInsuranceCompanies();
   const updateProfile = useUpdateVeterinarianProfile();
@@ -49,10 +51,12 @@ export function VetInsuranceSettingsScreen() {
     const ids = Array.from(selectedIds).filter(Boolean);
     try {
       await updateProfile.mutateAsync({ insuranceCompanies: ids });
-      Alert.alert('Success', 'Insurance companies updated successfully.');
+      Alert.alert(t('common.success'), t('vetInsuranceSettings.alerts.updated'));
     } catch (err: unknown) {
-      const message = (err as { response?: { data?: { message?: string }; message?: string }; message?: string })?.response?.data?.message ?? (err as { message?: string })?.message ?? 'Failed to update insurance.';
-      Alert.alert('Error', message);
+      const message = (err as { response?: { data?: { message?: string }; message?: string }; message?: string })?.response?.data?.message
+        ?? (err as { message?: string })?.message
+        ?? t('vetInsuranceSettings.errors.updateFailed');
+      Alert.alert(t('common.error'), message);
     }
   };
 
@@ -70,10 +74,10 @@ export function VetInsuranceSettingsScreen() {
   return (
     <ScreenContainer scroll padded>
       <Card>
-        <Text style={styles.sectionTitle}>Insurances</Text>
-        <Text style={styles.hint}>Select the insurance companies you accept</Text>
+        <Text style={styles.sectionTitle}>{t('vetInsuranceSettings.title')}</Text>
+        <Text style={styles.hint}>{t('vetInsuranceSettings.subtitle')}</Text>
         {insuranceList.length === 0 ? (
-          <Text style={styles.muted}>No insurance companies available.</Text>
+          <Text style={styles.muted}>{t('vetInsuranceSettings.empty')}</Text>
         ) : (
           insuranceList.map((ins) => {
             const id = ins._id;
@@ -91,7 +95,7 @@ export function VetInsuranceSettingsScreen() {
             );
           })
         )}
-        <Button title="Save Changes" onPress={handleSave} style={{ marginTop: spacing.md }} disabled={updateProfile.isPending} />
+        <Button title={t('common.saveChanges')} onPress={handleSave} style={{ marginTop: spacing.md }} disabled={updateProfile.isPending} />
       </Card>
     </ScreenContainer>
   );

@@ -10,9 +10,12 @@ import {
   TextInput,
   Pressable,
   ScrollView,
+  Linking,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
+import { WebView } from 'react-native-webview';
+import * as Location from 'expo-location';
 import { PlaceholderScreen } from '../../components/common/PlaceholderScreen';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
@@ -23,8 +26,12 @@ import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import type { PetOwnerStackParamList } from '../../navigation/types';
 import { useEligibleRescheduleAppointments, useRescheduleRequests } from '../../queries/scheduleQueries';
+import { useRouteInfo } from '../../queries/mappingQueries';
 import { useCreateRescheduleRequest, usePayRescheduleFee } from '../../mutations/scheduleMutations';
 import { getErrorMessage } from '../../utils/errorUtils';
+import { useTranslation } from 'react-i18next';
+import { VideoCallScreen } from '../shared/VideoCallScreen';
+import i18n from '../../i18n/appI18n';
 
 type RequestRoute = RouteProp<PetOwnerStackParamList, 'PetOwnerRequestReschedule'>;
 
@@ -101,7 +108,7 @@ function normalizeRescheduleRequests(response: unknown): RescheduleRequest[] {
 }
 
 function formatDateTime(date?: string, time?: string) {
-  if (!date) return '—';
+  if (!date) return i18n.t('common.na');
   const d = new Date(date);
   const dateStr = Number.isNaN(d.getTime()) ? String(date) : d.toLocaleDateString();
   return `${dateStr} ${time || ''}`.trim();
@@ -109,11 +116,11 @@ function formatDateTime(date?: string, time?: string) {
 
 function statusBadgeConfig(status?: string) {
   const s = String(status || '').toUpperCase();
-  if (s === 'APPROVED') return { bg: colors.success + '25', fg: colors.success, label: 'APPROVED' };
-  if (s === 'PENDING') return { bg: colors.warning + '25', fg: colors.warning, label: 'PENDING' };
-  if (s === 'REJECTED') return { bg: colors.error + '25', fg: colors.error, label: 'REJECTED' };
-  if (s === 'CANCELLED') return { bg: colors.textLight + '25', fg: colors.textSecondary, label: s || '—' };
-  return { bg: colors.textLight + '25', fg: colors.textSecondary, label: s || '—' };
+  if (s === 'APPROVED') return { bg: colors.success + '25', fg: colors.success, labelKey: 'petOwnerPlaceholders.rescheduleRequests.status.approved' };
+  if (s === 'PENDING') return { bg: colors.warning + '25', fg: colors.warning, labelKey: 'petOwnerPlaceholders.rescheduleRequests.status.pending' };
+  if (s === 'REJECTED') return { bg: colors.error + '25', fg: colors.error, labelKey: 'petOwnerPlaceholders.rescheduleRequests.status.rejected' };
+  if (s === 'CANCELLED') return { bg: colors.textLight + '25', fg: colors.textSecondary, labelKey: 'petOwnerPlaceholders.rescheduleRequests.status.cancelled' };
+  return { bg: colors.textLight + '25', fg: colors.textSecondary, labelKey: 'petOwnerPlaceholders.rescheduleRequests.status.unknown' };
 }
 
 function pad2(n: number) {
@@ -166,6 +173,7 @@ function CalendarModal({
   onSelect: (iso: string) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const min = minDate ? parseISODate(minDate) : null;
   const selected = value ? parseISODate(value) : null;
   const [viewMonth, setViewMonth] = useState<Date>(() => {
@@ -233,7 +241,15 @@ function CalendarModal({
           </View>
 
           <View style={styles.calendarWeekRow}>
-            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((w) => (
+            {[
+              t('petOwnerPlaceholders.calendar.weekdays.sundayShort'),
+              t('petOwnerPlaceholders.calendar.weekdays.mondayShort'),
+              t('petOwnerPlaceholders.calendar.weekdays.tuesdayShort'),
+              t('petOwnerPlaceholders.calendar.weekdays.wednesdayShort'),
+              t('petOwnerPlaceholders.calendar.weekdays.thursdayShort'),
+              t('petOwnerPlaceholders.calendar.weekdays.fridayShort'),
+              t('petOwnerPlaceholders.calendar.weekdays.saturdayShort'),
+            ].map((w) => (
               <Text key={w} style={styles.calendarWeekLabel}>
                 {w}
               </Text>
@@ -269,7 +285,7 @@ function CalendarModal({
             })}
           </View>
 
-          <Button title="Done" variant="outline" onPress={onClose} style={styles.pickerDoneBtn} />
+          <Button title={t('common.done')} variant="outline" onPress={onClose} style={styles.pickerDoneBtn} />
         </Pressable>
       </Pressable>
     </Modal>
@@ -287,6 +303,7 @@ function TimePickerModal({
   onSelect: (time24: string) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const initial = value ? to12Hour(value) : { hour: '9', minute: '00', period: 'AM' as const };
   const [hour, setHour] = useState(initial.hour);
   const [minute, setMinute] = useState(initial.minute);
@@ -311,11 +328,11 @@ function TimePickerModal({
     <Modal visible={visible} transparent animationType="fade">
       <Pressable style={styles.pickerOverlay} onPress={onClose}>
         <Pressable style={styles.timeModal} onPress={(e) => e.stopPropagation()}>
-          <Text style={styles.timeModalTitle}>Select time</Text>
+          <Text style={styles.timeModalTitle}>{t('petOwnerPlaceholders.timePicker.title')}</Text>
 
           <View style={styles.timePickerRow}>
             <View style={styles.timePickerCol}>
-              <Text style={styles.timePickerLabel}>Hour</Text>
+              <Text style={styles.timePickerLabel}>{t('petOwnerPlaceholders.timePicker.hour')}</Text>
               <ScrollView style={styles.timePickerScroll} nestedScrollEnabled>
                 {hours.map((h) => (
                   <TouchableOpacity
@@ -336,7 +353,7 @@ function TimePickerModal({
             <Text style={styles.timeSeparator}>:</Text>
 
             <View style={styles.timePickerCol}>
-              <Text style={styles.timePickerLabel}>Minute</Text>
+              <Text style={styles.timePickerLabel}>{t('petOwnerPlaceholders.timePicker.minute')}</Text>
               <ScrollView style={styles.timePickerScroll} nestedScrollEnabled>
                 {minutes.map((m) => (
                   <TouchableOpacity
@@ -355,7 +372,7 @@ function TimePickerModal({
             </View>
 
             <View style={styles.timePickerCol}>
-              <Text style={styles.timePickerLabel}>AM/PM</Text>
+              <Text style={styles.timePickerLabel}>{t('petOwnerPlaceholders.timePicker.amPm')}</Text>
               <ScrollView style={styles.timePickerScroll} nestedScrollEnabled>
                 {(['AM', 'PM'] as const).map((p) => (
                   <TouchableOpacity
@@ -374,12 +391,12 @@ function TimePickerModal({
             </View>
           </View>
 
-          <Text style={styles.timePickerSelected}>Selected: {selected24}</Text>
+          <Text style={styles.timePickerSelected}>{t('petOwnerPlaceholders.timePicker.selected', { value: selected24 })}</Text>
 
           <View style={styles.modalActionsRow}>
-            <Button title="Cancel" variant="outline" onPress={onClose} style={styles.modalActionBtn} />
+            <Button title={t('common.cancel')} variant="outline" onPress={onClose} style={styles.modalActionBtn} />
             <Button
-              title="Select"
+              title={t('petOwnerPlaceholders.timePicker.select')}
               onPress={() => {
                 onSelect(selected24);
                 onClose();
@@ -397,6 +414,7 @@ export function PetOwnerRequestRescheduleScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<RequestRoute>();
   const appointmentIdFromParams = route.params?.appointmentId;
+  const { t } = useTranslation();
 
   const eligibleQuery = useEligibleRescheduleAppointments();
   const createRequest = useCreateRescheduleRequest();
@@ -419,11 +437,11 @@ export function PetOwnerRequestRescheduleScreen() {
 
   const submit = async () => {
     if (!selectedAppointmentId) {
-      Toast.show({ type: 'error', text1: 'Please select an appointment' });
+      Toast.show({ type: 'error', text1: t('petOwnerPlaceholders.requestReschedule.toasts.selectAppointment') });
       return;
     }
     if (String(reason || '').trim().length < 10) {
-      Toast.show({ type: 'error', text1: 'Reason must be at least 10 characters' });
+      Toast.show({ type: 'error', text1: t('petOwnerPlaceholders.requestReschedule.toasts.reasonMinChars', { count: 10 }) });
       return;
     }
 
@@ -436,42 +454,42 @@ export function PetOwnerRequestRescheduleScreen() {
 
     try {
       await createRequest.mutateAsync(payload);
-      Toast.show({ type: 'success', text1: 'Reschedule request submitted successfully' });
+      Toast.show({ type: 'success', text1: t('petOwnerPlaceholders.requestReschedule.toasts.submitted') });
       navigation.navigate('PetOwnerRescheduleRequests');
     } catch (err) {
-      Toast.show({ type: 'error', text1: getErrorMessage(err, 'Failed to submit reschedule request') });
+      Toast.show({ type: 'error', text1: getErrorMessage(err, t('petOwnerPlaceholders.requestReschedule.errors.submitFailed')) });
     }
   };
 
   return (
     <ScreenContainer scroll padded>
       <Card>
-        <Text style={styles.title}>Request Reschedule</Text>
-        <Text style={styles.subtitle}>Select a missed online appointment and submit your request.</Text>
+        <Text style={styles.title}>{t('petOwnerPlaceholders.requestReschedule.title')}</Text>
+        <Text style={styles.subtitle}>{t('petOwnerPlaceholders.requestReschedule.subtitle')}</Text>
 
         {eligibleQuery.isLoading ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.centerText}>Loading eligible appointments...</Text>
+            <Text style={styles.centerText}>{t('petOwnerPlaceholders.requestReschedule.loadingEligible')}</Text>
           </View>
         ) : eligibleQuery.isError ? (
           <View style={styles.center}>
-            <Text style={styles.errorText}>{getErrorMessage(eligibleQuery.error, 'Failed to load eligible appointments')}</Text>
+            <Text style={styles.errorText}>{getErrorMessage(eligibleQuery.error, t('petOwnerPlaceholders.requestReschedule.errors.loadEligibleFailed'))}</Text>
           </View>
         ) : eligibleAppointments.length === 0 ? (
           <View style={styles.center}>
-            <Text style={styles.centerText}>No appointments are eligible for reschedule.</Text>
+            <Text style={styles.centerText}>{t('petOwnerPlaceholders.requestReschedule.empty')}</Text>
           </View>
         ) : (
           <>
-            <Text style={styles.sectionLabel}>Select missed appointment *</Text>
+            <Text style={styles.sectionLabel}>{t('petOwnerPlaceholders.requestReschedule.fields.selectAppointment')}</Text>
             <View style={styles.list}>
               {eligibleAppointments.map((item) => {
                 const vet = item.veterinarianId as { name?: string; fullName?: string; email?: string } | string | undefined;
                 const vetName =
                   typeof vet === 'string'
-                    ? 'Veterinarian'
-                    : vet?.name || vet?.fullName || vet?.email || 'Veterinarian';
+                    ? t('common.veterinarian')
+                    : vet?.name || vet?.fullName || vet?.email || t('common.veterinarian');
                 const label = `${vetName} - ${formatDateTime(item.appointmentDate, item.appointmentTime)}`;
                 const selected = String(selectedAppointmentId) === String(item._id);
                 return (
@@ -484,7 +502,9 @@ export function PetOwnerRequestRescheduleScreen() {
                     <View style={styles.pickRowTextWrap}>
                       <Text style={styles.pickRowTitle}>{label}</Text>
                       {item.appointmentNumber ? (
-                        <Text style={styles.pickRowMeta}>Appointment: {item.appointmentNumber}</Text>
+                        <Text style={styles.pickRowMeta}>
+                          {t('petOwnerPlaceholders.requestReschedule.labels.appointmentNumber', { value: item.appointmentNumber })}
+                        </Text>
                       ) : null}
                     </View>
                     <Text style={[styles.pickRowCheck, selected && styles.pickRowCheckSelected]}>
@@ -495,34 +515,34 @@ export function PetOwnerRequestRescheduleScreen() {
               })}
             </View>
 
-            <Text style={styles.sectionLabel}>Preferred new date (optional)</Text>
+            <Text style={styles.sectionLabel}>{t('petOwnerPlaceholders.requestReschedule.fields.preferredDateOptional')}</Text>
             <TouchableOpacity
               activeOpacity={0.8}
               style={styles.pickerField}
               onPress={() => setShowDateModal(true)}
             >
               <Text style={[styles.pickerFieldText, !preferredDate && styles.pickerFieldPlaceholder]}>
-                {preferredDate || 'Select date'}
+                {preferredDate || t('petOwnerPlaceholders.requestReschedule.placeholders.selectDate')}
               </Text>
               <Text style={styles.pickerIcon}>📅</Text>
             </TouchableOpacity>
 
-            <Text style={styles.sectionLabel}>Preferred new time (optional)</Text>
+            <Text style={styles.sectionLabel}>{t('petOwnerPlaceholders.requestReschedule.fields.preferredTimeOptional')}</Text>
             <TouchableOpacity
               activeOpacity={0.8}
               style={styles.pickerField}
               onPress={() => setShowTimeModal(true)}
             >
               <Text style={[styles.pickerFieldText, !preferredTime && styles.pickerFieldPlaceholder]}>
-                {preferredTime || 'Select time'}
+                {preferredTime || t('petOwnerPlaceholders.requestReschedule.placeholders.selectTime')}
               </Text>
               <Text style={styles.pickerIcon}>🕒</Text>
             </TouchableOpacity>
 
-            <Text style={styles.sectionLabel}>Reason *</Text>
+            <Text style={styles.sectionLabel}>{t('petOwnerPlaceholders.requestReschedule.fields.reason')}</Text>
             <TextInput
               style={styles.textArea}
-              placeholder="Explain why you missed the appointment (min 10 characters)"
+              placeholder={t('petOwnerPlaceholders.requestReschedule.placeholders.reason')}
               placeholderTextColor={colors.textLight}
               value={reason}
               onChangeText={setReason}
@@ -533,12 +553,12 @@ export function PetOwnerRequestRescheduleScreen() {
 
             <View style={styles.warningBox}>
               <Text style={styles.warningText}>
-                After approval, you may need to pay a reschedule fee to confirm the new appointment.
+                {t('petOwnerPlaceholders.requestReschedule.hint.feeAfterApproval')}
               </Text>
             </View>
 
             <Button
-              title={createRequest.isPending ? 'Submitting...' : 'Submit Request'}
+              title={createRequest.isPending ? t('petOwnerPlaceholders.requestReschedule.actions.submitting') : t('petOwnerPlaceholders.requestReschedule.actions.submit')}
               onPress={submit}
               disabled={createRequest.isPending}
             />
@@ -570,6 +590,7 @@ export function PetOwnerRescheduleRequestsScreen() {
   const navigation = useNavigation<any>();
   const requestsQuery = useRescheduleRequests();
   const payFee = usePayRescheduleFee();
+  const { t } = useTranslation();
 
   const [selected, setSelected] = useState<RescheduleRequest | null>(null);
   const [showPayModal, setShowPayModal] = useState(false);
@@ -588,11 +609,11 @@ export function PetOwnerRescheduleRequestsScreen() {
     if (!selected?._id) return;
     try {
       await payFee.mutateAsync({ id: selected._id, paymentMethod: 'DUMMY' });
-      Toast.show({ type: 'success', text1: 'Reschedule fee paid successfully. Appointment confirmed.' });
+      Toast.show({ type: 'success', text1: t('petOwnerPlaceholders.rescheduleRequests.toasts.paid') });
       setShowPayModal(false);
       setSelected(null);
     } catch (err) {
-      Toast.show({ type: 'error', text1: getErrorMessage(err, 'Payment failed') });
+      Toast.show({ type: 'error', text1: getErrorMessage(err, t('petOwnerPlaceholders.rescheduleRequests.errors.paymentFailed')) });
     }
   };
 
@@ -600,12 +621,7 @@ export function PetOwnerRescheduleRequestsScreen() {
     const newApt = r.newAppointmentId as { _id?: string } | string | null | undefined;
     const id = typeof newApt === 'string' ? newApt : newApt?._id;
     if (!id) return;
-    try {
-      navigation.navigate('PetOwnerAppointmentDetails', { appointmentId: String(id) });
-    } catch {
-      const stackNav = navigation.getParent();
-      stackNav?.navigate('PetOwnerAppointmentDetails', { appointmentId: String(id) });
-    }
+    navigation.navigate('PetOwnerAppointmentDetails', { appointmentId: String(id) });
   };
 
   return (
@@ -613,11 +629,11 @@ export function PetOwnerRescheduleRequestsScreen() {
       <Card style={styles.headerCard}>
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.title}>Reschedule Requests</Text>
-            <Text style={styles.subtitle}>Track your requests and pay fees after approval.</Text>
+            <Text style={styles.title}>{t('petOwnerPlaceholders.rescheduleRequests.title')}</Text>
+            <Text style={styles.subtitle}>{t('petOwnerPlaceholders.rescheduleRequests.subtitle')}</Text>
           </View>
           <Button
-            title="Request"
+            title={t('petOwnerPlaceholders.rescheduleRequests.actions.request')}
             variant="outline"
             onPress={() => navigation.navigate('PetOwnerRequestReschedule')}
             style={styles.headerBtn}
@@ -628,15 +644,15 @@ export function PetOwnerRescheduleRequestsScreen() {
       {requestsQuery.isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.centerText}>Loading requests...</Text>
+          <Text style={styles.centerText}>{t('petOwnerPlaceholders.rescheduleRequests.loading')}</Text>
         </View>
       ) : requestsQuery.isError ? (
         <View style={styles.center}>
-          <Text style={styles.errorText}>{getErrorMessage(requestsQuery.error, 'Failed to load requests')}</Text>
+          <Text style={styles.errorText}>{getErrorMessage(requestsQuery.error, t('petOwnerPlaceholders.rescheduleRequests.errors.loadFailed'))}</Text>
         </View>
       ) : requests.length === 0 ? (
         <View style={styles.center}>
-          <Text style={styles.centerText}>No reschedule requests found.</Text>
+          <Text style={styles.centerText}>{t('petOwnerPlaceholders.rescheduleRequests.empty')}</Text>
         </View>
       ) : (
         <FlatList
@@ -650,6 +666,7 @@ export function PetOwnerRescheduleRequestsScreen() {
             const origObj = typeof original === 'string' ? null : original;
             const newApt = item.newAppointmentId as RescheduleRequest['newAppointmentId'];
             const newObj = typeof newApt === 'string' ? null : newApt;
+            const newId = typeof newApt === 'string' ? newApt : newObj?._id;
 
             const canPay =
               s === 'APPROVED' &&
@@ -659,9 +676,9 @@ export function PetOwnerRescheduleRequestsScreen() {
             return (
               <Card style={styles.requestCard}>
                 <View style={styles.requestTopRow}>
-                  <Text style={styles.requestTitle}>Original</Text>
+                  <Text style={styles.requestTitle}>{t('petOwnerPlaceholders.rescheduleRequests.labels.original')}</Text>
                   <View style={[styles.statusBadge, { backgroundColor: badge.bg }]}>
-                    <Text style={[styles.statusText, { color: badge.fg }]}>{badge.label}</Text>
+                    <Text style={[styles.statusText, { color: badge.fg }]}>{t(badge.labelKey)}</Text>
                   </View>
                 </View>
                 <Text style={styles.requestValue}>
@@ -673,19 +690,19 @@ export function PetOwnerRescheduleRequestsScreen() {
 
                 <View style={styles.rowSplit}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.requestTitle}>Fee</Text>
+                    <Text style={styles.requestTitle}>{t('petOwnerPlaceholders.rescheduleRequests.labels.fee')}</Text>
                     <Text style={styles.requestValue}>
                       {item.rescheduleFee !== null && item.rescheduleFee !== undefined
                         ? `€${Number(item.rescheduleFee).toFixed(2)}`
-                        : '—'}
+                        : t('common.na')}
                     </Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.requestTitle}>New appointment</Text>
+                    <Text style={styles.requestTitle}>{t('petOwnerPlaceholders.rescheduleRequests.labels.newAppointment')}</Text>
                     <Text style={styles.requestValue}>
                       {newObj
                         ? formatDateTime(newObj?.appointmentDate, newObj?.appointmentTime)
-                        : '—'}
+                        : t('common.na')}
                     </Text>
                   </View>
                 </View>
@@ -696,14 +713,14 @@ export function PetOwnerRescheduleRequestsScreen() {
                     onPress={() => Toast.show({ type: 'info', text1: String(item.rejectionReason) })}
                     style={styles.inlineLink}
                   >
-                    <Text style={styles.inlineLinkText}>View rejection reason</Text>
+                    <Text style={styles.inlineLinkText}>{t('petOwnerPlaceholders.rescheduleRequests.actions.viewRejectionReason')}</Text>
                   </TouchableOpacity>
                 ) : null}
 
                 <View style={styles.actionsRow}>
-                  {newObj ? (
+                  {newId ? (
                     <Button
-                      title="View"
+                      title={t('common.view')}
                       variant="outline"
                       onPress={() => openNewAppointment(item)}
                       style={styles.actionBtn}
@@ -711,7 +728,7 @@ export function PetOwnerRescheduleRequestsScreen() {
                   ) : null}
                   {canPay ? (
                     <Button
-                      title={payFee.isPending ? 'Processing...' : 'Pay Fee'}
+                      title={payFee.isPending ? t('petOwnerPlaceholders.rescheduleRequests.actions.processing') : t('petOwnerPlaceholders.rescheduleRequests.actions.payFee')}
                       onPress={() => openPay(item)}
                       disabled={payFee.isPending}
                       style={styles.actionBtn}
@@ -727,17 +744,17 @@ export function PetOwnerRescheduleRequestsScreen() {
       <Modal visible={showPayModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Pay Reschedule Fee</Text>
+            <Text style={styles.modalTitle}>{t('petOwnerPlaceholders.rescheduleRequests.payModal.title')}</Text>
             <Text style={styles.modalText}>
-              Fee:{' '}
+              {t('petOwnerPlaceholders.rescheduleRequests.payModal.feeLabel')}{' '}
               {selected?.rescheduleFee !== null && selected?.rescheduleFee !== undefined
                 ? `€${Number(selected.rescheduleFee).toFixed(2)}`
-                : '—'}
+                : t('common.na')}
             </Text>
-            <Text style={styles.modalSubText}>Click confirm to proceed.</Text>
+            <Text style={styles.modalSubText}>{t('petOwnerPlaceholders.rescheduleRequests.payModal.hint')}</Text>
             <View style={styles.modalActions}>
               <Button
-                title="Cancel"
+                title={t('common.cancel')}
                 variant="outline"
                 onPress={() => {
                   setShowPayModal(false);
@@ -746,7 +763,7 @@ export function PetOwnerRescheduleRequestsScreen() {
                 style={styles.modalBtn}
               />
               <Button
-                title={payFee.isPending ? 'Processing...' : 'Confirm Payment'}
+                title={payFee.isPending ? t('petOwnerPlaceholders.rescheduleRequests.actions.processing') : t('petOwnerPlaceholders.rescheduleRequests.payModal.confirm')}
                 onPress={confirmPay}
                 style={styles.modalBtn}
                 disabled={payFee.isPending}
@@ -759,31 +776,264 @@ export function PetOwnerRescheduleRequestsScreen() {
   );
 }
 export function PetOwnerPrescriptionScreen() {
-  return <PlaceholderScreen title="Prescription" subtitle="View prescription from veterinarian" />;
+  const { t } = useTranslation();
+  return <PlaceholderScreen title={t('petOwnerPlaceholders.simpleScreens.prescription.title')} subtitle={t('petOwnerPlaceholders.simpleScreens.prescription.subtitle')} />;
 }
 export function PetOwnerVideoCallScreen() {
-  return <PlaceholderScreen title="Video Call" subtitle="Join consultation" />;
+  return <VideoCallScreen />;
 }
 export function PetOwnerSearchScreen() {
-  return <PlaceholderScreen title="Find Veterinarian" subtitle="Search by location, specialty" />;
+  const { t } = useTranslation();
+  return <PlaceholderScreen title={t('petOwnerPlaceholders.simpleScreens.search.title')} subtitle={t('petOwnerPlaceholders.simpleScreens.search.subtitle')} />;
 }
 export function PetOwnerVetProfileScreen() {
-  return <PlaceholderScreen title="Veterinarian Profile" subtitle="View profile and book" />;
+  const { t } = useTranslation();
+  return <PlaceholderScreen title={t('petOwnerPlaceholders.simpleScreens.vetProfile.title')} subtitle={t('petOwnerPlaceholders.simpleScreens.vetProfile.subtitle')} />;
 }
 export function PetOwnerBookingScreen() {
-  return <PlaceholderScreen title="Book Appointment" subtitle="Select date, time, pet" />;
+  const { t } = useTranslation();
+  return <PlaceholderScreen title={t('petOwnerPlaceholders.simpleScreens.booking.title')} subtitle={t('petOwnerPlaceholders.simpleScreens.booking.subtitle')} />;
 }
 export function PetOwnerCartScreen() {
-  return <PlaceholderScreen title="Cart" subtitle="Pet supply cart" />;
+  const { t } = useTranslation();
+  return <PlaceholderScreen title={t('petOwnerPlaceholders.simpleScreens.cart.title')} subtitle={t('petOwnerPlaceholders.simpleScreens.cart.subtitle')} />;
 }
 export function PetOwnerCheckoutScreen() {
-  return <PlaceholderScreen title="Checkout" subtitle="Review and pay" />;
+  const { t } = useTranslation();
+  return <PlaceholderScreen title={t('petOwnerPlaceholders.simpleScreens.checkout.title')} subtitle={t('petOwnerPlaceholders.simpleScreens.checkout.subtitle')} />;
 }
 export function PetOwnerPaymentSuccessScreen() {
-  return <PlaceholderScreen title="Payment Success" subtitle="Order confirmed" />;
+  const { t } = useTranslation();
+  return <PlaceholderScreen title={t('petOwnerPlaceholders.simpleScreens.paymentSuccess.title')} subtitle={t('petOwnerPlaceholders.simpleScreens.paymentSuccess.subtitle')} />;
 }
 export function PetOwnerClinicNavigationScreen() {
-  return <PlaceholderScreen title="Clinic Navigation" subtitle="Directions to clinic" />;
+  const navigation = useNavigation<any>();
+  const route = useRoute<RouteProp<PetOwnerStackParamList, 'PetOwnerClinicNavigation'>>();
+  const clinic = route.params?.clinic ?? null;
+  const { t } = useTranslation();
+
+  const clinicLat = clinic?.lat != null ? Number(clinic.lat) : NaN;
+  const clinicLng = clinic?.lng != null ? Number(clinic.lng) : NaN;
+
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationPermission, setLocationPermission] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          setLocationPermission(false);
+          return;
+        }
+        setLocationPermission(true);
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        setUserLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      } catch {
+        setLocationPermission(false);
+      }
+    })();
+  }, []);
+
+  const routeQuery = useRouteInfo(
+    {
+      fromLat: userLocation?.lat,
+      fromLng: userLocation?.lng,
+      toLat: Number.isFinite(clinicLat) ? clinicLat : null,
+      toLng: Number.isFinite(clinicLng) ? clinicLng : null,
+    },
+    { enabled: !!userLocation && Number.isFinite(clinicLat) && Number.isFinite(clinicLng) }
+  );
+
+  const routeInfo = useMemo(() => {
+    const outer = (routeQuery.data as { data?: unknown })?.data ?? routeQuery.data;
+    const payload = (outer as { data?: unknown })?.data ?? outer;
+    return (payload as Record<string, unknown> | null) ?? null;
+  }, [routeQuery.data]);
+
+  const distance = routeInfo?.distance as number | undefined;
+  const estimatedTime = routeInfo?.estimatedTime as number | undefined;
+  const steps = (routeInfo?.routeSteps as { instruction?: string; distance?: number }[] | undefined) ?? [];
+
+  const mapHTML = useMemo(() => {
+    const clinicName = String(clinic?.name ?? t('petOwnerPlaceholders.clinicNavigation.defaults.clinic')).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const dest = Number.isFinite(clinicLat) && Number.isFinite(clinicLng) ? { lat: clinicLat, lng: clinicLng } : null;
+    const u = userLocation;
+    const yourLocationLabel = String(t('petOwnerPlaceholders.clinicNavigation.map.yourLocation')).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body, html { width: 100%; height: 100%; overflow: hidden; }
+    #map { width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const userLocation = ${u ? JSON.stringify(u) : 'null'};
+    const clinic = ${dest ? JSON.stringify(dest) : 'null'};
+
+    const center = clinic || userLocation || { lat: 40.7128, lng: -74.006 };
+    const map = L.map('map').setView([center.lat, center.lng], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(map);
+
+    const markers = [];
+
+    if (userLocation) {
+      const userIcon = L.divIcon({
+        className: 'custom-user-marker',
+        html: '<div style="background-color:#4285F4;width:18px;height:18px;border-radius:50%;border:3px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>',
+        iconSize: [18, 18],
+        iconAnchor: [9, 9]
+      });
+      const m = L.marker([userLocation.lat, userLocation.lng], { icon: userIcon }).addTo(map).bindPopup('${yourLocationLabel}');
+      markers.push(m);
+    }
+
+    if (clinic) {
+      const clinicIcon = L.divIcon({
+        className: 'custom-clinic-marker',
+        html: '<div style="background-color:#0d6efd;width:38px;height:38px;border-radius:50%;border:3px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:white;font-size:20px;">🏥</div>',
+        iconSize: [38, 38],
+        iconAnchor: [19, 38]
+      });
+      const m = L.marker([clinic.lat, clinic.lng], { icon: clinicIcon }).addTo(map).bindPopup('${clinicName}');
+      markers.push(m);
+    }
+
+    if (userLocation && clinic) {
+      L.polyline([
+        [userLocation.lat, userLocation.lng],
+        [clinic.lat, clinic.lng]
+      ], { color: '#2D6A4F', weight: 4, opacity: 0.8 }).addTo(map);
+    }
+
+    if (markers.length > 0) {
+      try {
+        if (markers.length === 1) {
+          const pos = markers[0].getLatLng();
+          map.setView([pos.lat, pos.lng], 14);
+        } else {
+          const group = new L.FeatureGroup(markers);
+          map.fitBounds(group.getBounds().pad(0.2));
+        }
+      } catch {
+        // ignore
+      }
+    }
+  </script>
+</body>
+</html>
+    `;
+  }, [clinic?.name, clinicLat, clinicLng, t, userLocation]);
+
+  if (!clinic || !Number.isFinite(clinicLat) || !Number.isFinite(clinicLng)) {
+    return (
+      <ScreenContainer padded>
+        <Card>
+          <Text style={styles.modalTitle}>{t('petOwnerPlaceholders.clinicNavigation.missing.title')}</Text>
+          <Text style={styles.modalText}>{t('petOwnerPlaceholders.clinicNavigation.missing.message')}</Text>
+          <Button title={t('common.back')} onPress={() => navigation.goBack()} style={{ marginTop: spacing.md }} />
+        </Card>
+      </ScreenContainer>
+    );
+  }
+
+  const openGoogleMaps = async () => {
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${clinicLat},${clinicLng}`;
+    try {
+      await Linking.openURL(url);
+    } catch {
+      Toast.show({ type: 'error', text1: t('petOwnerPlaceholders.clinicNavigation.errors.couldNotOpenMaps') });
+    }
+  };
+
+  const callClinic = async () => {
+    if (!clinic.phone) return;
+    try {
+      await Linking.openURL(`tel:${clinic.phone}`);
+    } catch {
+      Toast.show({ type: 'error', text1: t('petOwnerPlaceholders.clinicNavigation.errors.couldNotStartCall') });
+    }
+  };
+
+  return (
+    <ScreenContainer padded scroll>
+      <Card style={{ marginBottom: spacing.md }}>
+        <Text style={styles.modalTitle}>{clinic.name || t('petOwnerPlaceholders.clinicNavigation.defaults.clinic')}</Text>
+        <Text style={styles.metaText}>{clinic.address || t('common.na')}</Text>
+        {clinic.phone ? <Text style={styles.metaText}>{clinic.phone}</Text> : null}
+        {!locationPermission ? (
+          <Text style={[styles.metaText, { color: colors.warning }]}>{t('petOwnerPlaceholders.clinicNavigation.locationDisabled')}</Text>
+        ) : null}
+      </Card>
+
+      <Card style={{ padding: 0, overflow: 'hidden', marginBottom: spacing.md }}>
+        <View style={{ height: 260 }}>
+          <WebView source={{ html: mapHTML }} style={{ flex: 1 }} />
+        </View>
+      </Card>
+
+      <Card style={{ marginBottom: spacing.md }}>
+        <Text style={styles.modalTitle}>{t('petOwnerPlaceholders.clinicNavigation.directions.title')}</Text>
+        {routeQuery.isLoading ? (
+          <View style={styles.center}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={styles.centerText}>{t('petOwnerPlaceholders.clinicNavigation.directions.calculating')}</Text>
+          </View>
+        ) : routeQuery.error ? (
+          <Text style={styles.errorText}>{t('petOwnerPlaceholders.clinicNavigation.errors.routeInfoFailed')}</Text>
+        ) : (
+          <>
+            <View style={styles.rowSplit}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.requestTitle}>{t('petOwnerPlaceholders.clinicNavigation.directions.distance')}</Text>
+                <Text style={styles.requestValue}>{distance != null ? `${Number(distance).toFixed(1)} km` : t('common.na')}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.requestTitle}>{t('petOwnerPlaceholders.clinicNavigation.directions.eta')}</Text>
+                <Text style={styles.requestValue}>{estimatedTime != null ? `${estimatedTime} min` : t('common.na')}</Text>
+              </View>
+            </View>
+            {Array.isArray(steps) && steps.length > 0 ? (
+              <View style={{ marginTop: spacing.md }}>
+                {steps.map((s, idx) => (
+                  <View key={idx} style={{ marginBottom: spacing.sm }}>
+                    <Text style={styles.pickRowTitle}>
+                      {idx + 1}. {s.instruction || t('petOwnerPlaceholders.clinicNavigation.directions.continue')}
+                    </Text>
+                    {s.distance != null ? (
+                      <Text style={styles.metaText}>{Number(s.distance).toFixed(1)} km</Text>
+                    ) : null}
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.metaText}>{t('petOwnerPlaceholders.clinicNavigation.directions.openInGoogleMaps')}</Text>
+            )}
+          </>
+        )}
+
+        <View style={styles.actionsRow}>
+          <Button title={t('petOwnerPlaceholders.clinicNavigation.actions.getDirections')} onPress={openGoogleMaps} style={styles.actionBtn} />
+          {clinic.phone ? (
+            <Button title={t('petOwnerPlaceholders.clinicNavigation.actions.call')} variant="outline" onPress={callClinic} style={styles.actionBtn} />
+          ) : null}
+        </View>
+      </Card>
+    </ScreenContainer>
+  );
 }
 
 const styles = StyleSheet.create({

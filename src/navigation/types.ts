@@ -58,6 +58,7 @@ export type VetStackParamList = {
   VetInvoiceView: { transactionId: string };
   VetPaymentSettings: undefined;
   VetRescheduleRequests: undefined;
+  Language: undefined;
   VetChatDetail: {
     conversationId: string;
     conversationType?: string;
@@ -141,6 +142,8 @@ export type PharmacyMoreStackParamList = {
   PharmacySubscription: undefined;
   PharmacyPayouts: undefined;
   PharmacyChangePassword: undefined;
+  Language: undefined;
+  PharmacyNotifications: undefined;
 };
 
 // Pet Owner stack: tabs + all detail screens (match VeterinaryFrontend patient routes)
@@ -165,6 +168,7 @@ export type PetOwnerStackParamList = {
   PetOwnerOrderDetails: { orderId: string };
   PetOwnerDocuments: undefined;
   PetOwnerNotifications: undefined;
+  Language: undefined;
   PetOwnerChatDetail: {
     conversationId: string;
     veterinarianId?: string;
@@ -176,7 +180,17 @@ export type PetOwnerStackParamList = {
     peerImageUri?: string | null;
   };
   PetOwnerClinicMap: undefined;
-  PetOwnerClinicNavigation: undefined;
+  PetOwnerClinicNavigation:
+    | {
+        clinic?: {
+          name?: string;
+          address?: string;
+          phone?: string;
+          lat?: number;
+          lng?: number;
+        };
+      }
+    | undefined;
   PetOwnerProfileSettings: undefined;
   PetOwnerChangePassword: undefined;
   PetOwnerSearch: undefined;
@@ -202,10 +216,8 @@ declare global {
   namespace ReactNavigation {
     interface RootParamList extends RootStackParamList {}
     interface AuthParamList extends AuthStackParamList {}
-    interface VetTabParamList extends VetTabParamList {}
-    interface PetOwnerTabParamList extends PetOwnerTabParamList {}
+    // NOTE: Do not add self-referential ParamList interfaces here.
     interface PetOwnerPharmacyParamList extends PetOwnerPharmacyStackParamList {}
-    interface PharmacyTabParamList extends PharmacyTabParamList {}
     interface PharmacyProductsParamList extends PharmacyProductsStackParamList {}
     interface PharmacyOrdersParamList extends PharmacyOrdersStackParamList {}
     interface PharmacyMoreParamList extends PharmacyMoreStackParamList {}

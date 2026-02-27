@@ -27,6 +27,7 @@ import { useCreateReview } from '../../mutations/reviewMutations';
 import { getImageUrl } from '../../config/api';
 import { getErrorMessage } from '../../utils/errorUtils';
 import { useEligibleRescheduleAppointments } from '../../queries/scheduleQueries';
+import { useTranslation } from 'react-i18next';
 
 type Route = RouteProp<PetOwnerStackParamList, 'PetOwnerAppointmentDetails'>;
 
@@ -42,6 +43,7 @@ const STATUS_COLORS: Record<string, string> = {
 export function PetOwnerAppointmentDetailScreen() {
   const route = useRoute<Route>();
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const appointmentId = route.params?.appointmentId ?? null;
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
@@ -130,7 +132,7 @@ export function PetOwnerAppointmentDetailScreen() {
       const conv = (res as { _id?: string; data?: { _id?: string } })?.data ?? (res as { _id?: string });
       const conversationId = conv?._id;
       if (!conversationId) {
-        Toast.show({ type: 'error', text1: 'Could not open chat' });
+        Toast.show({ type: 'error', text1: t('petOwnerAppointmentDetail.errors.couldNotOpenChat') });
         return;
       }
       const stackNav = navigation.getParent();
@@ -140,8 +142,8 @@ export function PetOwnerAppointmentDetailScreen() {
         petOwnerId: ownerId,
         appointmentId,
         conversationType: 'VETERINARIAN_PET_OWNER',
-        title: (vet.name as string) || (vet.fullName as string) || 'Veterinarian',
-        subtitle: 'Chat',
+        title: (vet.name as string) || (vet.fullName as string) || t('common.veterinarian'),
+        subtitle: t('common.chat'),
         peerImageUri: vetImage ?? undefined,
       });
     } catch (err) {
@@ -156,7 +158,7 @@ export function PetOwnerAppointmentDetailScreen() {
         appointmentId,
         data: { reason: cancelReason || undefined },
       });
-      Toast.show({ type: 'success', text1: 'Appointment cancelled successfully' });
+      Toast.show({ type: 'success', text1: t('petOwnerAppointmentDetail.toasts.cancelled') });
       setShowCancelModal(false);
       refetch();
     } catch (err) {
@@ -166,12 +168,12 @@ export function PetOwnerAppointmentDetailScreen() {
 
   const handleReviewSubmit = async () => {
     if (!reviewText.trim()) {
-      Toast.show({ type: 'error', text1: 'Please provide a review' });
+      Toast.show({ type: 'error', text1: t('petOwnerAppointmentDetail.toasts.reviewRequired') });
       return;
     }
     const veterinarianId = (appointment?.veterinarianId as { _id?: string })?._id ?? (appointment?.veterinarianId as string);
     if (!veterinarianId) {
-      Toast.show({ type: 'error', text1: 'Veterinarian not found' });
+      Toast.show({ type: 'error', text1: t('petOwnerAppointmentDetail.toasts.vetNotFound') });
       return;
     }
     try {
@@ -183,7 +185,7 @@ export function PetOwnerAppointmentDetailScreen() {
         reviewText: reviewText.trim(),
         reviewType: 'APPOINTMENT',
       });
-      Toast.show({ type: 'success', text1: 'Review submitted' });
+      Toast.show({ type: 'success', text1: t('petOwnerAppointmentDetail.toasts.reviewSubmitted') });
       setShowReviewModal(false);
       setReviewRating(5);
       setReviewText('');
@@ -198,7 +200,7 @@ export function PetOwnerAppointmentDetailScreen() {
       <ScreenContainer padded>
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading appointment...</Text>
+          <Text style={styles.loadingText}>{t('petOwnerAppointmentDetail.loading')}</Text>
         </View>
       </ScreenContainer>
     );
@@ -208,7 +210,7 @@ export function PetOwnerAppointmentDetailScreen() {
     return (
       <ScreenContainer padded>
         <View style={styles.empty}>
-          <Text style={styles.emptyTitle}>Appointment not found</Text>
+          <Text style={styles.emptyTitle}>{t('petOwnerAppointmentDetail.notFound')}</Text>
         </View>
       </ScreenContainer>
     );
@@ -231,65 +233,65 @@ export function PetOwnerAppointmentDetailScreen() {
             ) : (
               <View style={styles.vetImagePlaceholder}>
 <Text style={styles.vetImageLetter}>
-                {(vet.name as string)?.charAt(0) || 'V'}
+                {(vet.name as string)?.charAt(0) || t('petOwnerAppointmentDetail.defaults.vetAvatarLetter')}
               </Text>
               </View>
             )}
             <View style={styles.vetInfo}>
-              <Text style={styles.label}>Veterinarian</Text>
+              <Text style={styles.label}>{t('common.veterinarian')}</Text>
               <Text style={styles.value}>
-                {(vet.name as string) || (vet.fullName as string) || 'Veterinarian'}
+                {(vet.name as string) || (vet.fullName as string) || t('common.veterinarian')}
               </Text>
-              <Text style={styles.contact}>{(vet.email as string) || '—'}</Text>
-              <Text style={styles.contact}>{(vet.phone as string) || '—'}</Text>
+              <Text style={styles.contact}>{(vet.email as string) || t('common.na')}</Text>
+              <Text style={styles.contact}>{(vet.phone as string) || t('common.na')}</Text>
             </View>
           </View>
 
           <View style={styles.detailRow}>
-            <Text style={styles.label}>Pet</Text>
+            <Text style={styles.label}>{t('appointments.labels.pet')}</Text>
             <Text style={styles.value}>
-              {(pet.name as string) || 'Pet'}
+              {(pet.name as string) || t('common.pet')}
               {(pet.breed as string) ? ` (${pet.breed})` : ''}
             </Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.label}>Date & Time</Text>
+            <Text style={styles.label}>{t('petOwnerAppointmentDetail.labels.dateTime')}</Text>
             <Text style={styles.value}>{`${dateStr} ${timeStr}`}</Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.label}>Type</Text>
+            <Text style={styles.label}>{t('petOwnerAppointmentDetail.labels.type')}</Text>
             <Text style={styles.value}>
               {(appointment.bookingType as string) === 'ONLINE'
-                ? 'Video Call'
-                : 'Clinic Visit'}
+                ? t('petOwnerAppointmentDetail.bookingTypes.videoCall')
+                : t('petOwnerAppointmentDetail.bookingTypes.clinicVisit')}
             </Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.label}>Reason</Text>
+            <Text style={styles.label}>{t('petOwnerAppointmentDetail.labels.reason')}</Text>
             <Text style={styles.value}>
-              {(appointment.reason as string) || 'Consultation'}
+              {(appointment.reason as string) || t('petOwnerAppointmentDetail.defaults.consultation')}
             </Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.label}>Consultation fee</Text>
+            <Text style={styles.label}>{t('petOwnerAppointmentDetail.labels.consultationFee')}</Text>
             <Text style={styles.value}>€50</Text>
           </View>
           {(appointment.petSymptoms as string) && (
             <View style={styles.detailRow}>
-              <Text style={styles.label}>Pet symptoms</Text>
+              <Text style={styles.label}>{t('petOwnerAppointmentDetail.labels.petSymptoms')}</Text>
               <Text style={styles.value}>{appointment.petSymptoms as string}</Text>
             </View>
           )}
           {(appointment.notes as string) && (
             <View style={styles.detailRow}>
-              <Text style={styles.label}>Notes</Text>
+              <Text style={styles.label}>{t('petOwnerAppointmentDetail.labels.notes')}</Text>
               <Text style={styles.value}>{appointment.notes as string}</Text>
             </View>
           )}
 
           {canJoinVideo && (
             <Button
-              title="Join Video Call"
+              title={t('petOwnerAppointmentDetail.actions.joinVideoCall')}
               onPress={() => {
                 navigation.navigate('PetOwnerVideoCall', { appointmentId });
               }}
@@ -299,12 +301,12 @@ export function PetOwnerAppointmentDetailScreen() {
 
           {canRequestReschedule && (
             <Card style={styles.rescheduleCard}>
-              <Text style={styles.rescheduleTitle}>Missed Appointment?</Text>
+              <Text style={styles.rescheduleTitle}>{t('petOwnerAppointmentDetail.reschedule.title')}</Text>
               <Text style={styles.rescheduleText}>
-                If no video call was initiated, you can request a reschedule.
+                {t('petOwnerAppointmentDetail.reschedule.subtitle')}
               </Text>
               <Button
-                title="Request Reschedule"
+                title={t('petOwnerAppointmentDetail.reschedule.action')}
                 onPress={() =>
                   navigation.navigate('PetOwnerRequestReschedule', { appointmentId: String(appointmentId) })
                 }
@@ -314,7 +316,7 @@ export function PetOwnerAppointmentDetailScreen() {
           )}
           {status === 'CONFIRMED' && (
             <Button
-              title="💬 Chat with veterinarian"
+              title={t('petOwnerAppointmentDetail.actions.chatWithVet')}
               variant="outline"
               onPress={openChat}
               style={styles.btn}
@@ -324,17 +326,17 @@ export function PetOwnerAppointmentDetailScreen() {
           {status === 'COMPLETED' && (
             <>
               <Button
-                title="View / Download prescription"
+                title={t('petOwnerAppointmentDetail.actions.viewPrescription')}
                 onPress={() => navigation.navigate('PetOwnerPrescription', { appointmentId })}
                 style={styles.btn}
               />
               {existingReview ? (
                 <View style={styles.reviewBadge}>
-                  <Text style={styles.reviewBadgeText}>Review submitted</Text>
+                  <Text style={styles.reviewBadgeText}>{t('petOwnerAppointmentDetail.review.submitted')}</Text>
                 </View>
               ) : (
                 <Button
-                  title="Write a review"
+                  title={t('petOwnerAppointmentDetail.review.write')}
                   onPress={() => setShowReviewModal(true)}
                   style={styles.btn}
                 />
@@ -343,7 +345,7 @@ export function PetOwnerAppointmentDetailScreen() {
           )}
           {canCancel && (
             <Button
-              title="Cancel appointment"
+              title={t('petOwnerAppointmentDetail.actions.cancelAppointment')}
               variant="outline"
               onPress={() => setShowCancelModal(true)}
               style={StyleSheet.flatten([styles.btn, styles.cancelBtn])}
@@ -356,8 +358,8 @@ export function PetOwnerAppointmentDetailScreen() {
       <Modal visible={showReviewModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Write a review</Text>
-            <Text style={styles.inputLabel}>Rating (1-5)</Text>
+            <Text style={styles.modalTitle}>{t('petOwnerAppointmentDetail.reviewModal.title')}</Text>
+            <Text style={styles.inputLabel}>{t('petOwnerAppointmentDetail.reviewModal.ratingLabel')}</Text>
             <View style={styles.ratingRow}>
               {[1, 2, 3, 4, 5].map((n) => (
                 <TouchableOpacity
@@ -371,10 +373,10 @@ export function PetOwnerAppointmentDetailScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-            <Text style={styles.inputLabel}>Your review *</Text>
+            <Text style={styles.inputLabel}>{t('petOwnerAppointmentDetail.reviewModal.reviewLabel')}</Text>
             <TextInput
               style={styles.textArea}
-              placeholder="Write your review..."
+              placeholder={t('petOwnerAppointmentDetail.reviewModal.reviewPlaceholder')}
               placeholderTextColor={colors.textLight}
               value={reviewText}
               onChangeText={setReviewText}
@@ -383,13 +385,13 @@ export function PetOwnerAppointmentDetailScreen() {
             />
             <View style={styles.modalActions}>
               <Button
-                title="Cancel"
+                title={t('common.cancel')}
                 variant="outline"
                 onPress={() => setShowReviewModal(false)}
                 style={styles.modalBtn}
               />
               <Button
-                title={createReview.isPending ? 'Submitting...' : 'Submit review'}
+                title={createReview.isPending ? t('petOwnerAppointmentDetail.reviewModal.submitting') : t('petOwnerAppointmentDetail.reviewModal.submit')}
                 onPress={handleReviewSubmit}
                 style={styles.modalBtn}
                 disabled={createReview.isPending}
@@ -402,14 +404,14 @@ export function PetOwnerAppointmentDetailScreen() {
       <Modal visible={showCancelModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Cancel appointment</Text>
+            <Text style={styles.modalTitle}>{t('petOwnerAppointmentDetail.cancelModal.title')}</Text>
             <Text style={styles.modalText}>
-              Are you sure you want to cancel this appointment?
+              {t('petOwnerAppointmentDetail.cancelModal.message')}
             </Text>
-            <Text style={styles.inputLabel}>Reason (optional)</Text>
+            <Text style={styles.inputLabel}>{t('petOwnerAppointmentDetail.cancelModal.reasonLabel')}</Text>
             <TextInput
               style={styles.textArea}
-              placeholder="Enter reason..."
+              placeholder={t('petOwnerAppointmentDetail.cancelModal.reasonPlaceholder')}
               placeholderTextColor={colors.textLight}
               value={cancelReason}
               onChangeText={setCancelReason}
@@ -418,13 +420,13 @@ export function PetOwnerAppointmentDetailScreen() {
             />
             <View style={styles.modalActions}>
               <Button
-                title="Keep appointment"
+                title={t('petOwnerAppointmentDetail.cancelModal.keep')}
                 variant="outline"
                 onPress={() => setShowCancelModal(false)}
                 style={styles.modalBtn}
               />
               <Button
-                title={cancelAppointment.isPending ? 'Cancelling...' : 'Cancel appointment'}
+                title={cancelAppointment.isPending ? t('petOwnerAppointmentDetail.cancelModal.cancelling') : t('petOwnerAppointmentDetail.actions.cancelAppointment')}
                 onPress={handleCancel}
                 style={StyleSheet.flatten([styles.modalBtn, styles.modalCancelBtn])}
                 disabled={cancelAppointment.isPending}

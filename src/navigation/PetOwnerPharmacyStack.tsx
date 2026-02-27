@@ -13,19 +13,9 @@ import { PharmacyCheckoutScreen } from '../screens/petowner/pharmacy/PharmacyChe
 import { PharmacyPaymentSuccessScreen } from '../screens/petowner/pharmacy/PharmacyPaymentSuccessScreen';
 import { useCart } from '../contexts/CartContext';
 import { colors } from '../theme/colors';
+import { useTranslation } from 'react-i18next';
 
 const Stack = createNativeStackNavigator<PetOwnerPharmacyStackParamList>();
-
-const TITLES: Record<string, { title: string; subtitle?: string }> = {
-  PharmacyHome: { title: 'Pharmacy & Shop', subtitle: 'Pet supplies' },
-  PharmacySearch: { title: 'Find Pharmacies', subtitle: 'Search' },
-  PharmacyDetails: { title: 'Pharmacy', subtitle: 'Details' },
-  ProductCatalog: { title: 'Products', subtitle: 'Browse' },
-  ProductDetails: { title: 'Product', subtitle: 'Details' },
-  Cart: { title: 'Cart', subtitle: 'Your items' },
-  Checkout: { title: 'Checkout', subtitle: 'Review & pay' },
-  PaymentSuccess: { title: 'Success', subtitle: 'Order placed' },
-};
 
 const SCREENS_WITH_CART_ICON = ['PharmacySearch', 'PharmacyDetails', 'ProductCatalog', 'ProductDetails'];
 
@@ -36,7 +26,9 @@ function PharmacyStackHeader({
   navigation: any;
   route: { name: string; params?: any };
 }) {
-  const config = TITLES[route.name] || { title: route.name, subtitle: '' };
+  const { t } = useTranslation();
+  const title = t(`petOwnerPharmacyStack.${route.name}.title`, { defaultValue: route.name });
+  const subtitle = t(`petOwnerPharmacyStack.${route.name}.subtitle`, { defaultValue: '' });
   const showBack = route.name !== 'PharmacyHome';
   const { getCartItemCount } = useCart();
   const cartCount = getCartItemCount();
@@ -55,8 +47,8 @@ function PharmacyStackHeader({
 
   return (
     <VetHeader
-      title={config.title}
-      subtitle={config.subtitle}
+      title={title}
+      subtitle={subtitle}
       onBack={showBack ? () => navigation.goBack() : undefined}
       rightAction={rightAction}
     />

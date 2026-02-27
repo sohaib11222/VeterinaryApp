@@ -11,7 +11,7 @@ import {
   Switch,
   ScrollView,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
@@ -24,7 +24,9 @@ import { useVeterinarians } from '../../queries/veterinarianQueries';
 import { useSpecializations } from '../../queries/specializationQueries';
 import { useFavorites } from '../../queries/favoriteQueries';
 import { useAddFavorite, useRemoveFavorite } from '../../mutations/favoriteMutations';
+import { useVetHeaderRightAction } from '../../contexts/VetHeaderRightActionContext';
 import Toast from 'react-native-toast-message';
+import { useTranslation } from 'react-i18next';
 
 const PAGE_SIZE = 12;
 
@@ -42,6 +44,23 @@ function renderStars(rating: number) {
 export function PetOwnerSearchScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<any>();
+  const headerRight = useVetHeaderRightAction();
+  const { t } = useTranslation();
+
+  useFocusEffect(
+    React.useCallback(() => {
+      headerRight?.setRightAction(
+        <TouchableOpacity
+          style={styles.headerMapBtn}
+          onPress={() => navigation.navigate('PetOwnerClinicMap')}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.headerMapBtnIcon}>🗺️</Text>
+        </TouchableOpacity>
+      );
+      return () => headerRight?.setRightAction(null);
+    }, [headerRight, navigation])
+  );
 
   const [searchTerm, setSearchTerm] = useState('');
   const [location, setLocation] = useState('');
@@ -91,8 +110,11 @@ export function PetOwnerSearchScreen() {
   const specializationOptions = useMemo(() => {
     return specializationsList
       .map((spec) => {
-        const code = spec?.type ?? (spec?.slug ?? spec?.name ?? '').toUpperCase().replace(/\s+/g, '_').replace(/-/g, '_');
-        return code ? { code, name: spec?.name ?? code } : null;
+        const derivedCodeFromName = spec?.name?.toUpperCase()?.replace(/\s+/g, '_');
+        const derivedCodeFromSlug = spec?.slug?.toUpperCase()?.replace(/-/g, '_');
+        const code = spec?.type || derivedCodeFromSlug || derivedCodeFromName;
+        if (!code) return null;
+        return { code, name: spec?.name || code };
       })
       .filter(Boolean) as { code: string; name: string }[];
   }, [specializationsList]);
@@ -126,16 +148,16 @@ export function PetOwnerSearchScreen() {
   const getVetName = (vet: Record<string, unknown>) =>
     (vet?.userId as { fullName?: string; name?: string })?.fullName ??
     (vet?.userId as { name?: string })?.name ??
-    'Veterinarian';
+    t('common.veterinarian');
 
   const getVetImage = (vet: Record<string, unknown>) =>
     getImageUrl((vet?.userId as { profileImage?: string })?.profileImage as string) ?? null;
 
   const getSpecialty = (vet: Record<string, unknown>) => {
     const specs = vet?.specializations as { type?: string; name?: string }[] | undefined;
-    if (!Array.isArray(specs) || specs.length === 0) return 'Veterinary';
+    if (!Array.isArray(specs) || specs.length === 0) return t('petOwnerSearch.defaults.specialty');
     const first = specs[0];
-    const name = first?.name ?? first?.type ?? 'Veterinary';
+    const name = first?.name ?? first?.type ?? t('petOwnerSearch.defaults.specialty');
     const code = first?.type ?? first?.name;
     const opt = specializationOptions.find((o) => o.code === code);
     return opt?.name ?? name;
@@ -145,9 +167,9 @@ export function PetOwnerSearchScreen() {
     const clinics = vet?.clinics as { city?: string; state?: string; country?: string }[] | undefined;
     if (Array.isArray(clinics) && clinics[0]) {
       const c = clinics[0];
-      return [c.city, c.state, c.country].filter(Boolean).join(', ') || '—';
+      return [c.city, c.state, c.country].filter(Boolean).join(', ') || t('common.na');
     }
-    return '—';
+    return t('common.na');
   };
 
   const getFee = (vet: Record<string, unknown>) => {
@@ -162,7 +184,7 @@ export function PetOwnerSearchScreen() {
 
   const handleFavoriteToggle = (vetUserId: string) => {
     if (!user || (user as { role?: string }).role !== 'PET_OWNER') {
-      Toast.show({ type: 'info', text1: 'Please log in as a pet owner to add favorites' });
+      Toast.show({ type: 'info', text1: t('petOwnerSearch.toasts.loginRequired') });
       return;
     }
     const idStr = String(vetUserId);
@@ -174,24 +196,36 @@ export function PetOwnerSearchScreen() {
       if (favId) {
         setFavoriteOverrides((prev) => ({ ...prev, [idStr]: false }));
         removeFavorite.mutate(favId, {
-          onSuccess: () => Toast.show({ type: 'success', text1: 'Removed from favorites' }),
+          onSuccess: () => Toast.show({ type: 'success', text1: t('petOwnerSearch.toasts.removedFromFavorites') }),
           onError: (err: { response?: { data?: { message?: string }; message?: string }; message?: string }) => {
             setFavoriteOverrides((prev) => ({ ...prev, [idStr]: true }));
-            Toast.show({ type: 'error', text1: (err?.response?.data as { message?: string })?.message ?? err?.message ?? 'Failed to remove' });
+            Toast.show({
+              type: 'error',
+              text1:
+                (err?.response?.data as { message?: string })?.message ??
+                err?.message ??
+                t('petOwnerSearch.errors.removeFavoriteFailed'),
+            });
           },
         });
       }
     } else {
       setFavoriteOverrides((prev) => ({ ...prev, [idStr]: true }));
       addFavorite.mutate(vetUserId, {
-        onSuccess: (res: { data?: { data?: { _id?: string } }; data?: { _id?: string } }) => {
-          const created = (res as { data?: { data?: { _id?: string } } })?.data?.data ?? (res as { data?: { _id?: string } })?.data;
-          if (created?._id) setFavoriteIdOverrides((prev) => ({ ...prev, [idStr]: created._id! }));
-          Toast.show({ type: 'success', text1: 'Added to favorites' });
+        onSuccess: (res: { success: boolean; data?: { _id?: string } }) => {
+          const createdId = res?.data?._id;
+          if (createdId) setFavoriteIdOverrides((prev) => ({ ...prev, [idStr]: String(createdId) }));
+          Toast.show({ type: 'success', text1: t('petOwnerSearch.toasts.addedToFavorites') });
         },
         onError: (err: { response?: { data?: { message?: string }; message?: string }; message?: string }) => {
           setFavoriteOverrides((prev) => ({ ...prev, [idStr]: false }));
-          Toast.show({ type: 'error', text1: (err?.response?.data as { message?: string })?.message ?? err?.message ?? 'Failed to add' });
+          Toast.show({
+            type: 'error',
+            text1:
+              (err?.response?.data as { message?: string })?.message ??
+              err?.message ??
+              t('petOwnerSearch.errors.addFavoriteFailed'),
+          });
         },
       });
     }
@@ -215,14 +249,14 @@ export function PetOwnerSearchScreen() {
       <View style={styles.searchRow}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search by name"
+          placeholder={t('petOwnerSearch.placeholders.searchByName')}
           placeholderTextColor={colors.textLight}
           value={searchTerm}
           onChangeText={setSearchTerm}
         />
         <TextInput
           style={styles.searchInput}
-          placeholder="City"
+          placeholder={t('petOwnerSearch.placeholders.city')}
           placeholderTextColor={colors.textLight}
           value={location}
           onChangeText={setLocation}
@@ -234,7 +268,7 @@ export function PetOwnerSearchScreen() {
             style={[styles.filterChip, !selectedSpec && styles.filterChipActive]}
             onPress={() => { setSelectedSpec(''); setPage(1); }}
           >
-            <Text style={[styles.filterChipText, !selectedSpec && styles.filterChipTextActive]}>All</Text>
+            <Text style={[styles.filterChipText, !selectedSpec && styles.filterChipTextActive]}>{t('common.all')}</Text>
           </TouchableOpacity>
           {specializationOptions.map((o) => (
             <TouchableOpacity
@@ -248,7 +282,7 @@ export function PetOwnerSearchScreen() {
         </ScrollView>
       </View>
       <View style={styles.availabilityRow}>
-        <Text style={styles.availabilityLabel}>Online now</Text>
+        <Text style={styles.availabilityLabel}>{t('petOwnerSearch.filters.onlineNow')}</Text>
         <Switch
           value={showAvailability}
           onValueChange={(v) => { setShowAvailability(v); setPage(1); }}
@@ -258,17 +292,19 @@ export function PetOwnerSearchScreen() {
       </View>
       <View style={styles.clearRow}>
         <TouchableOpacity onPress={clearFilters}>
-          <Text style={styles.clearText}>Clear filters</Text>
+          <Text style={styles.clearText}>{t('petOwnerSearch.actions.clearFilters')}</Text>
         </TouchableOpacity>
       </View>
 
       <Text style={styles.resultCount}>
-        Showing <Text style={styles.resultCountNum}>{pagination.total}</Text> veterinarians
+        {t('petOwnerSearch.results.showing', { total: pagination.total })}
       </Text>
 
       {error && (
         <View style={styles.errorBox}>
-          <Text style={styles.errorText}>{(error as Error)?.message ?? 'Failed to load veterinarians'}</Text>
+          <Text style={styles.errorText}>
+            {(error as Error)?.message ?? t('petOwnerSearch.errors.loadFailed')}
+          </Text>
         </View>
       )}
       {isLoading && (
@@ -278,7 +314,7 @@ export function PetOwnerSearchScreen() {
       )}
       {!isLoading && !error && veterinarians.length === 0 && (
         <View style={styles.emptyBox}>
-          <Text style={styles.emptyText}>No veterinarians found. Try different filters.</Text>
+          <Text style={styles.emptyText}>{t('petOwnerSearch.empty')}</Text>
         </View>
       )}
       {!isLoading && !error && veterinarians.length > 0 && (
@@ -326,7 +362,7 @@ export function PetOwnerSearchScreen() {
                     </TouchableOpacity>
                     <Text style={styles.fee}>€{getFee(vet)}</Text>
                     <Text style={[styles.avail, !isAvailable(vet) && styles.availNo]}>
-                      {isAvailable(vet) ? 'Available' : 'Unavailable'}
+                      {isAvailable(vet) ? t('petOwnerSearch.status.available') : t('petOwnerSearch.status.unavailable')}
                     </Text>
                     <View style={styles.actionButtonsRow}>
                       <TouchableOpacity
@@ -334,14 +370,14 @@ export function PetOwnerSearchScreen() {
                         onPress={() => navigation.navigate('PetOwnerVetProfile', { vetId: idStr })}
                         activeOpacity={0.8}
                       >
-                        <Text style={styles.viewProfileBtnText}>View Profile</Text>
+                        <Text style={styles.viewProfileBtnText}>{t('petOwnerSearch.actions.viewProfile')}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.bookBtnTouch}
                         onPress={() => navigation.navigate('PetOwnerBooking', { vetId: idStr })}
                         activeOpacity={0.8}
                       >
-                        <Text style={styles.bookBtnTouchText}>Book</Text>
+                        <Text style={styles.bookBtnTouchText}>{t('petOwnerSearch.actions.book')}</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -355,17 +391,17 @@ export function PetOwnerSearchScreen() {
       {!isLoading && !error && (pagination.pages ?? 0) > 1 && (
         <View style={styles.pagination}>
           <Button
-            title="Previous"
+            title={t('petOwnerSearch.pagination.previous')}
             variant="outline"
             onPress={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page <= 1}
             style={styles.pageBtn}
           />
           <Text style={styles.pageText}>
-            Page {pagination.page} of {pagination.pages}
+            {t('petOwnerSearch.pagination.pageOf', { page: pagination.page, pages: pagination.pages })}
           </Text>
           <Button
-            title="Next"
+            title={t('petOwnerSearch.pagination.next')}
             variant="outline"
             onPress={() => setPage((p) => p + 1)}
             disabled={page >= (pagination.pages ?? 1)}
@@ -378,12 +414,20 @@ export function PetOwnerSearchScreen() {
 }
 
 const styles = StyleSheet.create({
-  searchRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
+  headerMapBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerMapBtnIcon: { fontSize: 18, color: colors.textInverse },
+  searchRow: { flexDirection: 'row', gap: spacing.sm },
   searchInput: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
+    backgroundColor: colors.background,
+    borderRadius: 12,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     ...typography.body,
@@ -396,8 +440,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: colors.backgroundTertiary,
   },
-  filterChipActive: { backgroundColor: colors.primary, },
-  filterChipText: { ...typography.small, color: colors.textSecondary },
+  filterChipActive: { backgroundColor: colors.primary },
+  filterChipText: { ...typography.caption, color: colors.textSecondary },
   filterChipTextActive: { color: colors.textInverse, fontWeight: '600' },
   availabilityRow: {
     flexDirection: 'row',
@@ -407,14 +451,14 @@ const styles = StyleSheet.create({
   },
   availabilityLabel: { ...typography.body, color: colors.text },
   clearRow: { marginBottom: spacing.md },
-  clearText: { ...typography.small, color: colors.primary, textDecorationLine: 'underline' },
+  clearText: { ...typography.caption, color: colors.primary, textDecorationLine: 'underline' },
   resultCount: { ...typography.body, marginBottom: spacing.sm, color: colors.textSecondary },
   resultCountNum: { fontWeight: '700', color: colors.text },
   errorBox: { padding: spacing.md, backgroundColor: colors.errorLight, borderRadius: 8, marginBottom: spacing.md },
-  errorText: { color: colors.error, ...typography.small },
+  errorText: { ...typography.bodySmall, color: colors.error },
   loadingBox: { padding: spacing.xl, alignItems: 'center' },
   emptyBox: { padding: spacing.xl, alignItems: 'center' },
-  emptyText: { color: colors.textSecondary, ...typography.body },
+  emptyText: { ...typography.bodySmall, textAlign: 'center' },
   listContent: { paddingBottom: spacing.xl },
   vetCard: { marginBottom: spacing.md },
   vetRow: { flexDirection: 'row', alignItems: 'flex-start' },
@@ -432,11 +476,11 @@ const styles = StyleSheet.create({
   avatarLetter: { ...typography.h3, color: colors.primary },
   vetInfo: { flex: 1 },
   vetName: { ...typography.h3, marginBottom: 2 },
-  specialty: { ...typography.small, color: colors.textSecondary, marginBottom: 4 },
+  specialty: { ...typography.caption, color: colors.textSecondary, marginBottom: 4 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 2 },
   star: { fontSize: 14, color: colors.secondaryDark },
-  ratingCount: { ...typography.small, color: colors.textLight, marginLeft: 4 },
-  location: { ...typography.small, color: colors.textSecondary },
+  ratingCount: { ...typography.caption, color: colors.textLight, marginLeft: 4 },
+  location: { ...typography.caption, color: colors.textSecondary },
   vetRight: { alignItems: 'flex-end', minWidth: 100 },
   favBtn: {
     width: 36,
@@ -449,8 +493,8 @@ const styles = StyleSheet.create({
   },
   favBtnActive: { backgroundColor: colors.errorLight },
   favIcon: { fontSize: 18, color: colors.error },
-  fee: { ...typography.small, fontWeight: '600', marginBottom: 2 },
-  avail: { ...typography.small, color: colors.success, marginBottom: spacing.sm },
+  fee: { ...typography.caption, fontWeight: '600', marginBottom: 2, color: colors.text },
+  avail: { ...typography.caption, color: colors.success, marginBottom: spacing.sm },
   availNo: { color: colors.textLight },
   actionButtonsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs, flexWrap: 'nowrap' },
   viewProfileBtn: {
@@ -477,7 +521,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   bookBtnTouchText: { fontSize: 14, fontWeight: '600', color: colors.textInverse },
-  pagination: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.md, paddingVertical: spacing.lg },
+  pagination: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.lg,
+  },
   pageBtn: { minWidth: 80 },
-  pageText: { ...typography.small, color: colors.textSecondary },
+  pageText: { ...typography.caption, color: colors.textSecondary },
 });

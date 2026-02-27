@@ -17,6 +17,7 @@ import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useVetReviews } from '../../queries/vetQueries';
 import { getImageUrl } from '../../config/api';
+import { useTranslation } from 'react-i18next';
 
 function Stars({ n }: { n: number }) {
   return <Text style={styles.stars}>{'★'.repeat(n)}{'☆'.repeat(5 - n)}</Text>;
@@ -47,6 +48,7 @@ function normalizeReviews(response: unknown): ReviewItem[] {
 }
 
 export function VetReviewsScreen() {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRating, setFilterRating] = useState<number | 'all'>('all');
 
@@ -78,9 +80,9 @@ export function VetReviewsScreen() {
   }));
 
   const ownerName = (r: ReviewItem) =>
-    typeof r.petOwnerId === 'object' ? (r.petOwnerId?.fullName ?? r.petOwnerId?.name ?? 'Pet owner') : 'Pet owner';
+    typeof r.petOwnerId === 'object' ? (r.petOwnerId?.fullName ?? r.petOwnerId?.name ?? t('common.petOwner')) : t('common.petOwner');
   const petName = (r: ReviewItem) =>
-    typeof r.petId === 'object' ? (r.petId?.name ?? 'Pet') : 'Pet';
+    typeof r.petId === 'object' ? (r.petId?.name ?? t('common.pet')) : t('common.pet');
 
   if (isLoading) {
     return (
@@ -95,7 +97,7 @@ export function VetReviewsScreen() {
   if (error) {
     return (
       <ScreenContainer padded>
-        <Text style={styles.errorText}>{(error as { message?: string })?.message ?? 'Failed to load reviews'}</Text>
+        <Text style={styles.errorText}>{(error as { message?: string })?.message ?? t('vetReviews.errors.loadFailed')}</Text>
       </ScreenContainer>
     );
   }
@@ -106,7 +108,7 @@ export function VetReviewsScreen() {
         <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search by owner or pet..."
+          placeholder={t('vetReviews.searchPlaceholder')}
           placeholderTextColor={colors.textLight}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -117,7 +119,7 @@ export function VetReviewsScreen() {
           <Text style={styles.avgRating}>{avgRating}</Text>
           <View>
             <Stars n={Math.round(parseFloat(avgRating))} />
-            <Text style={styles.reviewCount}>{reviews.length} reviews</Text>
+            <Text style={styles.reviewCount}>{t('vetReviews.count', { count: reviews.length })}</Text>
           </View>
         </View>
         {ratingCounts.map(({ n, count }) => (
@@ -126,7 +128,7 @@ export function VetReviewsScreen() {
             style={styles.ratingRow}
             onPress={() => setFilterRating(filterRating === n ? 'all' : n)}
           >
-            <Text style={styles.ratingLabel}>{n} star</Text>
+            <Text style={styles.ratingLabel}>{t('vetReviews.ratingLabel', { count: n })}</Text>
             <View style={[styles.ratingBarBg, count === 0 && styles.ratingBarEmpty]}>
               <View
                 style={[
@@ -144,7 +146,7 @@ export function VetReviewsScreen() {
           style={[styles.filterChip, filterRating === 'all' && styles.filterChipActive]}
           onPress={() => setFilterRating('all')}
         >
-          <Text style={[styles.filterChipText, filterRating === 'all' && styles.filterChipTextActive]}>All</Text>
+          <Text style={[styles.filterChipText, filterRating === 'all' && styles.filterChipTextActive]}>{t('vetReviews.filters.all')}</Text>
         </TouchableOpacity>
         {[5, 4, 3, 2, 1].map((n) => (
           <TouchableOpacity
@@ -181,13 +183,13 @@ export function VetReviewsScreen() {
                   <Text style={styles.date}>{formatDate(item.createdAt)}</Text>
                 </View>
                 <Text style={styles.owner}>{ownerName(item)}</Text>
-                <Text style={styles.petName}>Pet: {petName(item)}</Text>
-                <Text style={styles.comment}>{item.reviewText || '—'}</Text>
+                <Text style={styles.petName}>{t('vetReviews.labels.pet')}: {petName(item)}</Text>
+                {/* <Text style={styles.comment}>{item.reviewText || '—'}</Text>
                 {item.veterinarianReply ? (
-                  <Text style={styles.repliedBadge}>✓ Replied</Text>
+                  <Text style={styles.repliedBadge}>{t('vetReviews.replied')}</Text>
                 ) : (
-                  <Button title="Reply" variant="outline" onPress={() => {}} style={styles.replyBtn} />
-                )}
+                  <Button title={t('vetReviews.reply')} variant="outline" onPress={() => {}} style={styles.replyBtn} />
+                )} */}
               </View>
             </View>
           </Card>
@@ -195,7 +197,7 @@ export function VetReviewsScreen() {
         }}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>No reviews match</Text>
+            <Text style={styles.emptyText}>{t('vetReviews.empty')}</Text>
           </View>
         }
       />

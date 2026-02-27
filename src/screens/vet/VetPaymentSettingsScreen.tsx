@@ -19,6 +19,7 @@ import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useBalance, useWithdrawalRequests, useRequestWithdrawal, WithdrawalRequestItem } from '../../queries/balanceQueries';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   STRIPE: 'Stripe',
@@ -39,11 +40,18 @@ function formatDate(dateStr?: string): string {
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const { t } = useTranslation();
   const s = (status || '').toUpperCase();
   const isApproved = s === 'APPROVED' || s === 'COMPLETED';
   const isPending = s === 'PENDING';
   const isRejected = s === 'REJECTED';
-  const label = isApproved ? 'Approved' : isPending ? 'Pending' : isRejected ? 'Rejected' : status || '—';
+  const label = isApproved
+    ? t('vetPaymentSettings.status.approved')
+    : isPending
+      ? t('vetPaymentSettings.status.pending')
+      : isRejected
+        ? t('vetPaymentSettings.status.rejected')
+        : status || '—';
   const style = [
     styles.statusBadge,
     isApproved && styles.statusSuccess,
@@ -58,12 +66,23 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export function VetPaymentSettingsScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'STRIPE' | 'BANK_TRANSFER' | 'PAYPAL'>('STRIPE');
   const [payoutDetails, setPayoutDetails] = useState('');
   const [page, setPage] = useState(1);
+
+  const paymentMethodLabels: Record<string, string> = useMemo(
+    () => ({
+      STRIPE: t('vetPaymentSettings.paymentMethods.stripe'),
+      BANK_TRANSFER: t('vetPaymentSettings.paymentMethods.bankTransfer'),
+      BANK: t('vetPaymentSettings.paymentMethods.bankTransfer'),
+      PAYPAL: t('vetPaymentSettings.paymentMethods.paypal'),
+    }),
+    [t]
+  );
 
   const limit = 10;
   const { data: balanceResponse, isLoading: balanceLoading, refetch: refetchBalance } = useBalance();
@@ -125,26 +144,26 @@ export function VetPaymentSettingsScreen() {
       >
         {/* Preferred payout method – VeterinaryFrontend / mydoctor-app */}
         <Card style={styles.card}>
-          <Text style={styles.sectionTitle}>Preferred payout method</Text>
+          <Text style={styles.sectionTitle}>{t('vetPaymentSettings.preferredPayoutMethod.title')}</Text>
           <Text style={styles.sectionSubtitle}>
-            Your earnings will be paid out using the method you provide when requesting a withdrawal.
+            {t('vetPaymentSettings.preferredPayoutMethod.subtitle')}
           </Text>
           <View style={styles.methodRow}>
             <View style={[styles.methodBox, styles.methodBoxActive]}>
               <Text style={styles.methodIcon}>💳</Text>
-              <Text style={styles.methodName}>Stripe</Text>
-              <Button title="Configure" variant="outline" onPress={openWithdrawModal} style={styles.configureBtn} />
+              <Text style={styles.methodName}>{t('vetPaymentSettings.paymentMethods.stripe')}</Text>
+              <Button title={t('vetPaymentSettings.actions.configure')} variant="outline" onPress={openWithdrawModal} style={styles.configureBtn} />
             </View>
           </View>
 
           {/* Available Balance + Request Withdrawal */}
           <View style={styles.balanceRow}>
             <View>
-              <Text style={styles.balanceLabel}>Available Balance</Text>
+              <Text style={styles.balanceLabel}>{t('vetPaymentSettings.availableBalance')}</Text>
               <Text style={styles.balanceAmount}>{formatCurrency(balance)}</Text>
             </View>
             <Button
-              title="Request Withdrawal"
+              title={t('vetPaymentSettings.actions.requestWithdrawal')}
               onPress={openWithdrawModal}
               disabled={balance <= 0}
               style={styles.withdrawBtn}
@@ -153,14 +172,14 @@ export function VetPaymentSettingsScreen() {
         </Card>
 
         {/* Withdrawal Requests – card per request as in mydoctor-app, fields as VeterinaryFrontend */}
-        <Text style={styles.sectionTitle}>Withdrawal Requests</Text>
+        <Text style={styles.sectionTitle}>{t('vetPaymentSettings.withdrawalRequests.title')}</Text>
         {requestsLoading && requests.length === 0 ? (
           <View style={styles.loadingWrap}>
             <ActivityIndicator size="small" color={colors.primary} />
           </View>
         ) : requests.length === 0 ? (
           <Card style={styles.card}>
-            <Text style={styles.emptyText}>No withdrawal requests found</Text>
+            <Text style={styles.emptyText}>{t('vetPaymentSettings.withdrawalRequests.empty')}</Text>
           </Card>
         ) : (
           <>
@@ -171,28 +190,28 @@ export function VetPaymentSettingsScreen() {
                   <StatusBadge status={r.status} />
                 </View>
                 <View style={styles.requestDetailRow}>
-                  <Text style={styles.requestDetailLabel}>Payment Method</Text>
-                  <Text style={styles.requestDetailValue}>{PAYMENT_METHOD_LABELS[r.paymentMethod ?? ''] || r.paymentMethod || '—'}</Text>
+                  <Text style={styles.requestDetailLabel}>{t('vetPaymentSettings.withdrawalRequests.paymentMethod')}</Text>
+                  <Text style={styles.requestDetailValue}>{paymentMethodLabels[r.paymentMethod ?? ''] || r.paymentMethod || '—'}</Text>
                 </View>
                 <View style={styles.requestDetailRow}>
-                  <Text style={styles.requestDetailLabel}>Amount</Text>
+                  <Text style={styles.requestDetailLabel}>{t('vetPaymentSettings.withdrawalRequests.amount')}</Text>
                   <Text style={styles.requestDetailAmount}>€{Number(r.amount).toFixed(2)}</Text>
                 </View>
                 {r.netAmount != null && r.netAmount !== r.amount && (
                   <View style={styles.requestDetailRow}>
-                    <Text style={styles.requestDetailLabel}>You receive</Text>
+                    <Text style={styles.requestDetailLabel}>{t('vetPaymentSettings.withdrawalRequests.youReceive')}</Text>
                     <Text style={styles.requestDetailValue}>€{Number(r.netAmount).toFixed(2)}</Text>
                   </View>
                 )}
                 <View style={styles.requestDetailRow}>
-                  <Text style={styles.requestDetailLabel}>Fee</Text>
+                  <Text style={styles.requestDetailLabel}>{t('vetPaymentSettings.withdrawalRequests.fee')}</Text>
                   <Text style={styles.requestDetailValue}>
-                    {r.withdrawalFeePercent != null ? `${Number(r.withdrawalFeePercent).toFixed(0)}%` + (r.withdrawalFeeAmount != null ? ` (€${Number(r.withdrawalFeeAmount).toFixed(2)})` : '') : 'No fee'}
+                    {r.withdrawalFeePercent != null ? `${Number(r.withdrawalFeePercent).toFixed(0)}%` + (r.withdrawalFeeAmount != null ? ` (€${Number(r.withdrawalFeeAmount).toFixed(2)})` : '') : t('vetPaymentSettings.withdrawalRequests.noFee')}
                   </Text>
                 </View>
                 {r.totalDeducted != null && r.totalDeducted > 0 && (
                   <View style={styles.requestDetailRow}>
-                    <Text style={styles.requestDetailLabel}>Total Deducted</Text>
+                    <Text style={styles.requestDetailLabel}>{t('vetPaymentSettings.withdrawalRequests.totalDeducted')}</Text>
                     <Text style={styles.requestTotalDeducted}>€{Number(r.totalDeducted).toFixed(2)}</Text>
                   </View>
                 )}
@@ -229,14 +248,14 @@ export function VetPaymentSettingsScreen() {
         <Pressable style={styles.modalOverlay} onPress={() => setWithdrawModalOpen(false)}>
           <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Request Withdrawal</Text>
+              <Text style={styles.modalTitle}>{t('vetPaymentSettings.withdrawModal.title')}</Text>
               <TouchableOpacity onPress={() => setWithdrawModalOpen(false)} hitSlop={12}>
                 <Text style={styles.modalClose}>✕</Text>
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Available Balance</Text>
+                <Text style={styles.formLabel}>{t('vetPaymentSettings.withdrawModal.availableBalance')}</Text>
                 <TextInput
                   style={[styles.formInput, styles.formInputDisabled]}
                   value={formatCurrency(balance)}
@@ -244,17 +263,17 @@ export function VetPaymentSettingsScreen() {
                 />
               </View>
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Amount to Withdraw <Text style={styles.required}>*</Text></Text>
+                <Text style={styles.formLabel}>{t('vetPaymentSettings.withdrawModal.amountToWithdraw')} <Text style={styles.required}>*</Text></Text>
                 <TextInput
                   style={styles.formInput}
                   value={amount}
                   onChangeText={setAmount}
-                  placeholder="Enter amount"
+                  placeholder={t('vetPaymentSettings.withdrawModal.amountPlaceholder')}
                   keyboardType="decimal-pad"
                 />
               </View>
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Payment Method <Text style={styles.required}>*</Text></Text>
+                <Text style={styles.formLabel}>{t('vetPaymentSettings.withdrawModal.paymentMethod')} <Text style={styles.required}>*</Text></Text>
                 <View style={styles.methodOptions}>
                   {(['STRIPE', 'BANK_TRANSFER', 'PAYPAL'] as const).map((m) => (
                     <TouchableOpacity
@@ -263,28 +282,28 @@ export function VetPaymentSettingsScreen() {
                       onPress={() => setPaymentMethod(m)}
                     >
                       <Text style={[styles.methodOptionText, paymentMethod === m && styles.methodOptionTextActive]}>
-                        {PAYMENT_METHOD_LABELS[m]}
+                        {paymentMethodLabels[m]}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               </View>
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Payout Details <Text style={styles.required}>*</Text></Text>
-                <Text style={styles.formHint}>IBAN / account no / PayPal email / Stripe email</Text>
+                <Text style={styles.formLabel}>{t('vetPaymentSettings.withdrawModal.payoutDetails')} <Text style={styles.required}>*</Text></Text>
+                <Text style={styles.formHint}>{t('vetPaymentSettings.withdrawModal.payoutDetailsHint')}</Text>
                 <TextInput
                   style={[styles.formInput, styles.formTextArea]}
                   value={payoutDetails}
                   onChangeText={setPayoutDetails}
-                  placeholder="Enter IBAN, account number, or email"
+                  placeholder={t('vetPaymentSettings.withdrawModal.payoutDetailsPlaceholder')}
                   multiline
                   numberOfLines={3}
                 />
               </View>
             </ScrollView>
             <View style={styles.modalFooter}>
-              <Button title="Cancel" variant="outline" onPress={() => setWithdrawModalOpen(false)} style={styles.modalBtn} />
-              <Button title={requestWithdrawal.isPending ? 'Submitting…' : 'Submit Request'} onPress={submitWithdrawal} disabled={!canSubmit} style={styles.modalBtn} />
+              <Button title={t('common.cancel')} variant="outline" onPress={() => setWithdrawModalOpen(false)} style={styles.modalBtn} />
+              <Button title={requestWithdrawal.isPending ? t('vetPaymentSettings.withdrawModal.submitting') : t('vetPaymentSettings.withdrawModal.submitRequest')} onPress={submitWithdrawal} disabled={!canSubmit} style={styles.modalBtn} />
             </View>
           </Pressable>
         </Pressable>

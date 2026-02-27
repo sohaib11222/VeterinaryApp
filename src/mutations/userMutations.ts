@@ -44,6 +44,21 @@ export function useUpdateUserProfile() {
 /** File (web) or RN asset { uri, name, type } for profile image upload */
 export type ProfileImageInput = File | { uri: string; name: string; type?: string };
 
+function guessImageMimeFromName(name: string): string {
+  const ext = String(name || '').split('.').pop()?.toLowerCase();
+  if (ext === 'png') return 'image/png';
+  if (ext === 'webp') return 'image/webp';
+  if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
+  return 'image/jpeg';
+}
+
+function ensureImageName(name: string, mime: string): string {
+  const trimmed = String(name || '').trim();
+  if (trimmed && trimmed.includes('.')) return trimmed;
+  const ext = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg';
+  return `profile-${Date.now()}.${ext}`;
+}
+
 export function useUploadProfileImage() {
   return useMutation({
     mutationFn: async (file: ProfileImageInput) => {
@@ -51,8 +66,10 @@ export function useUploadProfileImage() {
       if (picked?.uri) {
         const tempUris: string[] = [];
         try {
-          const mime = picked.type ?? picked.mimeType ?? 'application/octet-stream';
-          const name = picked.name ?? `image-${Date.now()}`;
+          const rawName = picked.name ?? '';
+          const rawMime = picked.type ?? picked.mimeType ?? '';
+          const mime = rawMime && rawMime !== 'application/octet-stream' ? rawMime : guessImageMimeFromName(rawName);
+          const name = ensureImageName(rawName, mime);
           const ext = getExtensionFromMime(mime);
           const uri = await copyToCacheUri(picked.uri, 0, ext);
           tempUris.push(uri);

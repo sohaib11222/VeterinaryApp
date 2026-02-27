@@ -24,6 +24,7 @@ import {
   useUpdateAppointmentDuration,
 } from '../../mutations/scheduleMutations';
 import { getErrorMessage } from '../../utils/errorUtils';
+import { useTranslation } from 'react-i18next';
 
 const DAYS = [
   'Monday',
@@ -59,6 +60,7 @@ function getDaySchedule(
 }
 
 export function VetClinicHoursScreen() {
+  const { t } = useTranslation();
   const { data: scheduleResponse, isLoading } = useWeeklySchedule();
   const addSlotMutation = useAddTimeSlot();
   const deleteSlotMutation = useDeleteTimeSlot();
@@ -93,7 +95,7 @@ export function VetClinicHoursScreen() {
         dayOfWeek: addSlotDay,
         payload: { startTime: startTime.trim(), endTime: endTime.trim(), isAvailable: true },
       });
-      Toast.show({ type: 'success', text1: 'Time slot added' });
+      Toast.show({ type: 'success', text1: t('vetClinicHours.toasts.slotAdded') });
       setModalVisible(false);
     } catch (err) {
       Toast.show({ type: 'error', text1: getErrorMessage(err) });
@@ -103,7 +105,7 @@ export function VetClinicHoursScreen() {
   const handleDeleteSlot = async (dayOfWeek: string, slotId: string) => {
     try {
       await deleteSlotMutation.mutateAsync({ dayOfWeek, slotId });
-      Toast.show({ type: 'success', text1: 'Time slot deleted' });
+      Toast.show({ type: 'success', text1: t('vetClinicHours.toasts.slotDeleted') });
     } catch (err) {
       Toast.show({ type: 'error', text1: getErrorMessage(err) });
     }
@@ -112,7 +114,7 @@ export function VetClinicHoursScreen() {
   const handleUpdateDuration = async () => {
     try {
       await updateDurationMutation.mutateAsync(Number(duration));
-      Toast.show({ type: 'success', text1: 'Appointment duration updated' });
+      Toast.show({ type: 'success', text1: t('vetClinicHours.toasts.durationUpdated') });
     } catch (err) {
       Toast.show({ type: 'error', text1: getErrorMessage(err) });
     }
@@ -123,7 +125,7 @@ export function VetClinicHoursScreen() {
       <ScreenContainer padded>
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading clinic hours...</Text>
+          <Text style={styles.loadingText}>{t('vetClinicHours.loading')}</Text>
         </View>
       </ScreenContainer>
     );
@@ -133,7 +135,7 @@ export function VetClinicHoursScreen() {
     <ScreenContainer scroll padded>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Card style={styles.durationCard}>
-          <Text style={styles.sectionTitle}>Appointment duration (minutes)</Text>
+          <Text style={styles.sectionTitle}>{t('vetClinicHours.duration.title')}</Text>
           <View style={styles.durationRow}>
             {([15, 30, 45, 60] as const).map((m) => (
               <TouchableOpacity
@@ -142,16 +144,16 @@ export function VetClinicHoursScreen() {
                 onPress={() => setDuration(m)}
               >
                 <Text style={[styles.durationText, duration === m && styles.durationTextActive]}>
-                  {m} min
+                  {t('vetClinicHours.duration.minutes', { count: m })}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
           <Text style={styles.currentDuration}>
-            Current: {currentDuration} minutes per appointment
+            {t('vetClinicHours.duration.current', { count: currentDuration })}
           </Text>
           <Button
-            title={updateDurationMutation.isPending ? 'Updating...' : 'Update Duration'}
+            title={updateDurationMutation.isPending ? t('vetClinicHours.duration.updating') : t('vetClinicHours.duration.update')}
             onPress={handleUpdateDuration}
             style={styles.updateBtn}
             disabled={updateDurationMutation.isPending}
@@ -163,16 +165,16 @@ export function VetClinicHoursScreen() {
           const slots = daySchedule.timeSlots || [];
           return (
             <Card key={day} style={styles.dayCard}>
-              <Text style={styles.dayTitle}>{day}</Text>
+              <Text style={styles.dayTitle}>{t(`days.${day.toLowerCase()}`)}</Text>
               {slots.length === 0 ? (
-                <Text style={styles.noSlots}>No slots. Add slots to set availability.</Text>
+                <Text style={styles.noSlots}>{t('vetClinicHours.noSlots')}</Text>
               ) : (
                 slots.map((slot) => (
                   <View key={slot._id} style={styles.slotRow}>
                     <Text style={styles.slotText}>
                       🕐 {slot.startTime} – {slot.endTime}
                       {slot.isAvailable === false && (
-                        <Text style={styles.slotUnavailable}> Unavailable</Text>
+                        <Text style={styles.slotUnavailable}> {t('vetClinicHours.unavailable')}</Text>
                       )}
                     </Text>
                     <TouchableOpacity
@@ -186,7 +188,7 @@ export function VetClinicHoursScreen() {
                 ))
               )}
               <Button
-                title="Add slot"
+                title={t('vetClinicHours.addSlot')}
                 variant="outline"
                 onPress={() => openAddSlot(day)}
                 style={styles.addBtn}
@@ -199,33 +201,33 @@ export function VetClinicHoursScreen() {
       <Modal visible={modalVisible} transparent animationType="fade">
         <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
           <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.modalTitle}>Add time slot</Text>
-            <Text style={styles.modalSubtitle}>{addSlotDay}</Text>
-            <Text style={styles.inputLabel}>Start time (e.g. 09:00)</Text>
+            <Text style={styles.modalTitle}>{t('vetClinicHours.modal.title')}</Text>
+            <Text style={styles.modalSubtitle}>{t(`days.${addSlotDay.toLowerCase()}`)}</Text>
+            <Text style={styles.inputLabel}>{t('vetClinicHours.modal.startLabel')}</Text>
             <TextInput
               style={styles.input}
               value={startTime}
               onChangeText={setStartTime}
-              placeholder="09:00"
+              placeholder={t('vetClinicHours.modal.startPlaceholder')}
               placeholderTextColor={colors.textLight}
             />
-            <Text style={styles.inputLabel}>End time (e.g. 17:00)</Text>
+            <Text style={styles.inputLabel}>{t('vetClinicHours.modal.endLabel')}</Text>
             <TextInput
               style={styles.input}
               value={endTime}
               onChangeText={setEndTime}
-              placeholder="17:00"
+              placeholder={t('vetClinicHours.modal.endPlaceholder')}
               placeholderTextColor={colors.textLight}
             />
             <View style={styles.modalActions}>
               <Button
-                title="Cancel"
+                title={t('common.cancel')}
                 variant="outline"
                 onPress={() => setModalVisible(false)}
                 style={styles.modalBtn}
               />
               <Button
-                title={addSlotMutation.isPending ? 'Saving...' : 'Save slot'}
+                title={addSlotMutation.isPending ? t('vetClinicHours.modal.saving') : t('vetClinicHours.modal.save')}
                 onPress={handleAddSlot}
                 style={styles.modalBtn}
                 disabled={addSlotMutation.isPending}

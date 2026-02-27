@@ -12,7 +12,7 @@ export async function copyToCacheUri(
 ): Promise<string> {
   const dir = FileSystem.cacheDirectory ?? '';
   const ext = extension.startsWith('.') ? extension : extension ? `.${extension}` : '';
-  const dest = `${dir}upload-${Date.now()}-${index}${ext}`.replace(/\/\/+/g, '/');
+  const dest = `${dir}${dir.endsWith('/') ? '' : '/'}upload-${Date.now()}-${index}${ext}`;
   await FileSystem.copyAsync({ from: sourceUri, to: dest });
   return dest;
 }

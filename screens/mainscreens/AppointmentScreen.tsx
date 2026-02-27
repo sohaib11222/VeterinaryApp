@@ -1,11 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 const AppointmentScreen = () => {
+  const { t } = useTranslation();
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Appointment Screen</Text>
-      <Text style={styles.subtitle}>Your upcoming appointments will appear here.</Text>
+      <Text style={styles.title}>{t('simpleScreens.appointment.title')}</Text>
+      <Text style={styles.subtitle}>{t('simpleScreens.appointment.subtitle')}</Text>
     </View>
   );
 };

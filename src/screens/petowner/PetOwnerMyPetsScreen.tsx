@@ -10,8 +10,7 @@ import { typography } from '../../theme/typography';
 import { usePets } from '../../queries/petsQueries';
 import { useDeletePet } from '../../mutations/petsMutations';
 import { getImageUrl } from '../../config/api';
-
-const SPECIES_LABELS: Record<string, string> = { DOG: 'Dog', CAT: 'Cat', BIRD: 'Bird', RABBIT: 'Rabbit', OTHER: 'Other' };
+import { useTranslation } from 'react-i18next';
 
 type PetItem = {
   _id: string;
@@ -27,6 +26,7 @@ type PetItem = {
 
 export function PetOwnerMyPetsScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
 
   const { data: petsResponse, isLoading } = usePets();
@@ -41,36 +41,55 @@ export function PetOwnerMyPetsScreen() {
     return pets.filter((p) => {
       const name = String(p?.name || '').toLowerCase();
       const breed = String(p?.breed || '').toLowerCase();
-      const species = String(SPECIES_LABELS[p?.species || ''] || p?.species || '').toLowerCase();
+      const speciesCode = String(p?.species || '');
+      const species = t(`petOwnerPets.species.${speciesCode}`, { defaultValue: speciesCode }).toLowerCase();
       const microchip = String(p?.microchipNumber || '').toLowerCase();
       return name.includes(q) || breed.includes(q) || species.includes(q) || microchip.includes(q);
     });
-  }, [pets, searchQuery]);
+  }, [pets, searchQuery, t]);
 
   const deletePet = useDeletePet();
 
   const handleDelete = (pet: PetItem) => {
-    Alert.alert('Delete pet', `Delete "${pet?.name || 'this pet'}"?`, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(
+      t('petOwnerMyPets.deleteConfirm.title'),
+      t('petOwnerMyPets.deleteConfirm.message', { name: pet?.name || t('common.pet') }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           try {
             await deletePet.mutateAsync(pet._id);
-            Alert.alert('Success', 'Pet deleted');
+            Alert.alert(t('common.success'), t('petOwnerMyPets.toasts.deleted'));
           } catch (err: unknown) {
-            const msg = (err as { message?: string })?.message ?? 'Failed to delete pet';
-            Alert.alert('Error', msg);
+            const msg = (err as { message?: string })?.message ?? t('petOwnerMyPets.errors.deleteFailed');
+            Alert.alert(t('common.error'), msg);
           }
         },
       },
-    ]);
+    ]
+    );
   };
 
   const ageLabel = (months: number | undefined) => {
-    if (months == null) return '—';
-    return months >= 12 ? `${Math.floor(months / 12)} years` : `${months} months`;
+    if (months == null) return t('common.na');
+    if (months >= 12) {
+      const years = Math.floor(months / 12);
+      return t('petOwnerMyPets.age.years', { count: years });
+    }
+    return t('petOwnerMyPets.age.months', { count: months });
+  };
+
+  const speciesLabel = (code?: string) => {
+    if (!code) return t('common.na');
+    return t(`petOwnerPets.species.${code}`, { defaultValue: code });
+  };
+
+  const genderLabel = (code?: string) => {
+    if (!code) return t('common.na');
+    return t(`petOwnerPets.gender.${code}`, { defaultValue: code });
   };
 
   const renderItem = ({ item }: { item: PetItem }) => {
@@ -82,26 +101,26 @@ export function PetOwnerMyPetsScreen() {
             {img ? (
               <Image source={{ uri: img }} style={styles.avatarImage} />
             ) : (
-              <Text style={styles.avatarText}>{(item.name || 'P').charAt(0)}</Text>
+              <Text style={styles.avatarText}>{(item.name || t('common.pet')).charAt(0)}</Text>
             )}
           </View>
           <View style={styles.info}>
-            <Text style={styles.name}>{item.name || '—'}</Text>
+            <Text style={styles.name}>{item.name || t('common.na')}</Text>
             <View style={styles.detailRow}>
-              <Text style={styles.detail}>{SPECIES_LABELS[item.species || ''] || item.species || '—'}</Text>
-              <Text style={styles.detail}> · {item.gender || '—'}</Text>
+              <Text style={styles.detail}>{speciesLabel(item.species)}</Text>
+              <Text style={styles.detail}> · {genderLabel(item.gender)}</Text>
               <Text style={styles.detail}> · {ageLabel(item.age)}</Text>
             </View>
-            <Text style={styles.breed}>Breed: {item.breed || '—'}</Text>
-            {item.microchipNumber ? <Text style={styles.microchip}>Microchip: {item.microchipNumber}</Text> : null}
+            <Text style={styles.breed}>{t('petOwnerMyPets.labels.breed')}: {item.breed || t('common.na')}</Text>
+            {item.microchipNumber ? <Text style={styles.microchip}>{t('petOwnerMyPets.labels.microchip')}: {item.microchipNumber}</Text> : null}
           </View>
         </View>
         <View style={styles.actions}>
           <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('PetOwnerEditPet', { petId: item._id })}>
-            <Text style={styles.editBtnText}>Edit</Text>
+            <Text style={styles.editBtnText}>{t('common.edit')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item)} disabled={deletePet.isPending}>
-            <Text style={styles.deleteBtnText}>Delete</Text>
+            <Text style={styles.deleteBtnText}>{t('common.delete')}</Text>
           </TouchableOpacity>
         </View>
       </Card>
@@ -124,19 +143,19 @@ export function PetOwnerMyPetsScreen() {
         <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search pets"
+          placeholder={t('petOwnerMyPets.searchPlaceholder')}
           placeholderTextColor={colors.textLight}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
       </View>
-      <Button title="Add Pet" onPress={() => navigation.navigate('PetOwnerAddPet')} style={styles.addBtn} />
+      <Button title={t('petOwnerMyPets.actions.addPet')} onPress={() => navigation.navigate('PetOwnerAddPet')} style={styles.addBtn} />
       <FlatList
         data={filtered}
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.list}
         renderItem={renderItem}
-        ListEmptyComponent={<View style={styles.empty}><Text style={styles.emptyText}>No pets found</Text></View>}
+        ListEmptyComponent={<View style={styles.empty}><Text style={styles.emptyText}>{t('petOwnerMyPets.empty')}</Text></View>}
       />
     </ScreenContainer>
   );

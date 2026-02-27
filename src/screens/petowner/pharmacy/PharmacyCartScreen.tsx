@@ -16,11 +16,13 @@ import { colors } from '../../../theme/colors';
 import { spacing } from '../../../theme/spacing';
 import { useCart } from '../../../contexts/CartContext';
 import { getImageUrl } from '../../../config/api';
+import { useTranslation } from 'react-i18next';
 
 type Nav = NativeStackNavigationProp<PetOwnerPharmacyStackParamList>;
 
 export function PharmacyCartScreen() {
   const navigation = useNavigation<Nav>();
+  const { t } = useTranslation();
   const {
     cartItems,
     updateQuantity,
@@ -38,12 +40,12 @@ export function PharmacyCartScreen() {
       <ScreenContainer padded>
         <View style={styles.emptyCart}>
           <Text style={styles.emptyIcon}>🛒</Text>
-          <Text style={styles.emptyTitle}>Your cart is empty</Text>
+          <Text style={styles.emptyTitle}>{t('petOwnerPharmacyCart.empty.title')}</Text>
           <Text style={styles.emptySubtitle}>
-            Add some products to your cart to continue shopping.
+            {t('petOwnerPharmacyCart.empty.subtitle')}
           </Text>
           <Button
-            title="Start Shopping"
+            title={t('petOwnerPharmacyCart.actions.startShopping')}
             onPress={() => navigation.navigate('ProductCatalog', {})}
             style={styles.shopButton}
           />
@@ -73,7 +75,7 @@ export function PharmacyCartScreen() {
                   <TouchableOpacity onPress={() => navigation.navigate('ProductDetails', { productId: id })}>
                     <Text style={styles.itemName}>{item.name}</Text>
                   </TouchableOpacity>
-                  {item.sku ? <Text style={styles.itemSku}>SKU: {item.sku}</Text> : null}
+                  {item.sku ? <Text style={styles.itemSku}>{t('petOwnerPharmacyCart.labels.sku', { sku: item.sku })}</Text> : null}
                   <Text style={styles.itemPrice}>€{Number(item.price || 0).toFixed(2)}</Text>
                   <View style={styles.quantitySection}>
                     <View style={styles.quantityControls}>
@@ -104,29 +106,29 @@ export function PharmacyCartScreen() {
 
         <View style={styles.checkoutSection}>
           <TouchableOpacity style={styles.clearCartButton} onPress={clearCart}>
-            <Text style={styles.clearCartButtonText}>Clear cart</Text>
+            <Text style={styles.clearCartButtonText}>{t('petOwnerPharmacyCart.actions.clearCart')}</Text>
           </TouchableOpacity>
           <View style={styles.totalSection}>
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Subtotal</Text>
+              <Text style={styles.totalLabel}>{t('petOwnerPharmacyCart.totals.subtotal')}</Text>
               <Text style={styles.totalValue}>€{subtotal.toFixed(2)}</Text>
             </View>
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Shipping</Text>
+              <Text style={styles.totalLabel}>{t('petOwnerPharmacyCart.totals.shipping')}</Text>
               <Text style={styles.totalValue}>
                 {shipping === 0 ? (
-                  <Text style={styles.freeShippingText}>Free</Text>
+                  <Text style={styles.freeShippingText}>{t('petOwnerPharmacyCart.totals.free')}</Text>
                 ) : (
                   `€${shipping.toFixed(2)}`
                 )}
               </Text>
             </View>
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Total</Text>
+              <Text style={styles.totalLabel}>{t('petOwnerPharmacyCart.totals.total')}</Text>
               <Text style={styles.totalValueMain}>€{total.toFixed(2)}</Text>
             </View>
             <Button
-              title="Proceed to Checkout"
+              title={t('petOwnerPharmacyCart.actions.proceedToCheckout')}
               onPress={() => navigation.navigate('Checkout')}
               style={styles.checkoutButton}
             />

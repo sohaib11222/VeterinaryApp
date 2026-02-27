@@ -7,18 +7,22 @@ import { Card } from '../../components/common/Card';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-
-const MENU_ITEMS = [
-  { label: 'Profile', icon: '👤', screen: 'PharmacyProfile' as const },
-  { label: 'Subscription', icon: '📋', screen: 'PharmacySubscription' as const },
-  { label: 'Payouts', icon: '💰', screen: 'PharmacyPayouts' as const },
-  { label: 'Change Password', icon: '🔒', screen: 'PharmacyChangePassword' as const },
-];
+import { useTranslation } from 'react-i18next';
 
 export function PharmacyMoreScreen() {
   const { user, logout } = useAuth();
   const navigation = useNavigation<any>();
   const isParapharmacy = user?.role === 'PARAPHARMACY';
+  const { t } = useTranslation();
+
+  const menuItems = [
+    { label: t('menu.profile'), icon: '👤', screen: 'PharmacyProfile' as const },
+    { label: t('menu.subscription'), icon: '📋', screen: 'PharmacySubscription' as const },
+    { label: t('menu.payouts'), icon: '💰', screen: 'PharmacyPayouts' as const },
+    { label: t('menu.notifications'), icon: '🔔', screen: 'PharmacyNotifications' as const },
+    { label: t('menu.language'), icon: '🌐', screen: 'Language' as const },
+    { label: t('menu.changePassword'), icon: '🔒', screen: 'PharmacyChangePassword' as const },
+  ];
 
   return (
     <ScreenContainer scroll padded>
@@ -27,14 +31,14 @@ export function PharmacyMoreScreen() {
           <Text style={styles.avatarText}>{user?.name?.charAt(0) || 'P'}</Text>
         </View>
         <Text style={styles.userName}>{user?.name || 'Pharmacy'}</Text>
-        <Text style={styles.userRole}>{isParapharmacy ? 'Parapharmacy' : 'Pharmacy'}</Text>
+        <Text style={styles.userRole}>{isParapharmacy ? t('more.pharmacy.parapharmacy') : t('more.pharmacy.pharmacy')}</Text>
         <Text style={styles.userEmail}>{user?.email}</Text>
       </Card>
       <Card>
-        {MENU_ITEMS.map((item, i) => (
+        {menuItems.map((item, i) => (
           <TouchableOpacity
             key={item.screen}
-            style={[styles.menuRow, i < MENU_ITEMS.length - 1 && styles.menuRowBorder]}
+            style={[styles.menuRow, i < menuItems.length - 1 && styles.menuRowBorder]}
             onPress={() => navigation.navigate(item.screen)}
           >
             <Text style={styles.menuIcon}>{item.icon}</Text>
@@ -44,7 +48,7 @@ export function PharmacyMoreScreen() {
         ))}
       </Card>
       <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-        <Text style={styles.logoutText}>Logout</Text>
+        <Text style={styles.logoutText}>{t('common.logout')}</Text>
       </TouchableOpacity>
     </ScreenContainer>
   );

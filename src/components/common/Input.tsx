@@ -23,6 +23,7 @@ interface InputProps {
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   style?: ViewStyle;
   editable?: boolean;
+  maxLength?: number;
 }
 
 export function Input({
@@ -37,6 +38,7 @@ export function Input({
   autoCapitalize = 'none',
   style,
   editable = true,
+  maxLength,
 }: InputProps) {
   const [focused, setFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -59,6 +61,7 @@ export function Input({
           placeholderTextColor={colors.textLight}
           value={value}
           onChangeText={onChangeText}
+          maxLength={maxLength}
           onBlur={() => {
             setFocused(false);
             onBlur?.();

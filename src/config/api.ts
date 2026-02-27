@@ -12,6 +12,16 @@ function getApiBaseUrl(): string {
   if (fromExtra && typeof fromExtra === 'string' && fromExtra.trim()) return fromExtra.trim();
   const envUrl = typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_API_BASE_URL;
   if (envUrl && typeof envUrl === 'string' && envUrl.trim()) return envUrl.trim();
+  const debuggerHost =
+    (Constants as any)?.expoGoConfig?.debuggerHost ??
+    (Constants as any)?.manifest?.debuggerHost ??
+    (Constants as any)?.manifest2?.extra?.expoClient?.debuggerHost;
+  if (debuggerHost && typeof debuggerHost === 'string') {
+    const host = debuggerHost.split(':')[0];
+    if (host && host !== 'localhost') {
+      return `http://${host}:5000/api`;
+    }
+  }
   if (Platform.OS === 'android') return 'http://10.0.2.2:5000/api';
   return 'http://localhost:5000/api';
 }

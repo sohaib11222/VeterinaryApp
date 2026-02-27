@@ -46,7 +46,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const seller = product?.sellerId;
     const sellerId =
       seller && typeof seller === 'object'
-        ? (seller as { _id?: string })?._id
+        ? (seller as { _id?: string })?._id ?? null
         : (seller as string) ?? null;
 
     setCartItems((prev) => {

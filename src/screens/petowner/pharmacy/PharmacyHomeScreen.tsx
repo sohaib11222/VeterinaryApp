@@ -18,25 +18,27 @@ import { spacing } from '../../../theme/spacing';
 import { useProducts } from '../../../queries/productQueries';
 import { useCart } from '../../../contexts/CartContext';
 import { getImageUrl } from '../../../config/api';
+import { useTranslation } from 'react-i18next';
 
 type Nav = NativeStackNavigationProp<PetOwnerPharmacyStackParamList>;
 
 export function PharmacyHomeScreen() {
   const navigation = useNavigation<Nav>();
+  const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const cardWidth = (width - spacing.md * 2 - spacing.sm) / 2;
   const { data: productsRes, isLoading } = useProducts({ limit: 8 });
   const { getCartItemCount, addToCart } = useCart();
 
-  const payload = productsRes?.data ?? (productsRes as { data?: { products?: unknown[] } } | undefined);
-  const products = Array.isArray(payload?.products) ? payload.products : [];
+  const payload: any = (productsRes as any)?.data ?? productsRes ?? {};
+  const products = Array.isArray(payload?.products) ? payload.products : (Array.isArray(payload?.data?.products) ? payload.data.products : []);
   const cartCount = getCartItemCount();
 
   return (
     <View style={styles.flex}>
       <VetHeader
-        title="Pharmacy & Shop"
-        subtitle="Pet supplies and medications"
+        title={t('petOwnerPharmacyHome.header.title')}
+        subtitle={t('petOwnerPharmacyHome.header.subtitle')}
         roundedBottom={false}
         rightAction={
           <TouchableOpacity style={styles.cartBtn} onPress={() => navigation.navigate('Cart')}>
@@ -52,24 +54,24 @@ export function PharmacyHomeScreen() {
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={styles.bannerSection}>
           <View style={styles.bannerContent}>
-            <Text style={styles.bannerTitle}>Pet Pharmacy & Shop</Text>
-            <Text style={styles.bannerSubtitle}>Everything your pet needs</Text>
+            <Text style={styles.bannerTitle}>{t('petOwnerPharmacyHome.banner.title')}</Text>
+            <Text style={styles.bannerSubtitle}>{t('petOwnerPharmacyHome.banner.subtitle')}</Text>
             <Text style={styles.bannerDescription}>
-              Essentials, nutrition, medications and more from trusted pet pharmacies.
+              {t('petOwnerPharmacyHome.banner.description')}
             </Text>
             <View style={styles.bannerButtons}>
               <TouchableOpacity
                 style={styles.shopNowButton}
                 onPress={() => navigation.navigate('ProductCatalog', {})}
               >
-                <Text style={styles.shopNowText}>Shop Now</Text>
+                <Text style={styles.shopNowText}>{t('petOwnerPharmacyHome.actions.shopNow')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.searchPharmaciesButton}
                 onPress={() => navigation.navigate('PharmacySearch')}
               >
                 <Text style={styles.searchIcon}>🔍</Text>
-                <Text style={styles.searchPharmaciesText}>Find Pharmacies</Text>
+                <Text style={styles.searchPharmaciesText}>{t('petOwnerPharmacyHome.actions.findPharmacies')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -77,20 +79,20 @@ export function PharmacyHomeScreen() {
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Featured products</Text>
+            <Text style={styles.sectionTitle}>{t('petOwnerPharmacyHome.sections.featuredProducts')}</Text>
             <TouchableOpacity onPress={() => navigation.navigate('ProductCatalog', {})}>
-              <Text style={styles.viewAllText}>View all</Text>
+              <Text style={styles.viewAllText}>{t('petOwnerPharmacyHome.actions.viewAll')}</Text>
             </TouchableOpacity>
           </View>
           {isLoading ? (
             <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: spacing.lg }} />
           ) : products.length === 0 ? (
-            <Text style={styles.emptyText}>No products yet. Browse all products or find a pharmacy.</Text>
+            <Text style={styles.emptyText}>{t('petOwnerPharmacyHome.emptyProducts')}</Text>
           ) : (
             <View style={styles.productsGrid}>
               {products.map((p: Record<string, unknown>) => {
                 const id = String(p._id ?? p.id ?? '');
-                const name = (p.name as string) ?? 'Product';
+                const name = (p.name as string) ?? t('petOwnerPharmacyHome.defaults.product');
                 const price = Number(p.discountPrice ?? p.price ?? 0);
                 const originalPrice = typeof p.price === 'number' ? p.price : undefined;
                 const images = p.images as string[] | undefined;

@@ -22,6 +22,7 @@ import { useAppointments } from '../../queries/appointmentQueries';
 import { useAcceptAppointment, useRejectAppointment } from '../../mutations/appointmentMutations';
 import { getImageUrl } from '../../config/api';
 import { getErrorMessage } from '../../utils/errorUtils';
+import { useTranslation } from 'react-i18next';
 
 interface AppointmentRequestItem {
   _id: string;
@@ -35,10 +36,11 @@ interface AppointmentRequestItem {
   bookingType: string;
 }
 
-function normalizePendingAppointments(response: unknown): AppointmentRequestItem[] {
+function normalizePendingAppointments(response: unknown, t: (key: string, options?: any) => string): AppointmentRequestItem[] {
   const body = response as { data?: { appointments?: unknown[] } };
   const list = Array.isArray(body?.data?.appointments) ? body.data.appointments : [];
-  return list.map((a: Record<string, unknown>) => {
+  return list.map((item) => {
+    const a = item as Record<string, unknown>;
     const pet = (a.petId as Record<string, unknown>) || {};
     const owner = (a.petOwnerId as Record<string, unknown>) || {};
     const dateStr = a.appointmentDate
@@ -51,19 +53,20 @@ function normalizePendingAppointments(response: unknown): AppointmentRequestItem
     const timeStr = (a.appointmentTime as string) || '';
     return {
       _id: (a._id as string) || '',
-      appointmentNumber: (a.appointmentNumber as string) || (a._id as string)?.slice?.(-6) || 'N/A',
-      petName: (pet.name as string) || 'Pet',
+      appointmentNumber: (a.appointmentNumber as string) || (a._id as string)?.slice?.(-6) || t('common.na'),
+      petName: (pet.name as string) || t('common.pet'),
       petBreed: (pet.breed as string) || '',
       petImg: getImageUrl((pet.photo as string) || undefined) || null,
-      ownerName: (owner.fullName as string) || (owner.name as string) || 'Pet Owner',
+      ownerName: (owner.fullName as string) || (owner.name as string) || t('common.petOwner'),
       dateTime: `${dateStr} ${timeStr}`.trim(),
-      reason: (a.reason as string) || 'Consultation',
-      bookingType: (a.bookingType as string) === 'ONLINE' ? 'Video Call' : 'Clinic Visit',
+      reason: (a.reason as string) || t('vetPetRequests.defaultReason'),
+      bookingType: (a.bookingType as string) || 'CLINIC',
     };
   });
 }
 
 export function VetPetRequestsScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const stackNav = navigation.getParent();
   const [rejectModal, setRejectModal] = useState<{
@@ -80,14 +83,14 @@ export function VetPetRequestsScreen() {
   const rejectAppointment = useRejectAppointment();
 
   const appointments = useMemo(
-    () => normalizePendingAppointments(appointmentsResponse ?? {}),
-    [appointmentsResponse]
+    () => normalizePendingAppointments(appointmentsResponse ?? {}, t),
+    [appointmentsResponse, t]
   );
 
   const handleAccept = async (appointmentId: string) => {
     try {
       await acceptAppointment.mutateAsync(appointmentId);
-      Toast.show({ type: 'success', text1: 'Appointment accepted successfully!' });
+      Toast.show({ type: 'success', text1: t('vetPetRequests.toasts.accepted') });
     } catch (err) {
       Toast.show({ type: 'error', text1: getErrorMessage(err) });
     }
@@ -105,7 +108,7 @@ export function VetPetRequestsScreen() {
         appointmentId,
         data: { reason: rejectModal.reason || undefined },
       });
-      Toast.show({ type: 'success', text1: 'Appointment rejected successfully!' });
+      Toast.show({ type: 'success', text1: t('vetPetRequests.toasts.rejected') });
       setRejectModal({ show: false, appointmentId: null, reason: '' });
     } catch (err) {
       Toast.show({ type: 'error', text1: getErrorMessage(err) });
@@ -133,17 +136,21 @@ export function VetPetRequestsScreen() {
             {item.petBreed ? ` (${item.petBreed})` : ''}
           </Text>
           <View style={styles.newBadge}>
-            <Text style={styles.newBadgeText}>New</Text>
+            <Text style={styles.newBadgeText}>{t('vetPetRequests.badges.new')}</Text>
           </View>
-          <Text style={styles.owner}>Owner: {item.ownerName}</Text>
+          <Text style={styles.owner}>{t('vetPetRequests.labels.owner')}: {item.ownerName}</Text>
         </View>
         <View
           style={[
             styles.typeBadge,
-            item.bookingType === 'Video Call' ? styles.typeOnline : styles.typeVisit,
+            item.bookingType === 'ONLINE' ? styles.typeOnline : styles.typeVisit,
           ]}
         >
-          <Text style={styles.typeBadgeText}>{item.bookingType}</Text>
+          <Text style={styles.typeBadgeText}>
+            {item.bookingType === 'ONLINE'
+              ? t('vetPetRequests.booking.videoCall')
+              : t('vetPetRequests.booking.clinicVisit')}
+          </Text>
         </View>
       </View>
       <View style={styles.dateTimeRow}>
@@ -156,20 +163,20 @@ export function VetPetRequestsScreen() {
       </View>
       <View style={styles.actions}>
         <Button
-          title={acceptAppointment.isPending ? 'Processing...' : 'Accept'}
+          title={acceptAppointment.isPending ? t('vetPetRequests.actions.processing') : t('vetPetRequests.actions.accept')}
           onPress={() => handleAccept(item._id)}
           style={styles.acceptBtn}
           disabled={acceptAppointment.isPending}
         />
         <Button
-          title="Reject"
+          title={t('vetPetRequests.actions.reject')}
           variant="outline"
           onPress={() => handleReject(item._id)}
           style={styles.rejectBtn}
           disabled={rejectAppointment.isPending}
         />
         <TouchableOpacity style={styles.viewBtn} onPress={() => openDetail(item._id)}>
-          <Text style={styles.viewBtnText}>View</Text>
+          <Text style={styles.viewBtnText}>{t('common.view')}</Text>
         </TouchableOpacity>
       </View>
     </Card>
@@ -179,18 +186,18 @@ export function VetPetRequestsScreen() {
     <ScreenContainer padded>
       <Card style={styles.summaryCard}>
         <View style={styles.summary}>
-          <Text style={styles.summaryTitle}>Pending Pet Requests</Text>
+          <Text style={styles.summaryTitle}>{t('vetPetRequests.summaryTitle')}</Text>
           <Text style={styles.summaryCount}>{appointments.length}</Text>
         </View>
       </Card>
       {isLoading ? (
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading requests...</Text>
+          <Text style={styles.loadingText}>{t('vetPetRequests.loading')}</Text>
         </View>
       ) : appointments.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyText}>No pending appointment requests</Text>
+          <Text style={styles.emptyText}>{t('vetPetRequests.empty')}</Text>
         </View>
       ) : (
         <FlatList
@@ -204,11 +211,11 @@ export function VetPetRequestsScreen() {
       <Modal visible={rejectModal.show} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Reject Appointment</Text>
-            <Text style={styles.inputLabel}>Reason for Rejection (Optional)</Text>
+            <Text style={styles.modalTitle}>{t('vetPetRequests.rejectModal.title')}</Text>
+            <Text style={styles.inputLabel}>{t('vetPetRequests.rejectModal.reasonLabel')}</Text>
             <TextInput
               style={styles.textArea}
-              placeholder="Enter reason..."
+              placeholder={t('vetPetRequests.rejectModal.reasonPlaceholder')}
               placeholderTextColor={colors.textLight}
               value={rejectModal.reason}
               onChangeText={(t) =>
@@ -219,7 +226,7 @@ export function VetPetRequestsScreen() {
             />
             <View style={styles.modalActions}>
               <Button
-                title="Cancel"
+                title={t('common.cancel')}
                 variant="outline"
                 onPress={() =>
                   setRejectModal({ show: false, appointmentId: null, reason: '' })
@@ -227,7 +234,7 @@ export function VetPetRequestsScreen() {
                 style={styles.modalBtn}
               />
               <Button
-                title={rejectAppointment.isPending ? 'Rejecting...' : 'Reject Appointment'}
+                title={rejectAppointment.isPending ? t('vetPetRequests.rejectModal.rejecting') : t('vetPetRequests.rejectModal.rejectAppointment')}
                 onPress={confirmReject}
                 style={[styles.modalBtn, styles.modalRejectBtn]}
                 disabled={rejectAppointment.isPending}

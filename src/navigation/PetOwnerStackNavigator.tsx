@@ -3,6 +3,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { PetOwnerStackParamList } from './types';
 import { VetHeader } from '../components/common/VetHeader';
 import { PetOwnerTabNavigator } from './PetOwnerTabNavigator';
+import { VetHeaderRightActionProvider, useVetHeaderRightAction } from '../contexts/VetHeaderRightActionContext';
+import { useTranslation } from 'react-i18next';
 
 import { PetOwnerAppointmentDetailScreen } from '../screens/petowner/PetOwnerAppointmentDetailScreen';
 import { PetOwnerFavouritesScreen } from '../screens/petowner/PetOwnerFavouritesScreen';
@@ -39,97 +41,71 @@ import { PetOwnerVetProfileScreen as PetOwnerVetProfileScreenReal } from '../scr
 import { PetOwnerBookingScreen as PetOwnerBookingScreenReal } from '../screens/petowner/PetOwnerBookingScreen';
 import { PetOwnerBookingCheckoutScreen } from '../screens/petowner/PetOwnerBookingCheckoutScreen';
 import { PetOwnerBookingSuccessScreen } from '../screens/petowner/PetOwnerBookingSuccessScreen';
+import { LanguageScreen } from '../screens/shared/LanguageScreen';
 
 const Stack = createNativeStackNavigator<PetOwnerStackParamList>();
 
-const SCREEN_TITLES: Record<string, { title: string; subtitle?: string }> = {
-  PetOwnerAppointmentDetails: { title: 'Appointment Details', subtitle: 'Pet appointment' },
-  PetOwnerRequestReschedule: { title: 'Request Reschedule', subtitle: 'Choose new date/time' },
-  PetOwnerRescheduleRequests: { title: 'Reschedule Requests', subtitle: 'Track requests' },
-  PetOwnerPrescription: { title: 'Prescription', subtitle: 'View prescription' },
-  PetOwnerVideoCall: { title: 'Video Call', subtitle: 'Join consultation' },
-  PetOwnerFavourites: { title: 'Favorite Veterinarians', subtitle: 'Your saved vets' },
-  PetOwnerMyPets: { title: 'My Pets', subtitle: 'Manage your pets' },
-  PetOwnerAddPet: { title: 'Add Pet', subtitle: 'Register a new pet' },
-  PetOwnerEditPet: { title: 'Edit Pet', subtitle: 'Update pet details' },
-  PetOwnerMedicalRecords: { title: 'Pet Medical Records', subtitle: 'Health history' },
-  PetOwnerMedicalDetails: { title: 'Pet Vitals', subtitle: 'Vitals & weight' },
-  PetOwnerWeightRecords: { title: 'Weight Records', subtitle: 'Weight history' },
-  PetOwnerWallet: { title: 'Wallet', subtitle: 'Balance & top-up' },
-  PetOwnerInvoices: { title: 'Veterinary Invoices', subtitle: 'Transaction history' },
-  PetOwnerInvoiceView: { title: 'Invoice', subtitle: 'Transaction details' },
-  PetOwnerOrderHistory: { title: 'Pet Supply Orders', subtitle: 'Order history' },
-  PetOwnerOrderDetails: { title: 'Order Details', subtitle: 'Order info' },
-  PetOwnerDocuments: { title: 'Pet Documents', subtitle: 'Downloads & receipts' },
-  PetOwnerNotifications: { title: 'Notifications', subtitle: 'Alerts & updates' },
-  PetOwnerChatDetail: { title: 'Chat', subtitle: 'Conversation' },
-  PetOwnerClinicMap: { title: 'Nearby Clinics', subtitle: 'Find clinics' },
-  PetOwnerClinicNavigation: { title: 'Clinic Navigation', subtitle: 'Directions' },
-  PetOwnerProfileSettings: { title: 'Account Settings', subtitle: 'Edit profile' },
-  PetOwnerChangePassword: { title: 'Change Password', subtitle: 'Update password' },
-  PetOwnerSearch: { title: 'Find Veterinarian', subtitle: 'Search' },
-  PetOwnerVetProfile: { title: 'Veterinarian', subtitle: 'Profile & book' },
-  PetOwnerBooking: { title: 'Book Appointment', subtitle: 'Select date & time' },
-  PetOwnerBookingCheckout: { title: 'Confirm Booking', subtitle: 'Review & pay' },
-  PetOwnerBookingSuccess: { title: 'Booked', subtitle: 'Appointment confirmed' },
-  PetOwnerCart: { title: 'Cart', subtitle: 'Pet supplies' },
-  PetOwnerCheckout: { title: 'Checkout', subtitle: 'Review & pay' },
-  PetOwnerPaymentSuccess: { title: 'Payment Success', subtitle: 'Order confirmed' },
-};
-
 function PetOwnerStackHeader({ navigation, route }: { navigation: any; route: { name: string; params?: any } }) {
-  const config = SCREEN_TITLES[route.name] || { title: route.name, subtitle: '' };
+  const rightActionCtx = useVetHeaderRightAction();
+  const { t } = useTranslation();
+  const title = route.params?.title ?? t(`petOwnerStack.${route.name}.title`, { defaultValue: route.name });
+  const subtitle = route.params?.subtitle ?? t(`petOwnerStack.${route.name}.subtitle`, { defaultValue: '' });
   return (
     <VetHeader
-      title={route.params?.title ?? config.title}
-      subtitle={route.params?.subtitle ?? config.subtitle}
+      title={title}
+      subtitle={subtitle}
       onBack={() => navigation.goBack()}
       avatarUri={route.params?.peerImageUri ?? undefined}
+      rightAction={rightActionCtx?.rightAction ?? undefined}
     />
   );
 }
 
 export function PetOwnerStackNavigator() {
   return (
-    <Stack.Navigator
-      screenOptions={({ navigation, route }) => ({
-        header: () => <PetOwnerStackHeader navigation={navigation} route={route} />,
-        animation: 'slide_from_right',
-      })}
-    >
-      <Stack.Screen name="PetOwnerTabs" component={PetOwnerTabNavigator} options={{ headerShown: false }} />
-      <Stack.Screen name="PetOwnerAppointmentDetails" component={PetOwnerAppointmentDetailScreen} />
-      <Stack.Screen name="PetOwnerRequestReschedule" component={PetOwnerRequestRescheduleScreen} />
-      <Stack.Screen name="PetOwnerRescheduleRequests" component={PetOwnerRescheduleRequestsScreen} />
-      <Stack.Screen name="PetOwnerPrescription" component={PetOwnerPrescriptionScreen} />
-      <Stack.Screen name="PetOwnerVideoCall" component={PetOwnerVideoCallScreen} />
-      <Stack.Screen name="PetOwnerFavourites" component={PetOwnerFavouritesScreen} />
-      <Stack.Screen name="PetOwnerMyPets" component={PetOwnerMyPetsScreen} />
-      <Stack.Screen name="PetOwnerAddPet" component={PetOwnerAddPetScreen} />
-      <Stack.Screen name="PetOwnerEditPet" component={PetOwnerEditPetScreen} />
-      <Stack.Screen name="PetOwnerMedicalRecords" component={PetOwnerMedicalRecordsScreen} />
-      <Stack.Screen name="PetOwnerMedicalDetails" component={PetOwnerMedicalDetailsScreen} />
-      <Stack.Screen name="PetOwnerWeightRecords" component={PetOwnerWeightRecordsScreen} />
-      <Stack.Screen name="PetOwnerWallet" component={PetOwnerWalletScreen} />
-      <Stack.Screen name="PetOwnerInvoices" component={PetOwnerInvoicesScreen} />
-      <Stack.Screen name="PetOwnerInvoiceView" component={PetOwnerInvoiceViewScreen} />
-      <Stack.Screen name="PetOwnerOrderHistory" component={PetOwnerOrderHistoryScreen} />
-      <Stack.Screen name="PetOwnerOrderDetails" component={PetOwnerOrderDetailsScreen} />
-      <Stack.Screen name="PetOwnerDocuments" component={PetOwnerDocumentsScreen} />
-      <Stack.Screen name="PetOwnerNotifications" component={PetOwnerNotificationsScreen} />
-      <Stack.Screen name="PetOwnerChatDetail" component={PetOwnerChatDetailScreen} />
-      <Stack.Screen name="PetOwnerClinicMap" component={PetOwnerClinicMapScreen} />
-      <Stack.Screen name="PetOwnerClinicNavigation" component={PetOwnerClinicNavigationScreen} />
-      <Stack.Screen name="PetOwnerProfileSettings" component={PetOwnerProfileSettingsScreen} />
-      <Stack.Screen name="PetOwnerChangePassword" component={PetOwnerChangePasswordScreen} />
-      <Stack.Screen name="PetOwnerSearch" component={PetOwnerSearchScreen} />
-      <Stack.Screen name="PetOwnerVetProfile" component={PetOwnerVetProfileScreenReal} />
-      <Stack.Screen name="PetOwnerBooking" component={PetOwnerBookingScreenReal} />
-      <Stack.Screen name="PetOwnerBookingCheckout" component={PetOwnerBookingCheckoutScreen} />
-      <Stack.Screen name="PetOwnerBookingSuccess" component={PetOwnerBookingSuccessScreen} />
-      <Stack.Screen name="PetOwnerCart" component={PetOwnerCartScreen} />
-      <Stack.Screen name="PetOwnerCheckout" component={PetOwnerCheckoutScreen} />
-      <Stack.Screen name="PetOwnerPaymentSuccess" component={PetOwnerPaymentSuccessScreen} />
-    </Stack.Navigator>
+    <VetHeaderRightActionProvider>
+      <Stack.Navigator
+        screenOptions={({ navigation, route }) => ({
+          header: route.name === 'PetOwnerVideoCall' ? undefined : () => <PetOwnerStackHeader navigation={navigation} route={route} />,
+          headerShown: route.name === 'PetOwnerVideoCall' ? false : true,
+          animation: 'slide_from_right',
+        })}
+      >
+        <Stack.Screen name="PetOwnerTabs" component={PetOwnerTabNavigator} options={{ headerShown: false }} />
+        <Stack.Screen name="PetOwnerAppointmentDetails" component={PetOwnerAppointmentDetailScreen} />
+        <Stack.Screen name="PetOwnerRequestReschedule" component={PetOwnerRequestRescheduleScreen} />
+        <Stack.Screen name="PetOwnerRescheduleRequests" component={PetOwnerRescheduleRequestsScreen} />
+        <Stack.Screen name="PetOwnerPrescription" component={PetOwnerPrescriptionScreen} />
+        <Stack.Screen name="PetOwnerVideoCall" component={PetOwnerVideoCallScreen} />
+        <Stack.Screen name="PetOwnerFavourites" component={PetOwnerFavouritesScreen} />
+        <Stack.Screen name="PetOwnerMyPets" component={PetOwnerMyPetsScreen} />
+        <Stack.Screen name="PetOwnerAddPet" component={PetOwnerAddPetScreen} />
+        <Stack.Screen name="PetOwnerEditPet" component={PetOwnerEditPetScreen} />
+        <Stack.Screen name="PetOwnerMedicalRecords" component={PetOwnerMedicalRecordsScreen} />
+        <Stack.Screen name="PetOwnerMedicalDetails" component={PetOwnerMedicalDetailsScreen} />
+        <Stack.Screen name="PetOwnerWeightRecords" component={PetOwnerWeightRecordsScreen} />
+        <Stack.Screen name="PetOwnerWallet" component={PetOwnerWalletScreen} />
+        <Stack.Screen name="PetOwnerInvoices" component={PetOwnerInvoicesScreen} />
+        <Stack.Screen name="PetOwnerInvoiceView" component={PetOwnerInvoiceViewScreen} />
+        <Stack.Screen name="PetOwnerOrderHistory" component={PetOwnerOrderHistoryScreen} />
+        <Stack.Screen name="PetOwnerOrderDetails" component={PetOwnerOrderDetailsScreen} />
+        <Stack.Screen name="PetOwnerDocuments" component={PetOwnerDocumentsScreen} />
+        <Stack.Screen name="PetOwnerNotifications" component={PetOwnerNotificationsScreen} />
+        <Stack.Screen name="PetOwnerChatDetail" component={PetOwnerChatDetailScreen} />
+        <Stack.Screen name="PetOwnerClinicMap" component={PetOwnerClinicMapScreen} />
+        <Stack.Screen name="PetOwnerClinicNavigation" component={PetOwnerClinicNavigationScreen} />
+        <Stack.Screen name="PetOwnerProfileSettings" component={PetOwnerProfileSettingsScreen} />
+        <Stack.Screen name="PetOwnerChangePassword" component={PetOwnerChangePasswordScreen} />
+        <Stack.Screen name="Language" component={LanguageScreen} />
+        <Stack.Screen name="PetOwnerSearch" component={PetOwnerSearchScreen} />
+        <Stack.Screen name="PetOwnerVetProfile" component={PetOwnerVetProfileScreenReal} />
+        <Stack.Screen name="PetOwnerBooking" component={PetOwnerBookingScreenReal} />
+        <Stack.Screen name="PetOwnerBookingCheckout" component={PetOwnerBookingCheckoutScreen} />
+        <Stack.Screen name="PetOwnerBookingSuccess" component={PetOwnerBookingSuccessScreen} />
+        <Stack.Screen name="PetOwnerCart" component={PetOwnerCartScreen} />
+        <Stack.Screen name="PetOwnerCheckout" component={PetOwnerCheckoutScreen} />
+        <Stack.Screen name="PetOwnerPaymentSuccess" component={PetOwnerPaymentSuccessScreen} />
+      </Stack.Navigator>
+    </VetHeaderRightActionProvider>
   );
 }

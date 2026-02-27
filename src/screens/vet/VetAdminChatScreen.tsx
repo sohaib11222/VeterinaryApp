@@ -25,7 +25,9 @@ import { API_BASE_URL } from '../../config/api';
 import { useMessages } from '../../queries/chatQueries';
 import { useGetOrCreateConversation, useSendMessage, useMarkConversationRead } from '../../mutations/chatMutations';
 import { useUploadChatFile } from '../../mutations/uploadMutations';
+import { copyToCacheUri, deleteCacheFiles, getExtensionFromMime } from '../../utils/fileUpload';
 import Toast from 'react-native-toast-message';
+import { useTranslation } from 'react-i18next';
 
 type Message = {
   _id: string;
@@ -49,14 +51,14 @@ function getMessageAttachments(m: Message): { url: string; name: string; type?: 
     const base = API_BASE_URL.replace(/\/api\/?$/, '');
     return m.attachments.map((a) => ({
       url: a?.url?.startsWith('http') ? a.url : `${base}${a?.url?.startsWith('/') ? '' : '/'}${a?.url ?? ''}`,
-      name: a?.name ?? 'File',
+      name: a?.name ?? '',
       type: a?.type,
       mimeType: a?.mimeType,
     }));
   }
   if (m?.fileUrl) {
     const url = getImageUrl(m.fileUrl) ?? `${API_BASE_URL.replace(/\/api\/?$/, '')}${m.fileUrl.startsWith('/') ? '' : '/'}${m.fileUrl}`;
-    return [{ url, name: m?.fileName ?? 'File', type: 'file', mimeType: undefined }];
+    return [{ url, name: m?.fileName ?? '', type: 'file', mimeType: undefined }];
   }
   return [];
 }
@@ -72,6 +74,7 @@ function isImageAttachment(att: { type?: string; mimeType?: string; url?: string
 }
 
 export function VetAdminChatScreen() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const currentUserId = (user as { id?: string })?.id ?? (user as { _id?: string })?._id ?? '';
 
@@ -79,6 +82,8 @@ export function VetAdminChatScreen() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [adminId, setAdminId] = useState<string | null>(null);
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null);
+  const [pendingAttachment, setPendingAttachment] = useState<{ uri: string; name: string; type: string } | null>(null);
+  const [pendingTempUri, setPendingTempUri] = useState<string | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const listRef = useRef<FlatList>(null);
   const lastMarkedReadRef = useRef<string | null>(null);
@@ -116,7 +121,7 @@ export function VetAdminChatScreen() {
           if (a) setAdminId(String(typeof a === 'object' ? a._id : a));
         },
         onError: (err) => {
-          Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? 'Failed to open admin chat' });
+          Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? t('vetAdminChat.errors.failedToOpen') });
         },
       }
     );
@@ -140,8 +145,39 @@ export function VetAdminChatScreen() {
 
   const handleSend = async () => {
     const text = (message ?? '').trim();
-    if (!text || !conversationId || !currentUserId || !adminId) return;
+    if ((!text && !pendingAttachment) || !conversationId || !currentUserId || !adminId) return;
     try {
+      if (pendingAttachment) {
+        const tempUris: string[] = [];
+        try {
+          if (pendingTempUri) tempUris.push(pendingTempUri);
+          const res = await uploadChatFile.mutateAsync(pendingAttachment);
+          const data = res as { data?: { url?: string } };
+          const url = data?.data?.url;
+          if (!url) {
+            Toast.show({ type: 'error', text1: t('vetAdminChat.errors.uploadFailed') });
+            return;
+          }
+          await sendMessage.mutateAsync({
+            conversationId,
+            veterinarianId: currentUserId,
+            adminId,
+            fileUrl: url,
+            fileName: pendingAttachment.name ?? 'File',
+            type: 'FILE',
+            message: text || undefined,
+          });
+          setMessage('');
+          setPendingAttachment(null);
+          setPendingTempUri(null);
+        } finally {
+          if (tempUris.length > 0) {
+            await deleteCacheFiles(tempUris).catch(() => {});
+          }
+        }
+        return;
+      }
+
       await sendMessage.mutateAsync({
         conversationId,
         veterinarianId: currentUserId,
@@ -151,7 +187,7 @@ export function VetAdminChatScreen() {
       });
       setMessage('');
     } catch (err) {
-      Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? 'Failed to send' });
+      Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? t('vetAdminChat.errors.failedToSend') });
     }
   };
 
@@ -161,36 +197,25 @@ export function VetAdminChatScreen() {
       const result = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
       if (result.canceled) return;
       const file = result.assets[0];
-      const formData = new FormData();
-      formData.append('file', {
-        uri: file.uri,
-        name: file.name ?? 'file',
-        type: file.mimeType ?? 'application/octet-stream',
-      } as any);
-      const res = await uploadChatFile.mutateAsync(formData);
-      const data = res as { data?: { url?: string } };
-      const url = data?.data?.url;
-      if (!url) {
-        Toast.show({ type: 'error', text1: 'Upload failed' });
-        return;
+
+      if (pendingTempUri) {
+        await deleteCacheFiles([pendingTempUri]).catch(() => {});
       }
-      await sendMessage.mutateAsync({
-        conversationId,
-        veterinarianId: currentUserId,
-        adminId,
-        fileUrl: url,
-        fileName: file.name ?? 'File',
-        type: 'FILE',
-        message: (message ?? '').trim() || undefined,
-      });
-      setMessage('');
+
+      const mime = file.mimeType ?? 'application/octet-stream';
+      const name = file.name ?? 'file';
+      const ext = getExtensionFromMime(mime);
+      const uri = await copyToCacheUri(file.uri, 0, ext);
+
+      setPendingAttachment({ uri, name, type: mime });
+      setPendingTempUri(uri);
     } catch (err) {
-      Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? 'Failed to send file' });
+      Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? t('vetAdminChat.errors.failedToSendFile') });
     }
   };
 
   const openFileUrl = (url: string) => {
-    Linking.openURL(url).catch(() => Toast.show({ type: 'error', text1: 'Could not open file' }));
+    Linking.openURL(url).catch(() => Toast.show({ type: 'error', text1: t('vetAdminChat.errors.couldNotOpenFile') }));
   };
 
   const isMe = (m: Message) => {
@@ -202,7 +227,7 @@ export function VetAdminChatScreen() {
   if (!currentUserId) {
     return (
       <ScreenContainer padded>
-        <Text style={styles.errorText}>Please sign in</Text>
+        <Text style={styles.errorText}>{t('vetAdminChat.errors.signInRequired')}</Text>
       </ScreenContainer>
     );
   }
@@ -211,11 +236,17 @@ export function VetAdminChatScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenContainer style={[styles.screenWrap, keyboardHeight > 0 && { paddingBottom: keyboardHeight }]} padded={false}>
+      <ScreenContainer
+        style={{
+          ...styles.screenWrap,
+          ...(keyboardHeight > 0 ? { paddingBottom: keyboardHeight } : {}),
+        }}
+        padded={false}
+      >
           {!conversationId && getOrCreate.isPending ? (
             <View style={styles.centered}>
               <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={styles.loadingText}>Opening admin chat...</Text>
+              <Text style={styles.loadingText}>{t('vetAdminChat.loading')}</Text>
             </View>
           ) : loading && messages.length === 0 ? (
             <View style={styles.centered}>
@@ -229,7 +260,7 @@ export function VetAdminChatScreen() {
               contentContainerStyle={styles.messagesList}
               ListEmptyComponent={
                 <View style={styles.empty}>
-                  <Text style={styles.emptyText}>No messages yet. Say hello to support.</Text>
+                  <Text style={styles.emptyText}>{t('vetAdminChat.empty')}</Text>
                 </View>
               }
               renderItem={({ item }) => {
@@ -264,7 +295,7 @@ export function VetAdminChatScreen() {
                                 onPress={() => openFileUrl(att.url)}
                               >
                                 <Text style={[styles.fileAttachmentName, me && { color: colors.textInverse }]} numberOfLines={1}>
-                                  {att.name}
+                                  {att.name || t('common.file')}
                                 </Text>
                                 <Text style={styles.fileAttachmentIcon}>📥</Text>
                               </TouchableOpacity>
@@ -282,6 +313,24 @@ export function VetAdminChatScreen() {
               }}
             />
           )}
+          {pendingAttachment ? (
+            <View style={styles.pendingAttachmentRow}>
+              <Text style={styles.pendingAttachmentText} numberOfLines={1}>
+                {pendingAttachment.name}
+              </Text>
+              <TouchableOpacity
+                onPress={async () => {
+                  if (pendingTempUri) {
+                    await deleteCacheFiles([pendingTempUri]).catch(() => {});
+                  }
+                  setPendingAttachment(null);
+                  setPendingTempUri(null);
+                }}
+              >
+                <Text style={styles.pendingAttachmentRemove}>×</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
           <View style={styles.inputRow}>
             <TouchableOpacity
               style={styles.attachBtn}
@@ -292,7 +341,7 @@ export function VetAdminChatScreen() {
             </TouchableOpacity>
             <TextInput
               style={styles.input}
-              placeholder="Message support..."
+              placeholder={t('vetAdminChat.placeholders.message')}
               placeholderTextColor={colors.textLight}
               value={message}
               onChangeText={setMessage}
@@ -303,9 +352,9 @@ export function VetAdminChatScreen() {
             <TouchableOpacity
               style={[styles.sendBtn, (sendMessage.isPending || !adminId) && styles.sendBtnDisabled]}
               onPress={handleSend}
-              disabled={sendMessage.isPending || !adminId || !(message ?? '').trim()}
+              disabled={sendMessage.isPending || !adminId || (!(message ?? '').trim() && !pendingAttachment)}
             >
-              <Text style={styles.sendText}>Send</Text>
+              <Text style={styles.sendText}>{t('common.send')}</Text>
             </TouchableOpacity>
           </View>
       </ScreenContainer>
@@ -340,25 +389,28 @@ const styles = StyleSheet.create({
   bubbleBgMe: { backgroundColor: colors.primary, borderBottomRightRadius: 4 },
   bubbleBgThem: { backgroundColor: colors.backgroundTertiary, borderBottomLeftRadius: 4 },
   bubbleText: { ...typography.body },
-  bubbleTime: { ...typography.caption, color: colors.textLight, marginTop: 4 },
+  bubbleTime: { ...typography.caption, color: colors.textLight, marginTop: 6, textAlign: 'right' },
   attachmentsWrap: { marginTop: 4, gap: 6 },
   attachmentImageWrap: { borderRadius: 8, overflow: 'hidden', maxWidth: 220, maxHeight: 180 },
   attachmentImage: { width: 220, height: 180 },
   fileAttachment: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 8, backgroundColor: 'rgba(0,0,0,0.06)', borderRadius: 8, marginTop: 4 },
   fileAttachmentName: { flex: 1, ...typography.bodySmall },
   fileAttachmentIcon: { fontSize: 18, marginLeft: 8 },
-  inputRow: {
+  pendingAttachmentRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingVertical: spacing.sm,
+    alignItems: 'center',
     paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
-    gap: spacing.sm,
+    borderTopColor: colors.borderLight,
     backgroundColor: colors.background,
+    gap: spacing.sm,
   },
-  attachBtn: { padding: spacing.sm, justifyContent: 'center' },
-  attachIcon: { fontSize: 20 },
+  pendingAttachmentText: { ...typography.bodySmall, flex: 1, color: colors.textSecondary },
+  pendingAttachmentRemove: { ...typography.h3, color: colors.error, paddingHorizontal: 8 },
+  inputRow: { flexDirection: 'row', alignItems: 'flex-end', padding: spacing.md, borderTopWidth: 1, borderTopColor: colors.borderLight, backgroundColor: colors.background },
+  attachBtn: { padding: 10, marginRight: spacing.sm },
+  attachIcon: { fontSize: 18 },
   input: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 24, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, maxHeight: 100, ...typography.body },
   sendBtn: { backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: 24, justifyContent: 'center' },
   sendBtnDisabled: { opacity: 0.6 },

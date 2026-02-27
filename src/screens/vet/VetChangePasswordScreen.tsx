@@ -9,8 +9,10 @@ import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import Toast from 'react-native-toast-message';
+import { useTranslation } from 'react-i18next';
 
 export function VetChangePasswordScreen() {
+  const { t } = useTranslation();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -22,24 +24,24 @@ export function VetChangePasswordScreen() {
     const newP = (newPassword || '').trim();
     const confirm = (confirmPassword || '').trim();
     if (!current) {
-      Toast.show({ type: 'error', text1: 'Enter your current password' });
+      Toast.show({ type: 'error', text1: t('vetChangePassword.errors.currentRequired') });
       return;
     }
     if (!newP) {
-      Toast.show({ type: 'error', text1: 'Enter a new password' });
+      Toast.show({ type: 'error', text1: t('vetChangePassword.errors.newRequired') });
       return;
     }
     if (newP.length < 6) {
-      Toast.show({ type: 'error', text1: 'New password must be at least 6 characters' });
+      Toast.show({ type: 'error', text1: t('vetChangePassword.errors.minLength', { count: 6 }) });
       return;
     }
     if (newP !== confirm) {
-      Toast.show({ type: 'error', text1: 'New password and confirm password do not match' });
+      Toast.show({ type: 'error', text1: t('vetChangePassword.errors.mismatch') });
       return;
     }
     try {
       await changePassword.mutateAsync({ oldPassword: current, newPassword: newP });
-      Toast.show({ type: 'success', text1: 'Password updated successfully' });
+      Toast.show({ type: 'success', text1: t('vetChangePassword.toasts.updated') });
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -48,7 +50,7 @@ export function VetChangePasswordScreen() {
         type: 'error',
         text1: (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message
           ?? (err as { message?: string })?.message
-          ?? 'Failed to update password',
+          ?? t('vetChangePassword.errors.updateFailedGeneric'),
       });
     }
   };
@@ -56,34 +58,34 @@ export function VetChangePasswordScreen() {
   return (
     <ScreenContainer scroll padded>
       <Card>
-        <Text style={styles.sectionTitle}>Change Password</Text>
-        <Text style={styles.hint}>Enter your current password and choose a new password.</Text>
+        <Text style={styles.sectionTitle}>{t('vetChangePassword.title')}</Text>
+        <Text style={styles.hint}>{t('vetChangePassword.subtitle')}</Text>
         <Input
-          label="Current password *"
-          placeholder="Enter current password"
+          label={t('vetChangePassword.fields.currentPassword')}
+          placeholder={t('vetChangePassword.placeholders.currentPassword')}
           value={currentPassword}
           onChangeText={setCurrentPassword}
           secureTextEntry
           autoCapitalize="none"
         />
         <Input
-          label="New password *"
-          placeholder="Enter new password (min 6 characters)"
+          label={t('vetChangePassword.fields.newPassword')}
+          placeholder={t('vetChangePassword.placeholders.newPassword', { count: 6 })}
           value={newPassword}
           onChangeText={setNewPassword}
           secureTextEntry
           autoCapitalize="none"
         />
         <Input
-          label="Confirm new password *"
-          placeholder="Confirm new password"
+          label={t('vetChangePassword.fields.confirmNewPassword')}
+          placeholder={t('vetChangePassword.placeholders.confirmNewPassword')}
           value={confirmPassword}
           onChangeText={setConfirmPassword}
           secureTextEntry
           autoCapitalize="none"
         />
         <Button
-          title={changePassword.isPending ? 'Updating...' : 'Save changes'}
+          title={changePassword.isPending ? t('vetChangePassword.actions.updating') : t('common.saveChanges')}
           onPress={handleSubmit}
           disabled={changePassword.isPending}
         />

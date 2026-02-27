@@ -12,6 +12,7 @@ import { typography } from '../../../theme/typography';
 import { usePetStore } from '../../../queries/petStoreQueries';
 import { useProducts } from '../../../queries/productQueries';
 import { getImageUrl } from '../../../config/api';
+import { useTranslation } from 'react-i18next';
 
 type Route = RouteProp<PetOwnerPharmacyStackParamList, 'PharmacyDetails'>;
 type Nav = NativeStackNavigationProp<PetOwnerPharmacyStackParamList>;
@@ -28,6 +29,7 @@ export function PharmacyDetailsScreen() {
   const route = useRoute<Route>();
   const { pharmacyId } = route.params;
   const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const { t } = useTranslation();
 
   const { data: storeRes, isLoading: storeLoading } = usePetStore(pharmacyId);
   const store = (storeRes?.data ?? (storeRes as { data?: Record<string, unknown> } | undefined)?.data) as Record<string, unknown> | undefined;
@@ -40,19 +42,19 @@ export function PharmacyDetailsScreen() {
     sellerId: sellerId ?? undefined,
     limit: 6,
   });
-  const productsPayload = productsRes?.data ?? (productsRes as { data?: { products?: unknown[] } } | undefined);
-  const products = Array.isArray(productsPayload?.products) ? productsPayload.products : [];
+  const productsPayload: any = (productsRes as any)?.data ?? productsRes ?? {};
+  const products = Array.isArray(productsPayload?.products) ? productsPayload.products : (Array.isArray(productsPayload?.data?.products) ? productsPayload.data.products : []);
 
-  const storeName = (store?.name as string) ?? 'Pharmacy';
-  const storeKind = (store?.kind as string) ?? 'Pharmacy';
+  const storeName = (store?.name as string) ?? t('petOwnerPharmacyDetails.defaults.pharmacy');
+  const storeKind = (store?.kind as string) ?? t('petOwnerPharmacyDetails.defaults.pharmacy');
   const storePhone = (store?.phone as string) ?? '';
   const storeAddress = formatAddress(store?.address as Parameters<typeof formatAddress>[0]);
   const logoUri = getImageUrl((store?.logo as string) ?? undefined);
 
   const tabs: { id: TabId; label: string }[] = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'locations', label: 'Locations' },
-    { id: 'products', label: 'Products' },
+    { id: 'overview', label: t('petOwnerPharmacyDetails.tabs.overview') },
+    { id: 'locations', label: t('petOwnerPharmacyDetails.tabs.locations') },
+    { id: 'products', label: t('petOwnerPharmacyDetails.tabs.products') },
   ];
 
   const handleCall = () => {
@@ -65,7 +67,7 @@ export function PharmacyDetailsScreen() {
         {storeLoading ? (
           <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: spacing.xxl }} />
         ) : (
-          <Text style={styles.errorText}>Pharmacy not found.</Text>
+          <Text style={styles.errorText}>{t('petOwnerPharmacyDetails.errors.notFound')}</Text>
         )}
       </ScreenContainer>
     );
@@ -90,12 +92,12 @@ export function PharmacyDetailsScreen() {
           </View>
           <View style={styles.actions}>
             <Button
-              title="Browse Products"
+              title={t('petOwnerPharmacyDetails.actions.browseProducts')}
               onPress={() => navigation.navigate('ProductCatalog', { sellerId, pharmacyId })}
             />
             {storePhone ? (
               <TouchableOpacity style={styles.callBtn} onPress={handleCall}>
-                <Text style={styles.callBtnText}>Call Now</Text>
+                <Text style={styles.callBtnText}>{t('petOwnerPharmacyDetails.actions.callNow')}</Text>
               </TouchableOpacity>
             ) : null}
           </View>
@@ -117,18 +119,18 @@ export function PharmacyDetailsScreen() {
 
         {activeTab === 'overview' && (
           <View style={styles.tabContent}>
-            <Text style={styles.widgetTitle}>About Pharmacy</Text>
+            <Text style={styles.widgetTitle}>{t('petOwnerPharmacyDetails.overview.aboutTitle')}</Text>
             <Text style={styles.aboutText}>
-              {storeName} provides quality pet healthcare products and services.
-              {storeAddress ? ` Located at ${storeAddress}.` : ''}
+              {t('petOwnerPharmacyDetails.overview.aboutBody', { storeName })}
+              {storeAddress ? t('petOwnerPharmacyDetails.overview.locatedAtSuffix', { storeAddress }) : ''}
             </Text>
           </View>
         )}
 
         {activeTab === 'locations' && (
           <View style={styles.tabContent}>
-            <Text style={styles.widgetTitle}>Location Details</Text>
-            <Text style={styles.aboutText}>{storeAddress || 'No address provided.'}</Text>
+            <Text style={styles.widgetTitle}>{t('petOwnerPharmacyDetails.locations.title')}</Text>
+            <Text style={styles.aboutText}>{storeAddress || t('common.na')}</Text>
           </View>
         )}
 
@@ -141,7 +143,7 @@ export function PharmacyDetailsScreen() {
                 <View style={styles.productsGrid}>
                   {products.map((p: Record<string, unknown>) => {
                     const id = String(p._id ?? p.id ?? '');
-                    const name = (p.name as string) ?? 'Product';
+                    const name = (p.name as string) ?? t('petOwnerPharmacyDetails.defaults.product');
                     const price = Number(p.discountPrice ?? p.price ?? 0);
                     const images = p.images as string[] | undefined;
                     const imgUri = getImageUrl(Array.isArray(images) && images[0] ? images[0] : undefined);
@@ -166,7 +168,7 @@ export function PharmacyDetailsScreen() {
                   style={styles.viewAllBtn}
                   onPress={() => navigation.navigate('ProductCatalog', { sellerId, pharmacyId })}
                 >
-                  <Text style={styles.viewAllBtnText}>View All Products</Text>
+                  <Text style={styles.viewAllBtnText}>{t('petOwnerPharmacyDetails.actions.viewAllProducts')}</Text>
                 </TouchableOpacity>
               </>
             )}

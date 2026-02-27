@@ -37,6 +37,15 @@ function buildHttpError(status: number, responseText: string) {
   return Object.assign(new Error(msg), { response: { status, data: parsed ?? { message: msg } } });
 }
 
+function buildNetworkError(url: string) {
+  const msg = `${NETWORK_ERROR_MESSAGE} (API_BASE_URL: ${API_BASE_URL}, URL: ${url})`;
+  if (__DEV__) {
+    // eslint-disable-next-line no-console
+    console.log('[upload] network error', { apiBaseUrl: API_BASE_URL, url });
+  }
+  return new Error(msg);
+}
+
 /**
  * Upload veterinarian documents (multiple files under field name 'veterinarianDocs').
  */
@@ -65,7 +74,7 @@ export function uploadVeterinarianDocs(files: FileForUpload[]): Promise<{ succes
         }
       };
 
-      xhr.onerror = () => reject(new Error(NETWORK_ERROR_MESSAGE));
+      xhr.onerror = () => reject(buildNetworkError(url));
       xhr.ontimeout = () => reject(new Error('Upload timeout'));
 
       const formData = new FormData();
@@ -102,7 +111,7 @@ export function uploadChatFile(file: FileForUpload): Promise<{ success: boolean;
         }
       };
 
-      xhr.onerror = () => reject(new Error(NETWORK_ERROR_MESSAGE));
+      xhr.onerror = () => reject(buildNetworkError(url));
       xhr.ontimeout = () => reject(new Error('Upload timeout'));
 
       const formData = new FormData();
@@ -132,7 +141,7 @@ export function uploadProfileImage(file: FileForUpload): Promise<{ success: bool
         }
       };
 
-      xhr.onerror = () => reject(new Error(NETWORK_ERROR_MESSAGE));
+      xhr.onerror = () => reject(buildNetworkError(url));
       xhr.ontimeout = () => reject(new Error('Upload timeout'));
 
       const formData = new FormData();
@@ -162,7 +171,7 @@ export function uploadPetImages(files: FileForUpload[]): Promise<{ success: bool
         }
       };
 
-      xhr.onerror = () => reject(new Error(NETWORK_ERROR_MESSAGE));
+      xhr.onerror = () => reject(buildNetworkError(url));
       xhr.ontimeout = () => reject(new Error('Upload timeout'));
 
       const formData = new FormData();
@@ -194,7 +203,7 @@ export function uploadMedicalRecordFiles(files: FileForUpload[]): Promise<{ succ
         }
       };
 
-      xhr.onerror = () => reject(new Error(NETWORK_ERROR_MESSAGE));
+      xhr.onerror = () => reject(buildNetworkError(url));
       xhr.ontimeout = () => reject(new Error('Upload timeout'));
 
       const formData = new FormData();
@@ -237,7 +246,7 @@ export function uploadPetStoreDoc(
         }
       };
 
-      xhr.onerror = () => reject(new Error(NETWORK_ERROR_MESSAGE));
+      xhr.onerror = () => reject(buildNetworkError(url));
       xhr.ontimeout = () => reject(new Error('Upload timeout'));
 
       const formData = new FormData();
@@ -276,7 +285,7 @@ export function uploadPetStoreLogo(file: FileForUpload): Promise<{ success: bool
           reject(buildHttpError(xhr.status, xhr.responseText));
         }
       };
-      xhr.onerror = () => reject(new Error(NETWORK_ERROR_MESSAGE));
+      xhr.onerror = () => reject(buildNetworkError(url));
       xhr.ontimeout = () => reject(new Error('Upload timeout'));
       const formData = new FormData();
       formData.append('file', { uri: file.uri, type: file.type, name: file.name } as any);
@@ -313,7 +322,7 @@ export function uploadProductImages(files: FileForUpload[]): Promise<{ success: 
         }
       };
 
-      xhr.onerror = () => reject(new Error(NETWORK_ERROR_MESSAGE));
+      xhr.onerror = () => reject(buildNetworkError(url));
       xhr.ontimeout = () => reject(new Error('Upload timeout'));
 
       const formData = new FormData();

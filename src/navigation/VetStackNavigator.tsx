@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { VetStackParamList } from './types';
 import { VetTabNavigator } from './VetTabNavigator';
 import { VetHeader } from '../components/common/VetHeader';
+import { useTranslation } from 'react-i18next';
 
 // Detail screens – we'll add them as we build
 import { VetAppointmentDetailScreen } from '../screens/vet/VetAppointmentDetailScreen';
@@ -37,43 +38,9 @@ import { VetChangePasswordScreen } from '../screens/vet/VetChangePasswordScreen'
 import { VetPrescriptionScreen } from '../screens/vet/VetPrescriptionScreen';
 import { VetAddWeightRecordScreen } from '../screens/vet/VetAddWeightRecordScreen';
 import { VetAddVaccinationsScreen } from '../screens/vet/VetAddVaccinationsScreen';
+import { LanguageScreen } from '../screens/shared/LanguageScreen';
 
 const Stack = createNativeStackNavigator<VetStackParamList>();
-
-const SCREEN_TITLES: Record<string, { title: string; subtitle?: string }> = {
-  VetAppointmentDetails: { title: 'Appointment Details', subtitle: 'Pet appointment' },
-  VetStartAppointment: { title: 'Video Session', subtitle: 'Start consultation' },
-  VetPetRequests: { title: 'Pet Requests', subtitle: 'Manage appointment requests' },
-  VetClinicHours: { title: 'Clinic Hours', subtitle: 'Available timings' },
-  VetMyPets: { title: 'My Pets', subtitle: 'Patients & owners' },
-  VetVaccinations: { title: 'Vaccinations', subtitle: 'Vaccination records' },
-  VetReviews: { title: 'Pet Owner Reviews', subtitle: 'Reviews & ratings' },
-  VetInvoices: { title: 'Invoices', subtitle: 'Transaction history' },
-  VetInvoiceView: { title: 'Invoice', subtitle: 'Transaction details' },
-  VetPaymentSettings: { title: 'Payment Settings', subtitle: 'Payout & bank info' },
-  VetRescheduleRequests: { title: 'Reschedule Requests', subtitle: 'Manage requests' },
-  VetChatDetail: { title: 'Chat', subtitle: 'Conversation' },
-  VetAdminChat: { title: 'Admin Messages', subtitle: 'Support' },
-  VetNotifications: { title: 'Notifications', subtitle: 'Alerts & updates' },
-  VetBlogList: { title: 'Blog Posts', subtitle: 'Your articles' },
-  VetBlogCreate: { title: 'New Blog Post', subtitle: 'Create article' },
-  VetBlogDetail: { title: 'Blog Post', subtitle: 'Article details' },
-  VetAnnouncements: { title: 'Announcements', subtitle: 'Clinic announcements' },
-  VetSubscription: { title: 'Subscription', subtitle: 'Your plan' },
-  VetProfileSettings: { title: 'Profile Settings', subtitle: 'Edit your profile' },
-  VetSpecialities: { title: 'Specialties & Services', subtitle: 'Services you offer' },
-  VetExperienceSettings: { title: 'Experience', subtitle: 'Work history' },
-  VetEducationSettings: { title: 'Education', subtitle: 'Qualifications' },
-  VetAwardsSettings: { title: 'Awards', subtitle: 'Recognition' },
-  VetInsuranceSettings: { title: 'Insurances', subtitle: 'Accepted insurances' },
-  VetClinicsSettings: { title: 'Clinics', subtitle: 'Your clinic locations' },
-  VetBusinessSettings: { title: 'Business Hours', subtitle: 'Availability' },
-  VetSocialMedia: { title: 'Social Media', subtitle: 'Your social links' },
-  VetChangePassword: { title: 'Change Password', subtitle: 'Update password' },
-  VetPrescription: { title: 'Prescription', subtitle: 'Create or view' },
-  VetAddWeightRecord: { title: 'Add weight record', subtitle: 'Record weight & complete' },
-  VetAddVaccinations: { title: 'Add vaccinations', subtitle: 'Record vaccinations & complete' },
-};
 
 function VetStackHeader({
   navigation,
@@ -82,11 +49,13 @@ function VetStackHeader({
   navigation: any;
   route: { name: string; params?: any };
 }) {
-  const config = SCREEN_TITLES[route.name] || { title: route.name, subtitle: '' };
+  const { t } = useTranslation();
+  const title = route.params?.title ?? t(`vetStack.${route.name}.title`, { defaultValue: route.name });
+  const subtitle = route.params?.subtitle ?? t(`vetStack.${route.name}.subtitle`, { defaultValue: '' });
   return (
     <VetHeader
-      title={route.params?.title ?? config.title}
-      subtitle={route.params?.subtitle ?? config.subtitle}
+      title={title}
+      subtitle={subtitle}
       onBack={() => navigation.goBack()}
       avatarUri={route.params?.peerImageUri ?? undefined}
     />
@@ -97,7 +66,8 @@ export function VetStackNavigator() {
   return (
     <Stack.Navigator
       screenOptions={({ navigation, route }) => ({
-        header: () => <VetStackHeader navigation={navigation} route={route} />,
+        header: route.name === 'VetStartAppointment' ? undefined : () => <VetStackHeader navigation={navigation} route={route} />,
+        headerShown: route.name === 'VetStartAppointment' ? false : true,
         animation: 'slide_from_right',
       })}
     >
@@ -117,6 +87,7 @@ export function VetStackNavigator() {
       <Stack.Screen name="VetInvoiceView" component={VetInvoiceViewScreen} />
       <Stack.Screen name="VetPaymentSettings" component={VetPaymentSettingsScreen} />
       <Stack.Screen name="VetRescheduleRequests" component={VetRescheduleRequestsScreen} />
+      <Stack.Screen name="Language" component={LanguageScreen} />
       <Stack.Screen name="VetChatDetail" component={VetChatDetailScreen} />
       <Stack.Screen name="VetAdminChat" component={VetAdminChatScreen} />
       <Stack.Screen name="VetNotifications" component={VetNotificationsScreen} />

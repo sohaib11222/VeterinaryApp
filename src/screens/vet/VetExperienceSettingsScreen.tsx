@@ -9,8 +9,10 @@ import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useVeterinarianProfile } from '../../queries/veterinarianQueries';
 import { useUpdateVeterinarianProfile } from '../../mutations/veterinarianMutations';
+import { useTranslation } from 'react-i18next';
 
 export function VetExperienceSettingsScreen() {
+  const { t } = useTranslation();
   const { data: profileResponse, isLoading: profileLoading } = useVeterinarianProfile();
   const updateProfile = useUpdateVeterinarianProfile();
   const profile = profileResponse?.data;
@@ -55,10 +57,12 @@ export function VetExperienceSettingsScreen() {
       .filter((e) => e.hospital || e.designation || e.fromYear || e.toYear);
     try {
       await updateProfile.mutateAsync({ experience: cleaned });
-      Alert.alert('Success', 'Experience updated successfully.');
+      Alert.alert(t('common.success'), t('vetExperienceSettings.alerts.updated'));
     } catch (err: unknown) {
-      const message = (err as { response?: { data?: { message?: string }; message?: string }; message?: string })?.response?.data?.message ?? (err as { message?: string })?.message ?? 'Failed to update experience.';
-      Alert.alert('Error', message);
+      const message = (err as { response?: { data?: { message?: string }; message?: string }; message?: string })?.response?.data?.message
+        ?? (err as { message?: string })?.message
+        ?? t('vetExperienceSettings.errors.updateFailed');
+      Alert.alert(t('common.error'), message);
     }
   };
 
@@ -75,22 +79,22 @@ export function VetExperienceSettingsScreen() {
   return (
     <ScreenContainer scroll padded>
       <Card>
-        <Text style={styles.sectionTitle}>Experience</Text>
+        <Text style={styles.sectionTitle}>{t('vetExperienceSettings.title')}</Text>
         {experiences.map((exp, index) => (
           <View key={index} style={styles.block}>
             <View style={styles.row}>
               <View style={styles.flex1}>
                 <Input
-                  label="Hospital / Clinic"
-                  placeholder="Name"
+                  label={t('vetExperienceSettings.fields.hospitalClinic')}
+                  placeholder={t('vetExperienceSettings.placeholders.name')}
                   value={exp.hospital}
                   onChangeText={(v) => handleChange(index, 'hospital', v)}
                 />
               </View>
               <View style={styles.flex1}>
                 <Input
-                  label="Designation"
-                  placeholder="e.g. Senior Vet"
+                  label={t('vetExperienceSettings.fields.designation')}
+                  placeholder={t('vetExperienceSettings.placeholders.designationExample', { value: 'Senior Vet' })}
                   value={exp.designation}
                   onChangeText={(v) => handleChange(index, 'designation', v)}
                 />
@@ -99,8 +103,8 @@ export function VetExperienceSettingsScreen() {
             <View style={styles.row}>
               <View style={styles.flex1}>
                 <Input
-                  label="From Year"
-                  placeholder="YYYY"
+                  label={t('vetExperienceSettings.fields.fromYear')}
+                  placeholder={t('vetExperienceSettings.placeholders.year')}
                   value={exp.fromYear}
                   onChangeText={(v) => handleChange(index, 'fromYear', v)}
                   keyboardType="numeric"
@@ -108,8 +112,8 @@ export function VetExperienceSettingsScreen() {
               </View>
               <View style={styles.flex1}>
                 <Input
-                  label="To Year"
-                  placeholder="YYYY"
+                  label={t('vetExperienceSettings.fields.toYear')}
+                  placeholder={t('vetExperienceSettings.placeholders.year')}
                   value={exp.toYear}
                   onChangeText={(v) => handleChange(index, 'toYear', v)}
                   keyboardType="numeric"
@@ -117,12 +121,12 @@ export function VetExperienceSettingsScreen() {
               </View>
             </View>
             <TouchableOpacity onPress={() => removeExperience(index)}>
-              <Text style={styles.removeText}>Remove</Text>
+              <Text style={styles.removeText}>{t('common.remove')}</Text>
             </TouchableOpacity>
           </View>
         ))}
-        <Button title="+ Add Experience" onPress={addExperience} />
-        <Button title="Save Changes" onPress={handleSave} style={{ marginTop: spacing.md }} disabled={updateProfile.isPending} />
+        <Button title={t('vetExperienceSettings.actions.addExperience')} onPress={addExperience} />
+        <Button title={t('common.saveChanges')} onPress={handleSave} style={{ marginTop: spacing.md }} disabled={updateProfile.isPending} />
       </Card>
     </ScreenContainer>
   );

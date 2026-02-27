@@ -10,10 +10,12 @@ import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useAppointment } from '../../queries/appointmentQueries';
 import { usePrescriptionByAppointment } from '../../queries/prescriptionQueries';
+import { useTranslation } from 'react-i18next';
 
 type Route = RouteProp<PetOwnerStackParamList, 'PetOwnerPrescription'>;
 
 export function PetOwnerPrescriptionScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<Route>();
   const appointmentId = route.params?.appointmentId ?? null;
@@ -37,7 +39,7 @@ export function PetOwnerPrescriptionScreen() {
   if (!appointmentId) {
     return (
       <ScreenContainer padded>
-        <Text style={styles.error}>Appointment ID is required.</Text>
+        <Text style={styles.error}>{t('petOwnerPrescription.errors.appointmentIdRequired')}</Text>
       </ScreenContainer>
     );
   }
@@ -47,7 +49,7 @@ export function PetOwnerPrescriptionScreen() {
       <ScreenContainer padded>
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>{t('common.loading')}</Text>
         </View>
       </ScreenContainer>
     );
@@ -56,7 +58,7 @@ export function PetOwnerPrescriptionScreen() {
   if (!appointment) {
     return (
       <ScreenContainer padded>
-        <Text style={styles.error}>Appointment not found.</Text>
+        <Text style={styles.error}>{t('petOwnerPrescription.errors.appointmentNotFound')}</Text>
       </ScreenContainer>
     );
   }
@@ -65,9 +67,9 @@ export function PetOwnerPrescriptionScreen() {
     return (
       <ScreenContainer padded>
         <Text style={styles.warning}>
-          Prescription is available only after the appointment is completed.
+          {t('petOwnerPrescription.onlyAfterCompleted')}
         </Text>
-        <Button title="Back" variant="outline" onPress={() => navigation.goBack()} style={styles.btn} />
+        <Button title={t('common.back')} variant="outline" onPress={() => navigation.goBack()} style={styles.btn} />
       </ScreenContainer>
     );
   }
@@ -82,7 +84,7 @@ export function PetOwnerPrescriptionScreen() {
       <ScreenContainer padded>
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading prescription...</Text>
+          <Text style={styles.loadingText}>{t('petOwnerPrescription.loadingPrescription')}</Text>
         </View>
       </ScreenContainer>
     );
@@ -92,10 +94,10 @@ export function PetOwnerPrescriptionScreen() {
     return (
       <ScreenContainer padded>
         <Card>
-          <Text style={styles.title}>Prescription</Text>
-          <Text style={styles.meta}>Appointment {appointmentNumber}</Text>
-          <Text style={styles.noRx}>No prescription has been issued for this appointment yet.</Text>
-          <Button title="Back" variant="outline" onPress={() => navigation.goBack()} style={styles.btn} />
+          <Text style={styles.title}>{t('petOwnerPrescription.title')}</Text>
+          <Text style={styles.meta}>{t('petOwnerPrescription.meta.appointment', { appointmentNumber })}</Text>
+          <Text style={styles.noRx}>{t('petOwnerPrescription.noPrescriptionYet')}</Text>
+          <Button title={t('common.back')} variant="outline" onPress={() => navigation.goBack()} style={styles.btn} />
         </Card>
       </ScreenContainer>
     );
@@ -108,37 +110,39 @@ export function PetOwnerPrescriptionScreen() {
     <ScreenContainer scroll padded>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Card>
-          <Text style={styles.title}>Prescription</Text>
-          <Text style={styles.meta}>Appointment {appointmentNumber}</Text>
-          <Text style={styles.meta}>Veterinarian: {(vet.name as string) || (vet.fullName as string) || '—'}</Text>
+          <Text style={styles.title}>{t('petOwnerPrescription.title')}</Text>
+          <Text style={styles.meta}>{t('petOwnerPrescription.meta.appointment', { appointmentNumber })}</Text>
           <Text style={styles.meta}>
-            Pet: {(pet.name as string) || '—'}
+            {t('petOwnerPrescription.meta.veterinarian', { name: (vet.name as string) || (vet.fullName as string) || t('common.na') })}
+          </Text>
+          <Text style={styles.meta}>
+            {t('petOwnerPrescription.meta.pet', { name: (pet.name as string) || t('common.na') })}
             {(pet.breed as string) ? ` (${pet.breed})` : ''}
           </Text>
 
-          <Text style={styles.sectionLabel}>Diagnosis</Text>
-          <Text style={styles.value}>{(prescription.diagnosis as string) || '—'}</Text>
+          <Text style={styles.sectionLabel}>{t('petOwnerPrescription.sections.diagnosis')}</Text>
+          <Text style={styles.value}>{(prescription.diagnosis as string) || t('common.na')}</Text>
 
-          <Text style={styles.sectionLabel}>Allergies</Text>
-          <Text style={styles.value}>{(prescription.allergies as string) || '—'}</Text>
+          <Text style={styles.sectionLabel}>{t('petOwnerPrescription.sections.allergies')}</Text>
+          <Text style={styles.value}>{(prescription.allergies as string) || t('common.na')}</Text>
 
-          <Text style={styles.sectionLabel}>Clinical notes</Text>
-          <Text style={styles.value}>{(prescription.clinicalNotes as string) || '—'}</Text>
+          <Text style={styles.sectionLabel}>{t('petOwnerPrescription.sections.clinicalNotes')}</Text>
+          <Text style={styles.value}>{(prescription.clinicalNotes as string) || t('common.na')}</Text>
 
-          <Text style={styles.sectionLabel}>Medications</Text>
+          <Text style={styles.sectionLabel}>{t('petOwnerPrescription.sections.medications')}</Text>
           {meds.length === 0 ? (
-            <Text style={styles.value}>—</Text>
+            <Text style={styles.value}>{t('common.na')}</Text>
           ) : (
             meds.map((m: Record<string, unknown>, idx: number) => (
               <View key={idx} style={styles.medBlock}>
-                <Text style={styles.medName}>{(m.name as string) || '—'}</Text>
+                <Text style={styles.medName}>{(m.name as string) || t('common.na')}</Text>
                 <Text style={styles.medDetail}>
-                  {(m.strength as string) && `Strength: ${m.strength}  `}
-                  {(m.dosage as string) && `Dosage: ${m.dosage}  `}
-                  {(m.frequency as string) && `Frequency: ${m.frequency}  `}
-                  {(m.duration as string) && `Duration: ${m.duration}  `}
-                  {(m.quantity as string) && `Qty: ${m.quantity}  `}
-                  {typeof m.refills === 'number' && `Refills: ${m.refills}`}
+                  {(m.strength as string) ? t('petOwnerPrescription.medFields.strength', { value: m.strength }) + '  ' : ''}
+                  {(m.dosage as string) ? t('petOwnerPrescription.medFields.dosage', { value: m.dosage }) + '  ' : ''}
+                  {(m.frequency as string) ? t('petOwnerPrescription.medFields.frequency', { value: m.frequency }) + '  ' : ''}
+                  {(m.duration as string) ? t('petOwnerPrescription.medFields.duration', { value: m.duration }) + '  ' : ''}
+                  {(m.quantity as string) ? t('petOwnerPrescription.medFields.quantity', { value: m.quantity }) + '  ' : ''}
+                  {typeof m.refills === 'number' ? t('petOwnerPrescription.medFields.refills', { value: m.refills }) : ''}
                 </Text>
                 {(m.instructions as string) && (
                   <Text style={styles.medInstructions}>{m.instructions as string}</Text>
@@ -147,18 +151,18 @@ export function PetOwnerPrescriptionScreen() {
             ))
           )}
 
-          <Text style={styles.sectionLabel}>Recommended tests</Text>
+          <Text style={styles.sectionLabel}>{t('petOwnerPrescription.sections.recommendedTests')}</Text>
           <Text style={styles.value}>
-            {tests.length === 0 ? '—' : tests.join(', ')}
+            {tests.length === 0 ? t('common.na') : tests.join(', ')}
           </Text>
 
-          <Text style={styles.sectionLabel}>Follow-up</Text>
-          <Text style={styles.value}>{(prescription.followUp as string) || '—'}</Text>
+          <Text style={styles.sectionLabel}>{t('petOwnerPrescription.sections.followUp')}</Text>
+          <Text style={styles.value}>{(prescription.followUp as string) || t('common.na')}</Text>
 
-          <Text style={styles.sectionLabel}>Advice</Text>
-          <Text style={styles.value}>{(prescription.advice as string) || '—'}</Text>
+          <Text style={styles.sectionLabel}>{t('petOwnerPrescription.sections.advice')}</Text>
+          <Text style={styles.value}>{(prescription.advice as string) || t('common.na')}</Text>
 
-          <Button title="Back" variant="outline" onPress={() => navigation.goBack()} style={styles.btn} />
+          <Button title={t('common.back')} variant="outline" onPress={() => navigation.goBack()} style={styles.btn} />
         </Card>
       </ScrollView>
     </ScreenContainer>

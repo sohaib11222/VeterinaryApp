@@ -6,14 +6,16 @@ import { Button } from '../../components/common/Button';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { useTranslation } from 'react-i18next';
 
 export function PetOwnerWalletScreen() {
+  const { t } = useTranslation();
   return (
     <ScreenContainer padded>
       <Card>
-        <Text style={styles.label}>Available balance</Text>
+        <Text style={styles.label}>{t('petOwnerWallet.availableBalance')}</Text>
         <Text style={styles.balance}>€120.00</Text>
-        <Button title="Top up" variant="outline" onPress={() => {}} style={styles.btn} />
+        <Button title={t('petOwnerWallet.actions.topUp')} variant="outline" onPress={() => {}} style={styles.btn} />
       </Card>
     </ScreenContainer>
   );

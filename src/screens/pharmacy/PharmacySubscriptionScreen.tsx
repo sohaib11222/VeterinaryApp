@@ -41,10 +41,20 @@ export function PharmacySubscriptionScreen() {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
 
   const plans = useMemo(() => extractPlans(plansQuery.data), [plansQuery.data]);
-  const mySub = useMemo(() => {
-    const payload = mySubQuery.data as { data?: { hasActiveSubscription?: boolean; subscriptionPlan?: any; startDate?: string; endDate?: string }; hasActiveSubscription?: boolean } | undefined;
-    const inner = payload?.data ?? payload;
-    return inner;
+  const mySub: {
+    hasActiveSubscription?: boolean;
+    subscriptionPlan?: any;
+    startDate?: string;
+    endDate?: string;
+  } | null = useMemo(() => {
+    const outer = (mySubQuery.data as { data?: unknown } | undefined)?.data ?? mySubQuery.data;
+    const inner = (outer as { data?: unknown } | undefined)?.data ?? outer;
+    return (inner ?? null) as {
+      hasActiveSubscription?: boolean;
+      subscriptionPlan?: any;
+      startDate?: string;
+      endDate?: string;
+    } | null;
   }, [mySubQuery.data]);
   const hasActiveSubscription = isParapharmacy ? true : !!mySub?.hasActiveSubscription;
   const currentPlan = mySub?.subscriptionPlan;

@@ -61,7 +61,7 @@ export function PharmacyOrderDetailsScreen() {
   const route = useRoute<Route>();
   const navigation = useNavigation<any>();
   const orderId = route.params?.orderId ?? '';
-  const { data, isLoading, isError } = useOrder(orderId);
+  const { data, isLoading, isError, error } = useOrder(orderId);
   const updateStatus = useUpdateOrderStatus();
   const updateShipping = useUpdateShippingFee();
   const order = extractOrder(data);
@@ -113,7 +113,7 @@ export function PharmacyOrderDetailsScreen() {
     );
   }
   if (isError || !order || (typeof order === 'object' && !order._id && !order.orderNumber)) {
-    const errMsg = (error as { message?: string })?.message;
+    const errMsg = error?.message;
     return (
       <ScreenContainer padded>
         <Text style={styles.errorText}>{errMsg ?? 'Order not found.'}</Text>
@@ -324,6 +324,7 @@ const styles = StyleSheet.create({
   paymentBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   paymentPaid: { backgroundColor: colors.successLight },
   paymentPending: { backgroundColor: colors.warningLight },
+  paymentBadgeText: { fontSize: 12, fontWeight: '600' },
   paymentPaidText: { fontSize: 12, fontWeight: '600', color: colors.success },
   paymentPendingText: { fontSize: 12, fontWeight: '600', color: colors.warning },
   section: { marginBottom: spacing.sm },

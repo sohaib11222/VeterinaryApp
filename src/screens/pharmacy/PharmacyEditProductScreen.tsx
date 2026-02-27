@@ -234,6 +234,8 @@ export function PharmacyEditProductScreen() {
 }
 
 const styles = StyleSheet.create({
+  loadingRow: { padding: spacing.xl, alignItems: 'center' },
+  errorText: { ...typography.body, color: colors.error, marginBottom: spacing.md },
   sectionTitle: { ...typography.h3, marginBottom: spacing.md },
   fieldLabel: { ...typography.label, marginBottom: spacing.xs, marginTop: spacing.sm },
   categoryRow: { flexDirection: 'row', gap: 8, marginBottom: spacing.sm },
@@ -250,6 +252,34 @@ const styles = StyleSheet.create({
   categoryChipTextActive: { color: colors.textInverse, fontWeight: '600' },
   row: { flexDirection: 'row', gap: spacing.sm },
   half: { flex: 1 },
+  imageRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.sm },
+  imageWrap: { width: 72, height: 72, borderRadius: 12, overflow: 'hidden', backgroundColor: colors.backgroundTertiary },
+  thumbImg: { width: 72, height: 72 },
+  removeImgText: {
+    position: 'absolute',
+    right: 6,
+    top: 6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    color: colors.textInverse,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  addImgBtn: {
+    width: 72,
+    height: 72,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.backgroundSecondary,
+  },
+  addImgBtnText: { ...typography.bodySmall, color: colors.textSecondary, fontWeight: '600' },
   checkRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm },
   checkbox: {
     width: 24,

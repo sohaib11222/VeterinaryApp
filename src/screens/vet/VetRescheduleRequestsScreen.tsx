@@ -22,6 +22,7 @@ import { typography } from '../../theme/typography';
 import { useRescheduleRequests } from '../../queries/scheduleQueries';
 import { useApproveRescheduleRequest, useRejectRescheduleRequest } from '../../mutations/scheduleMutations';
 import { getErrorMessage } from '../../utils/errorUtils';
+import { useTranslation } from 'react-i18next';
 
 type RescheduleRequest = {
   _id: string;
@@ -116,6 +117,7 @@ function CalendarModal({
   onSelect: (iso: string) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const min = minDate ? parseISODate(minDate) : null;
   const selected = value ? parseISODate(value) : null;
   const [viewMonth, setViewMonth] = useState<Date>(() => {
@@ -219,7 +221,7 @@ function CalendarModal({
             })}
           </View>
 
-          <Button title="Done" variant="outline" onPress={onClose} style={styles.pickerDoneBtn} />
+          <Button title={t('common.done')} variant="outline" onPress={onClose} style={styles.pickerDoneBtn} />
         </Pressable>
       </Pressable>
     </Modal>
@@ -237,6 +239,7 @@ function TimePickerModal({
   onSelect: (time24: string) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const initial = value ? to12Hour(value) : { hour: '9', minute: '00', period: 'AM' as const };
   const [hour, setHour] = useState(initial.hour);
   const [minute, setMinute] = useState(initial.minute);
@@ -261,11 +264,11 @@ function TimePickerModal({
     <Modal visible={visible} transparent animationType="fade">
       <Pressable style={styles.pickerOverlay} onPress={onClose}>
         <Pressable style={styles.timeModal} onPress={(e) => e.stopPropagation()}>
-          <Text style={styles.timeModalTitle}>Select time</Text>
+          <Text style={styles.timeModalTitle}>{t('vetRescheduleRequests.timePicker.title')}</Text>
 
           <View style={styles.timePickerRow}>
             <View style={styles.timePickerCol}>
-              <Text style={styles.timePickerLabel}>Hour</Text>
+              <Text style={styles.timePickerLabel}>{t('vetRescheduleRequests.timePicker.hour')}</Text>
               <ScrollView style={styles.timePickerScroll} nestedScrollEnabled>
                 {hours.map((h) => (
                   <TouchableOpacity
@@ -286,7 +289,7 @@ function TimePickerModal({
             <Text style={styles.timeSeparator}>:</Text>
 
             <View style={styles.timePickerCol}>
-              <Text style={styles.timePickerLabel}>Minute</Text>
+              <Text style={styles.timePickerLabel}>{t('vetRescheduleRequests.timePicker.minute')}</Text>
               <ScrollView style={styles.timePickerScroll} nestedScrollEnabled>
                 {minutes.map((m) => (
                   <TouchableOpacity
@@ -305,7 +308,7 @@ function TimePickerModal({
             </View>
 
             <View style={styles.timePickerCol}>
-              <Text style={styles.timePickerLabel}>AM/PM</Text>
+              <Text style={styles.timePickerLabel}>{t('vetRescheduleRequests.timePicker.period')}</Text>
               <ScrollView style={styles.timePickerScroll} nestedScrollEnabled>
                 {(['AM', 'PM'] as const).map((p) => (
                   <TouchableOpacity
@@ -324,12 +327,12 @@ function TimePickerModal({
             </View>
           </View>
 
-          <Text style={styles.timePickerSelected}>Selected: {selected24}</Text>
+          <Text style={styles.timePickerSelected}>{t('vetRescheduleRequests.timePicker.selected', { value: selected24 })}</Text>
 
           <View style={styles.modalActionsRow}>
-            <Button title="Cancel" variant="outline" onPress={onClose} style={styles.modalActionBtn} />
+            <Button title={t('common.cancel')} variant="outline" onPress={onClose} style={styles.modalActionBtn} />
             <Button
-              title="Select"
+              title={t('vetRescheduleRequests.timePicker.select')}
               onPress={() => {
                 onSelect(selected24);
                 onClose();
@@ -344,6 +347,7 @@ function TimePickerModal({
 }
 
 export function VetRescheduleRequestsScreen() {
+  const { t } = useTranslation();
   const requestsQuery = useRescheduleRequests({ status: 'PENDING' });
   const approve = useApproveRescheduleRequest();
   const reject = useRejectRescheduleRequest();
@@ -384,7 +388,7 @@ export function VetRescheduleRequestsScreen() {
   const doApprove = async () => {
     if (!selected?._id) return;
     if (!newDate || !newTime) {
-      Toast.show({ type: 'error', text1: 'Please select new date and time' });
+      Toast.show({ type: 'error', text1: t('vetRescheduleRequests.toasts.selectDateTime') });
       return;
     }
     const payload: Record<string, unknown> = {
@@ -397,28 +401,28 @@ export function VetRescheduleRequestsScreen() {
 
     try {
       await approve.mutateAsync({ id: selected._id, data: payload });
-      Toast.show({ type: 'success', text1: 'Reschedule request approved' });
+      Toast.show({ type: 'success', text1: t('vetRescheduleRequests.toasts.approved') });
       setShowApproveModal(false);
       setSelected(null);
     } catch (err) {
-      Toast.show({ type: 'error', text1: getErrorMessage(err, 'Failed to approve request') });
+      Toast.show({ type: 'error', text1: getErrorMessage(err, t('vetRescheduleRequests.errors.approveFailed')) });
     }
   };
 
   const doReject = async () => {
     if (!selected?._id) return;
     if (String(rejectionReason || '').trim().length < 10) {
-      Toast.show({ type: 'error', text1: 'Rejection reason must be at least 10 characters' });
+      Toast.show({ type: 'error', text1: t('vetRescheduleRequests.toasts.reasonMinChars', { count: 10 }) });
       return;
     }
     try {
       await reject.mutateAsync({ id: selected._id, reason: String(rejectionReason).trim() });
-      Toast.show({ type: 'success', text1: 'Reschedule request rejected' });
+      Toast.show({ type: 'success', text1: t('vetRescheduleRequests.toasts.rejected') });
       setShowRejectModal(false);
       setSelected(null);
       setRejectionReason('');
     } catch (err) {
-      Toast.show({ type: 'error', text1: getErrorMessage(err, 'Failed to reject request') });
+      Toast.show({ type: 'error', text1: getErrorMessage(err, t('vetRescheduleRequests.errors.rejectFailed')) });
     }
   };
 
@@ -427,15 +431,15 @@ export function VetRescheduleRequestsScreen() {
       {requestsQuery.isLoading ? (
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading requests...</Text>
+          <Text style={styles.loadingText}>{t('vetRescheduleRequests.loading')}</Text>
         </View>
       ) : requestsQuery.isError ? (
         <Card>
-          <Text style={styles.errorText}>{getErrorMessage(requestsQuery.error, 'Failed to load requests')}</Text>
+          <Text style={styles.errorText}>{getErrorMessage(requestsQuery.error, t('vetRescheduleRequests.errors.loadFailed'))}</Text>
         </Card>
       ) : requests.length === 0 ? (
         <Card>
-          <Text style={styles.emptyText}>No pending reschedule requests.</Text>
+          <Text style={styles.emptyText}>{t('vetRescheduleRequests.empty')}</Text>
         </Card>
       ) : (
         <FlatList
@@ -446,8 +450,8 @@ export function VetRescheduleRequestsScreen() {
             const owner = item?.petOwnerId as { name?: string; fullName?: string; email?: string } | string | undefined;
             const ownerName =
               typeof owner === 'string'
-                ? 'Pet Owner'
-                : owner?.name || owner?.fullName || owner?.email || 'Pet Owner';
+                ? t('common.petOwner')
+                : owner?.name || owner?.fullName || owner?.email || t('common.petOwner');
             const original = item?.appointmentId as { appointmentDate?: string; appointmentTime?: string; appointmentNumber?: string } | string | undefined;
             const origObj = typeof original === 'string' ? null : original;
             const originalLabel = origObj
@@ -456,29 +460,29 @@ export function VetRescheduleRequestsScreen() {
 
             return (
               <Card style={styles.card}>
-                <Text style={styles.heading}>Request from {ownerName}</Text>
-                <Text style={styles.date}>Original: {originalLabel}</Text>
+                <Text style={styles.heading}>{t('vetRescheduleRequests.card.requestFrom', { name: ownerName })}</Text>
+                <Text style={styles.date}>{t('vetRescheduleRequests.card.original', { value: originalLabel })}</Text>
                 {origObj?.appointmentNumber ? (
                   <Text style={styles.metaText}>{origObj.appointmentNumber}</Text>
                 ) : null}
                 <Text style={styles.reason}>{item?.reason || '—'}</Text>
 
                 {item?.preferredDate ? (
-                  <Text style={styles.date}>Preferred date: {formatDateTime(item.preferredDate, '')}</Text>
+                  <Text style={styles.date}>{t('vetRescheduleRequests.card.preferredDate', { value: formatDateTime(item.preferredDate, '') })}</Text>
                 ) : null}
                 {item?.preferredTime ? (
-                  <Text style={styles.date}>Preferred time: {item.preferredTime}</Text>
+                  <Text style={styles.date}>{t('vetRescheduleRequests.card.preferredTime', { value: item.preferredTime })}</Text>
                 ) : null}
 
                 <View style={styles.actions}>
                   <Button
-                    title="Approve"
+                    title={t('vetRescheduleRequests.actions.approve')}
                     onPress={() => openApprove(item)}
                     style={styles.btn}
                     disabled={approve.isPending}
                   />
                   <Button
-                    title="Reject"
+                    title={t('vetRescheduleRequests.actions.reject')}
                     variant="outline"
                     onPress={() => {
                       setSelected(item);
@@ -498,34 +502,34 @@ export function VetRescheduleRequestsScreen() {
       <Modal visible={showApproveModal && !!selected} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Approve Reschedule Request</Text>
+            <Text style={styles.modalTitle}>{t('vetRescheduleRequests.approveModal.title')}</Text>
 
-            <Text style={styles.pickerLabelText}>New Date *</Text>
+            <Text style={styles.pickerLabelText}>{t('vetRescheduleRequests.approveModal.newDate')}</Text>
             <TouchableOpacity
               activeOpacity={0.8}
               style={styles.pickerField}
               onPress={() => setShowDateModal(true)}
             >
               <Text style={[styles.pickerFieldText, !newDate && styles.pickerFieldPlaceholder]}>
-                {newDate || 'Select date'}
+                {newDate || t('vetRescheduleRequests.approveModal.selectDate')}
               </Text>
               <Text style={styles.pickerIcon}>📅</Text>
             </TouchableOpacity>
 
-            <Text style={styles.pickerLabelText}>New Time *</Text>
+            <Text style={styles.pickerLabelText}>{t('vetRescheduleRequests.approveModal.newTime')}</Text>
             <TouchableOpacity
               activeOpacity={0.8}
               style={styles.pickerField}
               onPress={() => setShowTimeModal(true)}
             >
               <Text style={[styles.pickerFieldText, !newTime && styles.pickerFieldPlaceholder]}>
-                {newTime || 'Select time'}
+                {newTime || t('vetRescheduleRequests.approveModal.selectTime')}
               </Text>
               <Text style={styles.pickerIcon}>🕒</Text>
             </TouchableOpacity>
             <Input
-              label="Fee Percentage"
-              placeholder="50"
+              label={t('vetRescheduleRequests.approveModal.feePercentage')}
+              placeholder={t('vetRescheduleRequests.approveModal.feePercentagePlaceholder')}
               value={feePercentage}
               onChangeText={(t) => {
                 setFeePercentage(t);
@@ -535,17 +539,17 @@ export function VetRescheduleRequestsScreen() {
               autoCapitalize="none"
             />
             <Input
-              label="Or Fixed Fee (optional)"
-              placeholder=""
+              label={t('vetRescheduleRequests.approveModal.fixedFeeOptional')}
+              placeholder={t('vetRescheduleRequests.approveModal.fixedFeePlaceholder')}
               value={feeFixed}
               onChangeText={setFeeFixed}
               keyboardType="numeric"
               autoCapitalize="none"
             />
-            <Text style={styles.inputLabel}>Notes (optional)</Text>
+            <Text style={styles.inputLabel}>{t('vetRescheduleRequests.approveModal.notesOptional')}</Text>
             <TextInput
               style={styles.textArea}
-              placeholder="Enter notes..."
+              placeholder={t('vetRescheduleRequests.approveModal.notesPlaceholder')}
               placeholderTextColor={colors.textLight}
               value={notes}
               onChangeText={setNotes}
@@ -555,7 +559,7 @@ export function VetRescheduleRequestsScreen() {
 
             <View style={styles.modalActions}>
               <Button
-                title="Cancel"
+                title={t('common.cancel')}
                 variant="outline"
                 onPress={() => {
                   setShowApproveModal(false);
@@ -565,7 +569,7 @@ export function VetRescheduleRequestsScreen() {
                 disabled={approve.isPending}
               />
               <Button
-                title={approve.isPending ? 'Approving...' : 'Approve'}
+                title={approve.isPending ? t('vetRescheduleRequests.approveModal.approving') : t('vetRescheduleRequests.actions.approve')}
                 onPress={doApprove}
                 style={styles.modalBtn}
                 disabled={approve.isPending}
@@ -593,11 +597,11 @@ export function VetRescheduleRequestsScreen() {
       <Modal visible={showRejectModal && !!selected} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Reject Reschedule Request</Text>
-            <Text style={styles.inputLabel}>Reason *</Text>
+            <Text style={styles.modalTitle}>{t('vetRescheduleRequests.rejectModal.title')}</Text>
+            <Text style={styles.inputLabel}>{t('vetRescheduleRequests.rejectModal.reasonLabel')}</Text>
             <TextInput
               style={styles.textArea}
-              placeholder="Enter rejection reason (min 10 characters)"
+              placeholder={t('vetRescheduleRequests.rejectModal.reasonPlaceholder', { count: 10 })}
               placeholderTextColor={colors.textLight}
               value={rejectionReason}
               onChangeText={setRejectionReason}
@@ -606,7 +610,7 @@ export function VetRescheduleRequestsScreen() {
             />
             <View style={styles.modalActions}>
               <Button
-                title="Cancel"
+                title={t('common.cancel')}
                 variant="outline"
                 onPress={() => {
                   setShowRejectModal(false);
@@ -616,7 +620,7 @@ export function VetRescheduleRequestsScreen() {
                 disabled={reject.isPending}
               />
               <Button
-                title={reject.isPending ? 'Rejecting...' : 'Reject'}
+                title={reject.isPending ? t('vetRescheduleRequests.rejectModal.rejecting') : t('vetRescheduleRequests.actions.reject')}
                 onPress={doReject}
                 style={styles.modalBtn}
                 disabled={reject.isPending}

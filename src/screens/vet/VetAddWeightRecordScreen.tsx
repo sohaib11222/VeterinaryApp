@@ -7,10 +7,10 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
+import { useTranslation } from 'react-i18next';
 import { VetStackParamList } from '../../navigation/types';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
@@ -26,6 +26,7 @@ import { getErrorMessage } from '../../utils/errorUtils';
 type Route = RouteProp<VetStackParamList, 'VetAddWeightRecord'>;
 
 export function VetAddWeightRecordScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const route = useRoute<Route>();
   const appointmentId = route.params?.appointmentId ?? null;
@@ -48,11 +49,11 @@ export function VetAddWeightRecordScreen() {
   const handleCompleteWithWeight = async () => {
     const num = Number(value);
     if (!Number.isFinite(num) || value.trim() === '') {
-      Toast.show({ type: 'error', text1: 'Please enter a valid weight value' });
+      Toast.show({ type: 'error', text1: t('vetAddWeightRecord.toasts.validWeightRequired') });
       return;
     }
     if (num <= 0) {
-      Toast.show({ type: 'error', text1: 'Weight must be greater than 0' });
+      Toast.show({ type: 'error', text1: t('vetAddWeightRecord.toasts.weightMustBeGreaterThanZero') });
       return;
     }
     if (!appointmentId) return;
@@ -68,7 +69,7 @@ export function VetAddWeightRecordScreen() {
           },
         },
       });
-      Toast.show({ type: 'success', text1: 'Appointment completed with weight record' });
+      Toast.show({ type: 'success', text1: t('vetAddWeightRecord.toasts.completedWithWeight') });
       navigation.goBack();
     } catch (err) {
       Toast.show({ type: 'error', text1: getErrorMessage(err) });
@@ -82,7 +83,7 @@ export function VetAddWeightRecordScreen() {
       <ScreenContainer padded>
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>{t('vetAddWeightRecord.loading')}</Text>
         </View>
       </ScreenContainer>
     );
@@ -91,7 +92,7 @@ export function VetAddWeightRecordScreen() {
   if (!appointment) {
     return (
       <ScreenContainer padded>
-        <Text style={styles.error}>Appointment not found.</Text>
+        <Text style={styles.error}>{t('vetAddWeightRecord.errors.appointmentNotFound')}</Text>
       </ScreenContainer>
     );
   }
@@ -100,15 +101,15 @@ export function VetAddWeightRecordScreen() {
     <ScreenContainer scroll padded>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Card>
-          <Text style={styles.title}>Add weight record</Text>
+          <Text style={styles.title}>{t('vetAddWeightRecord.title')}</Text>
           <Text style={styles.subtitle}>
-            Pet: {(pet as { name?: string })?.name ?? '—'}
+            {t('common.pet')}: {(pet as { name?: string })?.name ?? t('common.na')}
             {(pet as { breed?: string })?.breed ? ` (${(pet as { breed: string }).breed})` : ''}
           </Text>
 
           {latestWeightVal != null && (
             <View style={styles.latest}>
-              <Text style={styles.latestLabel}>Last recorded:</Text>
+              <Text style={styles.latestLabel}>{t('vetAddWeightRecord.lastRecorded')}</Text>
               <Text style={styles.latestValue}>
                 {latestWeightVal.value}
                 {latestWeightVal.unit || 'kg'}
@@ -116,17 +117,17 @@ export function VetAddWeightRecordScreen() {
             </View>
           )}
 
-          <Text style={styles.label}>Weight value *</Text>
+          <Text style={styles.label}>{t('vetAddWeightRecord.fields.weightValue')}</Text>
           <TextInput
             style={styles.input}
             value={value}
             onChangeText={setValue}
-            placeholder="e.g. 5.2"
+            placeholder={t('vetAddWeightRecord.placeholders.weightExample', { value: '5.2' })}
             placeholderTextColor={colors.textLight}
             keyboardType="decimal-pad"
           />
 
-          <Text style={styles.label}>Unit</Text>
+          <Text style={styles.label}>{t('vetAddWeightRecord.fields.unit')}</Text>
           <View style={styles.unitRow}>
             <TouchableOpacity
               style={[styles.unitBtn, unit === 'kg' && styles.unitBtnActive]}
@@ -142,12 +143,12 @@ export function VetAddWeightRecordScreen() {
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.label}>Notes (optional)</Text>
+          <Text style={styles.label}>{t('vetAddWeightRecord.fields.notesOptional')}</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
             value={notes}
             onChangeText={setNotes}
-            placeholder="Notes..."
+            placeholder={t('vetAddWeightRecord.placeholders.notes')}
             placeholderTextColor={colors.textLight}
             multiline
             numberOfLines={3}
@@ -155,11 +156,11 @@ export function VetAddWeightRecordScreen() {
 
           {thenVaccinations ? (
             <Button
-              title="Next: Add vaccinations"
+              title={t('vetAddWeightRecord.actions.nextAddVaccinations')}
               onPress={() => {
                 const num = Number(value);
                 if (!Number.isFinite(num) || value.trim() === '' || num <= 0) {
-                  Toast.show({ type: 'error', text1: 'Please enter a valid weight value' });
+                  Toast.show({ type: 'error', text1: t('vetAddWeightRecord.toasts.validWeightRequired') });
                   return;
                 }
                 const rootNav = navigation.getParent();
@@ -182,14 +183,14 @@ export function VetAddWeightRecordScreen() {
             />
           ) : (
             <Button
-              title={completeAppointment.isPending ? 'Completing...' : 'Complete appointment with this weight'}
+              title={completeAppointment.isPending ? t('vetAddWeightRecord.actions.completing') : t('vetAddWeightRecord.actions.completeWithThisWeight')}
               onPress={handleCompleteWithWeight}
               style={styles.primaryBtn}
               disabled={completeAppointment.isPending}
             />
           )}
           <Button
-            title="Cancel"
+            title={t('common.cancel')}
             variant="outline"
             onPress={() => navigation.goBack()}
             style={styles.cancelBtn}

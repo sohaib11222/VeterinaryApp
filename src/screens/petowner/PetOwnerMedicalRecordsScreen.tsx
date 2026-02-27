@@ -30,22 +30,24 @@ import {
 } from '../../queries/medicalQueries';
 import { useMyPrescriptions } from '../../queries/prescriptionQueries';
 import { useCreateMedicalRecordWithUpload, useDeleteMedicalRecord } from '../../mutations/medicalMutations';
+import { useTranslation } from 'react-i18next';
 
 type TabType = 'medical' | 'vaccinations' | 'prescription';
 
 const RECORD_TYPES = ['GENERAL', 'LAB_REPORT', 'XRAY', 'VACCINATION', 'SURGERY', 'WEIGHT', 'PRESCRIPTION', 'OTHER'];
 
-function formatDate(d: string | undefined): string {
-  if (!d) return '—';
+function formatDate(d: string | undefined, naLabel: string): string {
+  if (!d) return naLabel;
   const dt = new Date(d);
-  if (Number.isNaN(dt.getTime())) return '—';
-  return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  if (Number.isNaN(dt.getTime())) return naLabel;
+  return dt.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 type PetItem = { _id: string; name?: string };
 
 export function PetOwnerMedicalRecordsScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabType>('medical');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPetId, setSelectedPetId] = useState('');
@@ -58,8 +60,13 @@ export function PetOwnerMedicalRecordsScreen() {
 
   const { data: petsResponse } = usePets();
   const pets = useMemo(() => {
-    const raw = (petsResponse as { data?: PetItem[] })?.data ?? (petsResponse as PetItem[]);
-    return Array.isArray(raw) ? raw : [];
+    const outer = (petsResponse as { data?: unknown })?.data ?? petsResponse;
+    const payload = (outer as { data?: unknown })?.data ?? outer;
+    const raw = Array.isArray(payload) ? payload : [];
+    return raw
+      .map((p) => p as Partial<PetItem>)
+      .filter((p) => !!p && typeof p._id === 'string' && p._id.length > 0)
+      .map((p) => ({ _id: String(p._id), name: p.name }));
   }, [petsResponse]);
 
   const recordTypeFilter = activeTab === 'prescription' ? 'PRESCRIPTION' : undefined;
@@ -128,22 +135,22 @@ export function PetOwnerMedicalRecordsScreen() {
   const deleteRecord = useDeleteMedicalRecord();
 
   const tabs: { key: TabType; label: string }[] = [
-    { key: 'medical', label: 'Medical Records' },
-    { key: 'vaccinations', label: 'Vaccinations' },
-    { key: 'prescription', label: 'Prescriptions' },
+    { key: 'medical', label: t('petOwnerMedicalRecords.tabs.medical') },
+    { key: 'vaccinations', label: t('petOwnerMedicalRecords.tabs.vaccinations') },
+    { key: 'prescription', label: t('petOwnerMedicalRecords.tabs.prescriptions') },
   ];
 
   const handleAddRecord = async () => {
     if (!addForm.petId) {
-      Alert.alert('Validation', 'Please select a pet');
+      Alert.alert(t('common.validation'), t('petOwnerMedicalRecords.validation.selectPet'));
       return;
     }
     if (!addForm.title.trim()) {
-      Alert.alert('Validation', 'Title is required');
+      Alert.alert(t('common.validation'), t('petOwnerMedicalRecords.validation.titleRequired'));
       return;
     }
     if (!selectedFile) {
-      Alert.alert('Validation', 'Please select a file');
+      Alert.alert(t('common.validation'), t('petOwnerMedicalRecords.validation.selectFile'));
       return;
     }
     try {
@@ -157,9 +164,9 @@ export function PetOwnerMedicalRecordsScreen() {
       setAddModalVisible(false);
       setAddForm({ petId: selectedPetId || '', title: '', description: '', recordType: 'GENERAL' });
       setSelectedFile(null);
-      Alert.alert('Success', 'Medical record added');
+      Alert.alert(t('common.success'), t('petOwnerMedicalRecords.alerts.added'));
     } catch (err: unknown) {
-      Alert.alert('Error', (err as { message?: string })?.message ?? 'Failed to add record');
+      Alert.alert(t('common.error'), (err as { message?: string })?.message ?? t('petOwnerMedicalRecords.errors.addFailed'));
     }
   };
 
@@ -170,18 +177,18 @@ export function PetOwnerMedicalRecordsScreen() {
   };
 
   const handleDeleteRecord = (record: MedicalRecordItem) => {
-    Alert.alert('Delete record', 'Delete this medical record?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('petOwnerMedicalRecords.deleteConfirm.title'), t('petOwnerMedicalRecords.deleteConfirm.message'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           try {
             await deleteRecord.mutateAsync(record._id);
             setViewRecord(null);
-            Alert.alert('Success', 'Record deleted');
+            Alert.alert(t('common.success'), t('petOwnerMedicalRecords.alerts.deleted'));
           } catch (err: unknown) {
-            Alert.alert('Error', (err as { message?: string })?.message ?? 'Failed to delete');
+            Alert.alert(t('common.error'), (err as { message?: string })?.message ?? t('petOwnerMedicalRecords.errors.deleteFailed'));
           }
         },
       },
@@ -195,27 +202,64 @@ export function PetOwnerMedicalRecordsScreen() {
     <Card style={styles.card}>
       <View style={styles.recordHeader}>
         <Text style={styles.recordId}>#{String(item._id).slice(-6).toUpperCase()}</Text>
-        <View style={styles.typeBadge}><Text style={styles.typeBadgeText}>{item.recordType || 'GENERAL'}</Text></View>
+        <View style={styles.typeBadge}>
+          <Text style={styles.typeBadgeText}>
+            {t(`petOwnerMedicalRecords.recordTypes.${item.recordType || 'GENERAL'}`, {
+              defaultValue: item.recordType || 'GENERAL',
+            })}
+          </Text>
+        </View>
       </View>
       <Text style={styles.recordTitle}>{item.title}</Text>
       {item.description ? <Text style={styles.recordDesc}>{item.description}</Text> : null}
-      <View style={styles.recordRow}><Text style={styles.recordLabel}>Pet:</Text><Text style={styles.recordValue}>{(item.petId as { name?: string })?.name ?? '—'}</Text></View>
-      <View style={styles.recordRow}><Text style={styles.recordLabel}>Date:</Text><Text style={styles.recordValue}>{formatDate(item.uploadedDate)}</Text></View>
-      {item.fileName ? <View style={styles.recordRow}><Text style={styles.recordLabel}>File:</Text><Text style={styles.fileLink}>{item.fileName}</Text></View> : null}
+      <View style={styles.recordRow}>
+        <Text style={styles.recordLabel}>{t('petOwnerMedicalRecords.labels.pet')}</Text>
+        <Text style={styles.recordValue}>{(item.petId as { name?: string })?.name ?? t('common.na')}</Text>
+      </View>
+      <View style={styles.recordRow}>
+        <Text style={styles.recordLabel}>{t('petOwnerMedicalRecords.labels.date')}</Text>
+        <Text style={styles.recordValue}>{formatDate(item.uploadedDate, t('common.na'))}</Text>
+      </View>
+      {item.fileName ? (
+        <View style={styles.recordRow}>
+          <Text style={styles.recordLabel}>{t('petOwnerMedicalRecords.labels.file')}</Text>
+          <Text style={styles.fileLink}>{item.fileName}</Text>
+        </View>
+      ) : null}
       <View style={styles.rowActions}>
-        <TouchableOpacity style={styles.viewBtn} onPress={() => setViewRecord(item)}><Text style={styles.viewBtnText}>View</Text></TouchableOpacity>
-        <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDeleteRecord(item)} disabled={deleteRecord.isPending}><Text style={styles.deleteBtnText}>Delete</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.viewBtn} onPress={() => setViewRecord(item)}>
+          <Text style={styles.viewBtnText}>{t('common.view')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.deleteBtn}
+          onPress={() => handleDeleteRecord(item)}
+          disabled={deleteRecord.isPending}
+        >
+          <Text style={styles.deleteBtnText}>{t('common.delete')}</Text>
+        </TouchableOpacity>
       </View>
     </Card>
   );
 
   const renderVaccinationItem = ({ item }: { item: Record<string, unknown> }) => (
     <Card style={styles.card}>
-      <Text style={styles.recordTitle}>💉 {String(item.vaccinationType ?? '—')}</Text>
-      <View style={styles.recordRow}><Text style={styles.recordLabel}>Pet:</Text><Text style={styles.recordValue}>{(item.petId as { name?: string })?.name ?? '—'}</Text></View>
-      <View style={styles.recordRow}><Text style={styles.recordLabel}>Date:</Text><Text style={styles.recordValue}>{formatDate(item.vaccinationDate as string)}</Text></View>
-      <View style={styles.recordRow}><Text style={styles.recordLabel}>Next due:</Text><Text style={styles.recordValue}>{formatDate(item.nextDueDate as string)}</Text></View>
-      <View style={styles.recordRow}><Text style={styles.recordLabel}>Veterinarian:</Text><Text style={styles.recordValue}>{(item.veterinarianId as { name?: string })?.name ?? '—'}</Text></View>
+      <Text style={styles.recordTitle}>💉 {String(item.vaccinationType ?? t('common.na'))}</Text>
+      <View style={styles.recordRow}>
+        <Text style={styles.recordLabel}>{t('petOwnerMedicalRecords.labels.pet')}</Text>
+        <Text style={styles.recordValue}>{(item.petId as { name?: string })?.name ?? t('common.na')}</Text>
+      </View>
+      <View style={styles.recordRow}>
+        <Text style={styles.recordLabel}>{t('petOwnerMedicalRecords.labels.date')}</Text>
+        <Text style={styles.recordValue}>{formatDate(item.vaccinationDate as string, t('common.na'))}</Text>
+      </View>
+      <View style={styles.recordRow}>
+        <Text style={styles.recordLabel}>{t('petOwnerMedicalRecords.labels.nextDue')}</Text>
+        <Text style={styles.recordValue}>{formatDate(item.nextDueDate as string, t('common.na'))}</Text>
+      </View>
+      <View style={styles.recordRow}>
+        <Text style={styles.recordLabel}>{t('petOwnerMedicalRecords.labels.veterinarian')}</Text>
+        <Text style={styles.recordValue}>{(item.veterinarianId as { name?: string })?.name ?? t('common.na')}</Text>
+      </View>
     </Card>
   );
 
@@ -224,16 +268,50 @@ export function PetOwnerMedicalRecordsScreen() {
     const id = typeof aptId === 'object' ? aptId?._id : aptId;
     return (
       <Card style={styles.card}>
-        <Text style={styles.recordTitle}>Prescription #{String(item._id).slice(-6).toUpperCase()}</Text>
-        <View style={styles.recordRow}><Text style={styles.recordLabel}>Pet:</Text><Text style={styles.recordValue}>{(item.petId as { name?: string })?.name ?? '—'}</Text></View>
-        <View style={styles.recordRow}><Text style={styles.recordLabel}>Veterinarian:</Text><Text style={styles.recordValue}>{(item.veterinarianId as { name?: string; fullName?: string })?.fullName ?? (item.veterinarianId as { name?: string })?.name ?? '—'}</Text></View>
-        <View style={styles.recordRow}><Text style={styles.recordLabel}>Date:</Text><Text style={styles.recordValue}>{formatDate((item as { issuedAt?: string; createdAt?: string }).issuedAt ?? (item as { createdAt?: string }).createdAt)}</Text></View>
-        <TouchableOpacity style={styles.viewBtn} onPress={() => id && navigation.getParent()?.navigate('PetOwnerPrescription', { appointmentId: id })}><Text style={styles.viewBtnText}>View prescription</Text></TouchableOpacity>
+        <Text style={styles.recordTitle}>
+          {t('petOwnerMedicalRecords.prescriptions.title', { id: String(item._id).slice(-6).toUpperCase() })}
+        </Text>
+        <View style={styles.recordRow}>
+          <Text style={styles.recordLabel}>{t('petOwnerMedicalRecords.labels.pet')}</Text>
+          <Text style={styles.recordValue}>{(item.petId as { name?: string })?.name ?? t('common.na')}</Text>
+        </View>
+        <View style={styles.recordRow}>
+          <Text style={styles.recordLabel}>{t('petOwnerMedicalRecords.labels.veterinarian')}</Text>
+          <Text style={styles.recordValue}>
+            {(item.veterinarianId as { name?: string; fullName?: string })?.fullName ??
+              (item.veterinarianId as { name?: string })?.name ??
+              t('common.na')}
+          </Text>
+        </View>
+        <View style={styles.recordRow}>
+          <Text style={styles.recordLabel}>{t('petOwnerMedicalRecords.labels.date')}</Text>
+          <Text style={styles.recordValue}>
+            {formatDate(
+              (item as { issuedAt?: string; createdAt?: string }).issuedAt ??
+                (item as { createdAt?: string }).createdAt,
+              t('common.na')
+            )}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={styles.viewBtn}
+          onPress={() => {
+            if (!id) return;
+            navigation.navigate('PetOwnerPrescription', { appointmentId: String(id) });
+          }}
+        >
+          <Text style={styles.viewBtnText}>{t('petOwnerMedicalRecords.prescriptions.view')}</Text>
+        </TouchableOpacity>
       </Card>
     );
   };
 
-  const renderItem = activeTab === 'medical' ? renderMedicalItem : activeTab === 'vaccinations' ? renderVaccinationItem : renderPrescriptionItem;
+  const renderItem =
+    activeTab === 'medical'
+      ? (renderMedicalItem as any)
+      : activeTab === 'vaccinations'
+        ? (renderVaccinationItem as any)
+        : (renderPrescriptionItem as any);
 
   return (
     <ScreenContainer padded>
@@ -246,12 +324,23 @@ export function PetOwnerMedicalRecordsScreen() {
       </View>
       <View style={styles.searchWrap}>
         <Text style={styles.searchIcon}>🔍</Text>
-        <TextInput style={styles.searchInput} placeholder="Search pet records..." placeholderTextColor={colors.textLight} value={searchQuery} onChangeText={setSearchQuery} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder={t('petOwnerMedicalRecords.searchPlaceholder')}
+          placeholderTextColor={colors.textLight}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
       </View>
       <View style={styles.filterRow}>
-        <Text style={styles.filterLabel}>Pet:</Text>
+        <Text style={styles.filterLabel}>{t('petOwnerMedicalRecords.labels.pet')}</Text>
         <View style={styles.petChips}>
-          <TouchableOpacity style={[styles.petChip, !selectedPetId && styles.petChipActive]} onPress={() => setSelectedPetId('')}><Text style={[styles.petChipText, !selectedPetId && styles.petChipTextActive]}>All</Text></TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.petChip, !selectedPetId && styles.petChipActive]}
+            onPress={() => setSelectedPetId('')}
+          >
+            <Text style={[styles.petChipText, !selectedPetId && styles.petChipTextActive]}>{t('common.all')}</Text>
+          </TouchableOpacity>
           {pets.map((p) => (
             <TouchableOpacity key={p._id} style={[styles.petChip, selectedPetId === p._id && styles.petChipActive]} onPress={() => setSelectedPetId(p._id)}><Text style={[styles.petChipText, selectedPetId === p._id && styles.petChipTextActive]}>{p.name}</Text></TouchableOpacity>
           ))}
@@ -259,28 +348,32 @@ export function PetOwnerMedicalRecordsScreen() {
       </View>
       {activeTab === 'vaccinations' && upcomingVaccinations.length > 0 && (
         <Card style={styles.upcomingCard}>
-          <Text style={styles.upcomingTitle}>Upcoming (next 30 days)</Text>
+          <Text style={styles.upcomingTitle}>{t('petOwnerMedicalRecords.upcoming.title')}</Text>
           {(upcomingVaccinations as Record<string, unknown>[]).slice(0, 5).map((v, idx) => (
             <View key={idx} style={styles.upcomingRow}>
-              <Text style={styles.upcomingPet}>{(v.petId as { name?: string })?.name ?? '—'}</Text>
-              <Text style={styles.upcomingType}>{String(v.vaccinationType ?? '—')}</Text>
-              <Text style={styles.upcomingDate}>{formatDate(v.nextDueDate as string)}</Text>
+              <Text style={styles.upcomingPet}>{(v.petId as { name?: string })?.name ?? t('common.na')}</Text>
+              <Text style={styles.upcomingType}>{String(v.vaccinationType ?? t('common.na'))}</Text>
+              <Text style={styles.upcomingDate}>{formatDate(v.nextDueDate as string, t('common.na'))}</Text>
             </View>
           ))}
         </Card>
       )}
       {activeTab === 'medical' && (
-        <Button title="Add Record" onPress={() => setAddModalVisible(true)} style={styles.addBtn} />
+        <Button title={t('petOwnerMedicalRecords.actions.addRecord')} onPress={() => setAddModalVisible(true)} style={styles.addBtn} />
       )}
       {isLoading ? (
         <View style={styles.loading}><ActivityIndicator size="large" color={colors.primary} /></View>
       ) : (
-        <FlatList
+        <FlatList<any>
           data={listData}
           keyExtractor={(item: unknown) => (item as { _id?: string })._id ?? String(Math.random())}
           contentContainerStyle={styles.list}
           renderItem={renderItem}
-          ListEmptyComponent={<View style={styles.empty}><Text style={styles.emptyText}>No records found</Text></View>}
+          ListEmptyComponent={(
+            <View style={styles.empty}>
+              <Text style={styles.emptyText}>{t('petOwnerMedicalRecords.empty')}</Text>
+            </View>
+          )}
         />
       )}
 
@@ -288,25 +381,47 @@ export function PetOwnerMedicalRecordsScreen() {
         <Pressable style={styles.modalOverlay} onPress={() => setAddModalVisible(false)}>
           <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
             <ScrollView>
-              <Text style={styles.modalTitle}>Add Medical Record</Text>
-              <Text style={styles.inputLabel}>Pet *</Text>
+              <Text style={styles.modalTitle}>{t('petOwnerMedicalRecords.addModal.title')}</Text>
+              <Text style={styles.inputLabel}>{t('petOwnerMedicalRecords.addModal.fields.pet')}</Text>
               <View style={styles.pickerRow}>
                 {pets.map((p) => (
                   <TouchableOpacity key={p._id} style={[styles.pickerOpt, addForm.petId === p._id && styles.pickerOptActive]} onPress={() => setAddForm((f) => ({ ...f, petId: p._id }))}><Text style={[styles.pickerOptText, addForm.petId === p._id && styles.pickerOptTextActive]}>{p.name}</Text></TouchableOpacity>
                 ))}
               </View>
-              <Input label="Title *" placeholder="e.g. Lab result" value={addForm.title} onChangeText={(title) => setAddForm((f) => ({ ...f, title }))} />
-              <Input label="Description" placeholder="Optional" value={addForm.description} onChangeText={(description) => setAddForm((f) => ({ ...f, description }))} />
-              <Text style={styles.inputLabel}>Record type</Text>
+              <Input
+                label={t('petOwnerMedicalRecords.addModal.fields.title')}
+                placeholder={t('petOwnerMedicalRecords.addModal.placeholders.title')}
+                value={addForm.title}
+                onChangeText={(title) => setAddForm((f) => ({ ...f, title }))}
+              />
+              <Input
+                label={t('petOwnerMedicalRecords.addModal.fields.description')}
+                placeholder={t('petOwnerMedicalRecords.addModal.placeholders.description')}
+                value={addForm.description}
+                onChangeText={(description) => setAddForm((f) => ({ ...f, description }))}
+              />
+              <Text style={styles.inputLabel}>{t('petOwnerMedicalRecords.addModal.fields.recordType')}</Text>
               <View style={styles.pickerRow}>
-                {RECORD_TYPES.slice(0, 4).map((t) => (
-                  <TouchableOpacity key={t} style={[styles.pickerOpt, addForm.recordType === t && styles.pickerOptActive]} onPress={() => setAddForm((f) => ({ ...f, recordType: t }))}><Text style={[styles.pickerOptText, addForm.recordType === t && styles.pickerOptTextActive]}>{t}</Text></TouchableOpacity>
+                {RECORD_TYPES.slice(0, 4).map((tItem) => (
+                  <TouchableOpacity
+                    key={tItem}
+                    style={[styles.pickerOpt, addForm.recordType === tItem && styles.pickerOptActive]}
+                    onPress={() => setAddForm((f) => ({ ...f, recordType: tItem }))}
+                  >
+                    <Text style={[styles.pickerOptText, addForm.recordType === tItem && styles.pickerOptTextActive]}>
+                      {t(`petOwnerMedicalRecords.recordTypes.${tItem}`, { defaultValue: tItem })}
+                    </Text>
+                  </TouchableOpacity>
                 ))}
               </View>
-              <TouchableOpacity style={styles.fileBtn} onPress={handlePickFile}><Text style={styles.fileBtnText}>{selectedFile ? selectedFile.name : 'Select file (image/PDF) *'}</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.fileBtn} onPress={handlePickFile}>
+                <Text style={styles.fileBtnText}>
+                  {selectedFile ? selectedFile.name : t('petOwnerMedicalRecords.addModal.placeholders.selectFile')}
+                </Text>
+              </TouchableOpacity>
               <View style={styles.modalActions}>
-                <Button title="Cancel" onPress={() => setAddModalVisible(false)} style={styles.modalBtn} />
-                <Button title="Save" onPress={handleAddRecord} disabled={createRecord.isPending} style={styles.modalBtn} />
+                <Button title={t('common.cancel')} onPress={() => setAddModalVisible(false)} style={styles.modalBtn} />
+                <Button title={t('common.save')} onPress={handleAddRecord} disabled={createRecord.isPending} style={styles.modalBtn} />
               </View>
             </ScrollView>
           </Pressable>
@@ -318,13 +433,28 @@ export function PetOwnerMedicalRecordsScreen() {
           <Pressable style={styles.modalOverlay} onPress={() => setViewRecord(null)}>
             <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
               <Text style={styles.modalTitle}>{viewRecord.title}</Text>
-              <View style={styles.recordRow}><Text style={styles.recordLabel}>Type:</Text><Text style={styles.recordValue}>{viewRecord.recordType ?? 'GENERAL'}</Text></View>
-              <View style={styles.recordRow}><Text style={styles.recordLabel}>Pet:</Text><Text style={styles.recordValue}>{(viewRecord.petId as { name?: string })?.name ?? '—'}</Text></View>
-              <View style={styles.recordRow}><Text style={styles.recordLabel}>Date:</Text><Text style={styles.recordValue}>{formatDate(viewRecord.uploadedDate)}</Text></View>
+              <View style={styles.recordRow}>
+                <Text style={styles.recordLabel}>{t('petOwnerMedicalRecords.labels.type')}</Text>
+                <Text style={styles.recordValue}>
+                  {t(`petOwnerMedicalRecords.recordTypes.${viewRecord.recordType ?? 'GENERAL'}`, {
+                    defaultValue: viewRecord.recordType ?? 'GENERAL',
+                  })}
+                </Text>
+              </View>
+              <View style={styles.recordRow}>
+                <Text style={styles.recordLabel}>{t('petOwnerMedicalRecords.labels.pet')}</Text>
+                <Text style={styles.recordValue}>{(viewRecord.petId as { name?: string })?.name ?? t('common.na')}</Text>
+              </View>
+              <View style={styles.recordRow}>
+                <Text style={styles.recordLabel}>{t('petOwnerMedicalRecords.labels.date')}</Text>
+                <Text style={styles.recordValue}>{formatDate(viewRecord.uploadedDate, t('common.na'))}</Text>
+              </View>
               {viewRecord.description ? <Text style={styles.recordDesc}>{viewRecord.description}</Text> : null}
               <View style={styles.modalActions}>
-                <Button title="Close" onPress={() => setViewRecord(null)} style={styles.modalBtn} />
-                <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDeleteRecord(viewRecord)}><Text style={styles.deleteBtnText}>Delete</Text></TouchableOpacity>
+                <Button title={t('common.close')} onPress={() => setViewRecord(null)} style={styles.modalBtn} />
+                <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDeleteRecord(viewRecord)}>
+                  <Text style={styles.deleteBtnText}>{t('common.delete')}</Text>
+                </TouchableOpacity>
               </View>
             </Pressable>
           </Pressable>

@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { CartProvider } from './src/contexts/CartContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
+import './src/i18n/appI18n';
+import { LanguageProvider } from './src/contexts/LanguageContext';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -20,13 +22,15 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
-        <AuthProvider>
-          <CartProvider>
-            <RootNavigator />
-          </CartProvider>
-          <StatusBar style="dark" />
-          <Toast />
-        </AuthProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <CartProvider>
+              <RootNavigator />
+            </CartProvider>
+            <StatusBar style="dark" />
+            <Toast />
+          </AuthProvider>
+        </LanguageProvider>
       </SafeAreaProvider>
     </QueryClientProvider>
   );

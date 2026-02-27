@@ -6,6 +6,14 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../api/api';
 import { API_ROUTES } from '../api/apiConfig';
 
+export function useVetDashboard(options: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: ['vet', 'dashboard'],
+    queryFn: () => api.get<{ success?: boolean; data?: unknown }>(API_ROUTES.VETERINARIANS.DASHBOARD),
+    enabled: options.enabled !== false,
+  });
+}
+
 export function useVetReviews(params: { page?: number; limit?: number } = {}) {
   return useQuery({
     queryKey: ['vet', 'reviews', params],

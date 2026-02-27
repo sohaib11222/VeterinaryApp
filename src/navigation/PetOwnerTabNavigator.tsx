@@ -11,15 +11,16 @@ import { PetOwnerMessagesScreen } from '../screens/petowner/PetOwnerMessagesScre
 import { PetOwnerMoreScreen } from '../screens/petowner/PetOwnerMoreScreen';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
+import { useTranslation } from 'react-i18next';
 
 const Tab = createBottomTabNavigator<PetOwnerTabParamList>();
 
-const TAB_HEADERS: Record<string, { title: string; subtitle?: string }> = {
-  PetOwnerHome: { title: 'Pet Dashboard', subtitle: "Your pets' health at a glance" },
-  PetOwnerAppointments: { title: 'Pet Appointments', subtitle: 'Schedule & manage' },
-  PetOwnerPharmacy: { title: 'Pharmacy & Shop', subtitle: 'Pet supplies' },
-  PetOwnerMessages: { title: 'Messages', subtitle: 'Chat with veterinarians' },
-  PetOwnerMore: { title: 'More', subtitle: 'Settings & more' },
+const TAB_HEADERS: Record<string, { titleKey: string; subtitleKey?: string }> = {
+  PetOwnerHome: { titleKey: 'tabs.home', subtitleKey: 'petOwnerTabs.PetOwnerHome.subtitle' },
+  PetOwnerAppointments: { titleKey: 'tabs.appointments', subtitleKey: 'petOwnerTabs.PetOwnerAppointments.subtitle' },
+  PetOwnerPharmacy: { titleKey: 'tabs.pharmacy', subtitleKey: 'petOwnerTabs.PetOwnerPharmacy.subtitle' },
+  PetOwnerMessages: { titleKey: 'tabs.messages', subtitleKey: 'petOwnerTabs.PetOwnerMessages.subtitle' },
+  PetOwnerMore: { titleKey: 'tabs.more', subtitleKey: 'petOwnerTabs.PetOwnerMore.subtitle' },
 };
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
@@ -34,11 +35,13 @@ function TabIcon({ name, focused }: { name: string; focused: boolean }) {
 }
 
 function PetOwnerTabHeader({ route }: { route: { name: string } }) {
-  const h = TAB_HEADERS[route.name] || { title: route.name, subtitle: '' };
-  return <VetHeader title={h.title} subtitle={h.subtitle} />;
+  const { t } = useTranslation();
+  const h = TAB_HEADERS[route.name] || { titleKey: route.name, subtitle: '' };
+  return <VetHeader title={t(h.titleKey)} subtitle={h.subtitleKey ? t(h.subtitleKey) : ''} />;
 }
 
 export function PetOwnerTabNavigator() {
+  const { t } = useTranslation();
   return (
     <VetHeaderSearchProvider>
     <Tab.Navigator
@@ -55,11 +58,11 @@ export function PetOwnerTabNavigator() {
         };
       }}
     >
-      <Tab.Screen name="PetOwnerHome" component={PetOwnerHomeScreen} options={{ tabBarLabel: 'Home' }} />
-      <Tab.Screen name="PetOwnerAppointments" component={PetOwnerAppointmentsScreen} options={{ tabBarLabel: 'Appointments' }} />
-      <Tab.Screen name="PetOwnerPharmacy" component={PetOwnerPharmacyStack} options={{ tabBarLabel: 'Pharmacy' }} />
-      <Tab.Screen name="PetOwnerMessages" component={PetOwnerMessagesScreen} options={{ tabBarLabel: 'Messages' }} />
-      <Tab.Screen name="PetOwnerMore" component={PetOwnerMoreScreen} options={{ tabBarLabel: 'More' }} />
+      <Tab.Screen name="PetOwnerHome" component={PetOwnerHomeScreen} options={{ tabBarLabel: t('tabs.home') }} />
+      <Tab.Screen name="PetOwnerAppointments" component={PetOwnerAppointmentsScreen} options={{ tabBarLabel: t('tabs.appointments') }} />
+      <Tab.Screen name="PetOwnerPharmacy" component={PetOwnerPharmacyStack} options={{ tabBarLabel: t('tabs.pharmacy') }} />
+      <Tab.Screen name="PetOwnerMessages" component={PetOwnerMessagesScreen} options={{ tabBarLabel: t('tabs.messages') }} />
+      <Tab.Screen name="PetOwnerMore" component={PetOwnerMoreScreen} options={{ tabBarLabel: t('tabs.more') }} />
     </Tab.Navigator>
     </VetHeaderSearchProvider>
   );

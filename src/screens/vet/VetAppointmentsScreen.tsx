@@ -21,6 +21,7 @@ import { useAppointments } from '../../queries/appointmentQueries';
 import { useGetOrCreateConversation } from '../../mutations/chatMutations';
 import { getImageUrl } from '../../config/api';
 import Toast from 'react-native-toast-message';
+import { useTranslation } from 'react-i18next';
 
 type Tab = 'all' | 'upcoming' | 'cancelled' | 'completed';
 
@@ -44,7 +45,8 @@ interface AppointmentItem {
 function normalizeAppointments(response: unknown): AppointmentItem[] {
   const body = response as { data?: { appointments?: unknown[] } };
   const list = Array.isArray(body?.data?.appointments) ? body.data.appointments : [];
-  return list.map((a: Record<string, unknown>) => {
+  return list.map((item) => {
+    const a = item as Record<string, unknown>;
     const pet = (a.petId as Record<string, unknown>) || {};
     const owner = (a.petOwnerId as Record<string, unknown>) || {};
     const ownerId = (owner._id as string) ?? (a.petOwnerId as string) ?? '';
@@ -76,6 +78,7 @@ export function VetAppointmentsScreen() {
   const stackNav = navigation.getParent();
   const headerSearch = useVetHeaderSearch();
   const headerRight = useVetHeaderRightAction();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<Tab>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -130,7 +133,7 @@ export function VetAppointmentsScreen() {
   useFocusEffect(
     React.useCallback(() => {
       headerSearch?.setConfig({
-        placeholder: 'Search pets or owners...',
+        placeholder: t('appointments.searchPlaceholderVet'),
         value: searchQuery,
         onChangeText: setSearchQuery,
       });
@@ -163,14 +166,14 @@ export function VetAppointmentsScreen() {
         headerSearch?.setConfig(null);
         headerRight?.setRightAction(null);
       };
-    }, [searchQuery, stackNav, headerSearch, headerRight, pendingRequestCount])
+    }, [searchQuery, stackNav, headerSearch, headerRight, pendingRequestCount, t])
   );
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'all', label: 'All' },
-    { key: 'upcoming', label: 'Upcoming' },
-    { key: 'cancelled', label: 'Cancelled' },
-    { key: 'completed', label: 'Completed' },
+    { key: 'all', label: t('appointments.tabs.all') },
+    { key: 'upcoming', label: t('appointments.tabs.upcoming') },
+    { key: 'cancelled', label: t('appointments.tabs.cancelled') },
+    { key: 'completed', label: t('appointments.tabs.completed') },
   ];
 
   const openDetail = (id: string) => {
@@ -181,7 +184,7 @@ export function VetAppointmentsScreen() {
     if (item.status !== 'CONFIRMED' || !currentUserId) return;
     const { petOwnerId: ownerId, _id: aptId, ownerName } = item;
     if (!ownerId || !aptId) {
-      Toast.show({ type: 'error', text1: 'Cannot open chat for this appointment' });
+      Toast.show({ type: 'error', text1: t('appointments.errors.cannotOpenChat') });
       return;
     }
     try {
@@ -193,7 +196,7 @@ export function VetAppointmentsScreen() {
       const conv = (res as { _id?: string; data?: { _id?: string } })?.data ?? (res as { _id?: string });
       const conversationId = conv?._id;
       if (!conversationId) {
-        Toast.show({ type: 'error', text1: 'Could not open chat' });
+        Toast.show({ type: 'error', text1: t('appointments.errors.couldNotOpenChat') });
         return;
       }
       stackNav?.navigate('VetChatDetail', {
@@ -202,10 +205,10 @@ export function VetAppointmentsScreen() {
         petOwnerId: ownerId,
         appointmentId: aptId,
         title: ownerName,
-        subtitle: 'Chat',
+        subtitle: t('appointments.actions.chat'),
       });
     } catch (err) {
-      Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? 'Could not open chat' });
+      Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? t('appointments.errors.couldNotOpenChat') });
     }
   };
 
@@ -227,7 +230,7 @@ export function VetAppointmentsScreen() {
                 {item.petName}
                 {item.petBreed ? ` (${item.petBreed})` : ''}
               </Text>
-              <Text style={styles.ownerLabel}>Owner: {item.ownerName}</Text>
+              <Text style={styles.ownerLabel}>{t('appointments.labels.owner')}: {item.ownerName}</Text>
             </View>
           </View>
           <View
@@ -271,12 +274,12 @@ export function VetAppointmentsScreen() {
               }}
               disabled={getOrCreateConversation.isPending}
             >
-              <Text style={styles.chatBtnIcon}>💬</Text>
-              <Text style={styles.viewBtnText}>Chat</Text>
+              {/* <Text style={styles.chatBtnIcon}>💬</Text> */}
+              <Text style={styles.viewBtnText}>{t('appointments.actions.chat')}</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity style={styles.viewBtn} onPress={() => openDetail(item._id)}>
-            <Text style={styles.viewBtnText}>View</Text>
+            <Text style={styles.viewBtnText}>{t('appointments.actions.view')}</Text>
           </TouchableOpacity>
         </View>
       </Card>
@@ -284,10 +287,10 @@ export function VetAppointmentsScreen() {
   );
 
   const emptyMessages: Record<Tab, string> = {
-    all: "You don't have any appointments.",
-    upcoming: "You don't have any upcoming appointments.",
-    cancelled: "You don't have any cancelled appointments at the moment.",
-    completed: "You don't have any completed appointments yet.",
+    all: t('appointments.empty.all'),
+    upcoming: t('appointments.empty.upcoming'),
+    cancelled: t('appointments.empty.cancelled'),
+    completed: t('appointments.empty.completed'),
   };
 
   return (
@@ -308,7 +311,7 @@ export function VetAppointmentsScreen() {
       {isLoading ? (
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading appointments...</Text>
+          <Text style={styles.loadingText}>{t('appointments.loading')}</Text>
         </View>
       ) : (
         <FlatList

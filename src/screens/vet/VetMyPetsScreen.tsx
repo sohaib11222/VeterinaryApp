@@ -16,6 +16,7 @@ import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useAppointments } from '../../queries/appointmentQueries';
 import { getImageUrl } from '../../config/api';
+import { useTranslation } from 'react-i18next';
 
 type PetRow = {
   id: string;
@@ -117,6 +118,7 @@ function normalizeSpecies(s: string): string {
 }
 
 export function VetMyPetsScreen() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<'active' | 'inactive'>('active');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterSpecies, setFilterSpecies] = useState<string>('all');
@@ -159,7 +161,7 @@ export function VetMyPetsScreen() {
     return (
       <ScreenContainer padded>
         <Text style={styles.errorText}>
-          {(error as { message?: string })?.message ?? 'Failed to load pets'}
+          {(error as { message?: string })?.message ?? t('pets.errors.loadFailed')}
         </Text>
       </ScreenContainer>
     );
@@ -185,19 +187,19 @@ export function VetMyPetsScreen() {
             </View>
           </View>
           <Text style={styles.breed}>{item.breed || '—'}</Text>
-          <Text style={styles.owner}>Owner: {item.ownerName}</Text>
+          <Text style={styles.owner}>{t('pets.labels.owner')}: {item.ownerName}</Text>
           {item.ownerEmail ? <Text style={styles.contact}>✉ {item.ownerEmail}</Text> : null}
           {item.ownerPhone ? <Text style={styles.contact}>📞 {item.ownerPhone}</Text> : null}
           <View style={styles.metaRow}>
-            <Text style={styles.meta}>Last visit: {formatDate(item.lastVisit)}</Text>
-            <Text style={styles.meta}>Added: {formatDate(item.dateAdded)}</Text>
+            <Text style={styles.meta}>{t('pets.labels.lastVisit')}: {formatDate(item.lastVisit)}</Text>
+            <Text style={styles.meta}>{t('pets.labels.added')}: {formatDate(item.dateAdded)}</Text>
           </View>
         </View>
-        <Text style={styles.chevron}>›</Text>
+        {/* <Text style={styles.chevron}>›</Text> */}
       </View>
-      <TouchableOpacity style={styles.viewBtn} onPress={() => {}}>
+      {/* <TouchableOpacity style={styles.viewBtn} onPress={() => {}}>
         <Text style={styles.viewBtnText}>View details</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </Card>
   );
   };
@@ -208,7 +210,7 @@ export function VetMyPetsScreen() {
         <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search by pet or owner name..."
+          placeholder={t('pets.searchPlaceholder')}
           placeholderTextColor={colors.textLight}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -216,10 +218,10 @@ export function VetMyPetsScreen() {
       </View>
       <View style={styles.tabs}>
         <TouchableOpacity style={[styles.tab, tab === 'active' && styles.tabActive]} onPress={() => setTab('active')}>
-          <Text style={[styles.tabText, tab === 'active' && styles.tabTextActive]}>Active</Text>
+          <Text style={[styles.tabText, tab === 'active' && styles.tabTextActive]}>{t('pets.tabs.active')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.tab, tab === 'inactive' && styles.tabActive]} onPress={() => setTab('inactive')}>
-          <Text style={[styles.tabText, tab === 'inactive' && styles.tabTextActive]}>Inactive</Text>
+          <Text style={[styles.tabText, tab === 'inactive' && styles.tabTextActive]}>{t('pets.tabs.inactive')}</Text>
         </TouchableOpacity>
       </View>
       <View style={styles.filterRow}>
@@ -230,7 +232,7 @@ export function VetMyPetsScreen() {
             onPress={() => setFilterSpecies(f)}
           >
             <Text style={[styles.filterChipText, filterSpecies === f && styles.filterChipTextActive]}>
-              {f === 'all' ? 'All' : f}
+              {f === 'all' ? t('pets.filters.all') : f}
             </Text>
           </TouchableOpacity>
         ))}
@@ -242,7 +244,7 @@ export function VetMyPetsScreen() {
         renderItem={renderItem}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>No pets in this list</Text>
+            <Text style={styles.emptyText}>{t('pets.empty')}</Text>
           </View>
         }
       />

@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   ViewStyle,
   TextStyle,
+  StyleProp,
 } from 'react-native';
 import { colors } from '../../theme/colors';
 import { spacing, borderRadius } from '../../theme/spacing';
@@ -19,7 +20,7 @@ interface ButtonProps {
   loading?: boolean;
   disabled?: boolean;
   variant?: ButtonVariant;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   textStyle?: TextStyle;
   icon?: React.ReactNode;
 }
@@ -63,7 +64,7 @@ export function Button({
               variant === 'secondary' && styles.textSecondary,
               variant === 'outline' && styles.textOutline,
               variant === 'ghost' && styles.textGhost,
-              icon && { marginLeft: spacing.sm },
+              icon ? { marginLeft: spacing.sm } : undefined,
               textStyle,
             ]}
           >

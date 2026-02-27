@@ -14,6 +14,7 @@ import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useVaccinations } from '../../queries/medicalQueries';
+import { useTranslation } from 'react-i18next';
 
 type VaccinationItem = {
   _id: string;
@@ -42,6 +43,7 @@ function normalizeVaccinations(response: unknown): VaccinationItem[] {
 }
 
 export function VetVaccinationsScreen() {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterVaccine, setFilterVaccine] = useState<string>('all');
 
@@ -72,6 +74,12 @@ export function VetVaccinationsScreen() {
     return 'Up to date';
   };
 
+  const statusLabel = (raw: string) => {
+    if (raw === 'Overdue') return t('vetVaccinations.status.overdue');
+    if (raw === 'Due soon') return t('vetVaccinations.status.dueSoon');
+    return t('vetVaccinations.status.upToDate');
+  };
+
   if (isLoading) {
     return (
       <ScreenContainer padded>
@@ -86,7 +94,7 @@ export function VetVaccinationsScreen() {
     return (
       <ScreenContainer padded>
         <Text style={styles.errorText}>
-          {(error as { message?: string })?.message ?? 'Failed to load vaccinations'}
+          {(error as { message?: string })?.message ?? t('vetVaccinations.errors.loadFailed')}
         </Text>
       </ScreenContainer>
     );
@@ -98,7 +106,7 @@ export function VetVaccinationsScreen() {
         <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search by pet or owner..."
+          placeholder={t('vetVaccinations.searchPlaceholder')}
           placeholderTextColor={colors.textLight}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -109,7 +117,7 @@ export function VetVaccinationsScreen() {
           style={[styles.filterChip, filterVaccine === 'all' && styles.filterChipActive]}
           onPress={() => setFilterVaccine('all')}
         >
-          <Text style={[styles.filterChipText, filterVaccine === 'all' && styles.filterChipTextActive]}>All</Text>
+          <Text style={[styles.filterChipText, filterVaccine === 'all' && styles.filterChipTextActive]}>{t('vetVaccinations.filters.all')}</Text>
         </TouchableOpacity>
         {vaccineTypes.map((v) => (
           <TouchableOpacity
@@ -126,31 +134,32 @@ export function VetVaccinationsScreen() {
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => {
-          const petName = item.petId?.name ?? 'Pet';
+          const petName = item.petId?.name ?? t('common.pet');
           const breed = item.petId?.breed ?? '';
           const ownerName = item.petOwnerId?.name ?? '—';
-          const vaccineType = item.vaccinationType ?? 'Vaccination';
+          const vaccineType = item.vaccinationType ?? t('vetVaccinations.labels.vaccination');
           const status = getStatus(item);
+          const statusText = statusLabel(status);
           const isDueSoon = status === 'Due soon' || status === 'Overdue';
           return (
             <Card style={styles.card}>
               <View style={styles.topRow}>
                 <Text style={styles.petName}>{petName}{breed ? ` (${breed})` : ''}</Text>
                 <View style={[styles.statusBadge, isDueSoon && styles.statusDue]}>
-                  <Text style={styles.statusText}>{status}</Text>
+                  <Text style={styles.statusText}>{statusText}</Text>
                 </View>
               </View>
-              <Text style={styles.owner}>Owner: {ownerName}</Text>
+              <Text style={styles.owner}>{t('vetVaccinations.labels.owner')}: {ownerName}</Text>
               <Text style={styles.vaccine}>💉 {vaccineType}</Text>
-              <Text style={styles.date}>Given: {formatDate(item.vaccinationDate)}</Text>
-              <Text style={styles.nextDue}>Next due: {item.nextDueDate ? formatDate(item.nextDueDate) : '—'}</Text>
-              {item.notes ? <Text style={styles.notes}>Note: {item.notes}</Text> : null}
+              <Text style={styles.date}>{t('vetVaccinations.labels.given')}: {formatDate(item.vaccinationDate)}</Text>
+              <Text style={styles.nextDue}>{t('vetVaccinations.labels.nextDue')}: {item.nextDueDate ? formatDate(item.nextDueDate) : '—'}</Text>
+              {item.notes ? <Text style={styles.notes}>{t('vetVaccinations.labels.note')}: {item.notes}</Text> : null}
             </Card>
           );
         }}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>No vaccination records</Text>
+            <Text style={styles.emptyText}>{t('vetVaccinations.empty')}</Text>
           </View>
         }
       />

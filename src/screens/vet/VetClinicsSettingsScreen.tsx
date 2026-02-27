@@ -9,6 +9,7 @@ import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useVeterinarianProfile } from '../../queries/veterinarianQueries';
 import { useUpdateVeterinarianProfile } from '../../mutations/veterinarianMutations';
+import { useTranslation } from 'react-i18next';
 
 type ClinicRow = {
   name: string;
@@ -29,6 +30,7 @@ const emptyClinic = (): ClinicRow => ({
 });
 
 export function VetClinicsSettingsScreen() {
+  const { t } = useTranslation();
   const { data: profileResponse, isLoading: profileLoading } = useVeterinarianProfile();
   const updateProfile = useUpdateVeterinarianProfile();
   const profile = profileResponse?.data;
@@ -73,26 +75,30 @@ export function VetClinicsSettingsScreen() {
       }))
       .filter((c) => c.name || c.address || c.city || c.phone);
     if (cleaned.length === 0) {
-      Alert.alert('Validation', 'Add at least one clinic with name or address.');
+      Alert.alert(t('common.validation'), t('vetClinicsSettings.validation.addAtLeastOne'));
       return;
     }
     try {
       const existingClinics = initialClinics as Array<Record<string, unknown>>;
       const merged = cleaned.map((c, idx) => {
         const existing = existingClinics[idx];
+        const latRaw = existing?.lat as unknown;
+        const lngRaw = existing?.lng as unknown;
         return {
           ...c,
-          lat: existing?.lat ?? null,
-          lng: existing?.lng ?? null,
+          lat: typeof latRaw === 'number' ? latRaw : null,
+          lng: typeof lngRaw === 'number' ? lngRaw : null,
           images: Array.isArray(existing?.images) ? existing.images : [],
           timings: Array.isArray(existing?.timings) ? existing.timings : [],
         };
       });
       await updateProfile.mutateAsync({ clinics: merged });
-      Alert.alert('Success', 'Clinics updated successfully.');
+      Alert.alert(t('common.success'), t('vetClinicsSettings.alerts.updated'));
     } catch (err: unknown) {
-      const message = (err as { response?: { data?: { message?: string }; message?: string }; message?: string })?.response?.data?.message ?? (err as { message?: string })?.message ?? 'Failed to update clinics.';
-      Alert.alert('Error', message);
+      const message = (err as { response?: { data?: { message?: string }; message?: string }; message?: string })?.response?.data?.message
+        ?? (err as { message?: string })?.message
+        ?? t('vetClinicsSettings.errors.updateFailed');
+      Alert.alert(t('common.error'), message);
     }
   };
 
@@ -109,61 +115,61 @@ export function VetClinicsSettingsScreen() {
   return (
     <ScreenContainer scroll padded>
       <Card>
-        <Text style={styles.sectionTitle}>Clinics</Text>
+        <Text style={styles.sectionTitle}>{t('vetClinicsSettings.title')}</Text>
         {clinics.map((c, index) => (
           <View key={index} style={styles.block}>
             <Input
-              label="Clinic Name"
-              placeholder="Name"
+              label={t('vetClinicsSettings.fields.clinicName')}
+              placeholder={t('vetClinicsSettings.placeholders.name')}
               value={c.name}
               onChangeText={(v) => handleChange(index, 'name', v)}
             />
             <Input
-              label="Address"
-              placeholder="Full address"
+              label={t('vetClinicsSettings.fields.address')}
+              placeholder={t('vetClinicsSettings.placeholders.address')}
               value={c.address}
               onChangeText={(v) => handleChange(index, 'address', v)}
             />
             <View style={styles.row}>
               <View style={styles.flex1}>
                 <Input
-                  label="City"
-                  placeholder="City"
+                  label={t('vetClinicsSettings.fields.city')}
+                  placeholder={t('vetClinicsSettings.placeholders.city')}
                   value={c.city}
                   onChangeText={(v) => handleChange(index, 'city', v)}
                 />
               </View>
               <View style={styles.flex1}>
                 <Input
-                  label="State"
-                  placeholder="State"
+                  label={t('vetClinicsSettings.fields.state')}
+                  placeholder={t('vetClinicsSettings.placeholders.state')}
                   value={c.state}
                   onChangeText={(v) => handleChange(index, 'state', v)}
                 />
               </View>
               <View style={styles.flex1}>
                 <Input
-                  label="Country"
-                  placeholder="Country"
+                  label={t('vetClinicsSettings.fields.country')}
+                  placeholder={t('vetClinicsSettings.placeholders.country')}
                   value={c.country}
                   onChangeText={(v) => handleChange(index, 'country', v)}
                 />
               </View>
             </View>
             <Input
-              label="Phone"
-              placeholder="Clinic phone"
+              label={t('vetClinicsSettings.fields.phone')}
+              placeholder={t('vetClinicsSettings.placeholders.phone')}
               value={c.phone}
               onChangeText={(v) => handleChange(index, 'phone', v)}
               keyboardType="phone-pad"
             />
             <TouchableOpacity onPress={() => removeClinic(index)}>
-              <Text style={styles.removeText}>Remove Clinic</Text>
+              <Text style={styles.removeText}>{t('vetClinicsSettings.actions.removeClinic')}</Text>
             </TouchableOpacity>
           </View>
         ))}
-        <Button title="+ Add Clinic" onPress={addClinic} />
-        <Button title="Save Changes" onPress={handleSave} style={{ marginTop: spacing.md }} disabled={updateProfile.isPending} />
+        <Button title={t('vetClinicsSettings.actions.addClinic')} onPress={addClinic} />
+        <Button title={t('common.saveChanges')} onPress={handleSave} style={{ marginTop: spacing.md }} disabled={updateProfile.isPending} />
       </Card>
     </ScreenContainer>
   );

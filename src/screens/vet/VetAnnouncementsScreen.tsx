@@ -20,6 +20,7 @@ import { useVeterinarianAnnouncements, useUnreadAnnouncementCount } from '../../
 import { useMarkAnnouncementAsRead } from '../../mutations/announcementMutations';
 import { getImageUrl } from '../../config/api';
 import Toast from 'react-native-toast-message';
+import { useTranslation } from 'react-i18next';
 
 type AnnouncementItem = {
   _id: string;
@@ -35,21 +36,23 @@ type AnnouncementItem = {
   createdAt?: string;
 };
 
-function formatDate(dateStr?: string): string {
+function formatDate(dateStr?: string, locale?: string): string {
   if (!dateStr) return '—';
   const d = new Date(dateStr);
   if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function formatTime(dateStr?: string): string {
+function formatTime(dateStr?: string, locale?: string): string {
   if (!dateStr) return '';
   const d = new Date(dateStr);
   if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
 }
 
 export function VetAnnouncementsScreen() {
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language?.startsWith('it') ? 'it-IT' : 'en-US';
   const [filter, setFilter] = useState<'all' | 'unread' | 'pinned'>('all');
   const [page, setPage] = useState(1);
   const limit = 20;
@@ -87,19 +90,19 @@ export function VetAnnouncementsScreen() {
   const handleMarkAsRead = async (id: string) => {
     try {
       await markRead.mutateAsync(id);
-      Toast.show({ type: 'success', text1: 'Announcement marked as read' });
+      Toast.show({ type: 'success', text1: t('vetAnnouncements.toasts.markedAsRead') });
     } catch (err) {
-      Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? 'Failed to mark as read' });
+      Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? t('vetAnnouncements.errors.markReadFailed') });
     }
   };
 
   const openLink = (url: string) => {
-    Linking.openURL(url).catch(() => Toast.show({ type: 'error', text1: 'Could not open link' }));
+    Linking.openURL(url).catch(() => Toast.show({ type: 'error', text1: t('vetAnnouncements.errors.couldNotOpenLink') }));
   };
 
   const openFile = (path: string) => {
     const url = getImageUrl(path) ?? path;
-    Linking.openURL(url.startsWith('http') ? url : (url.startsWith('/') ? `${url}` : `/${url}`)).catch(() => Toast.show({ type: 'error', text1: 'Could not open file' }));
+    Linking.openURL(url.startsWith('http') ? url : (url.startsWith('/') ? `${url}` : `/${url}`)).catch(() => Toast.show({ type: 'error', text1: t('vetAnnouncements.errors.couldNotOpenFile') }));
   };
 
   if (isLoading && announcements.length === 0) {
@@ -116,10 +119,10 @@ export function VetAnnouncementsScreen() {
     <ScreenContainer padded>
       <View style={styles.statsRow}>
         <View style={styles.badgeDanger}>
-          <Text style={styles.badgeText}>{unreadCount} Unread</Text>
+          <Text style={styles.badgeText}>{t('vetAnnouncements.stats.unread', { count: unreadCount })}</Text>
         </View>
         <View style={styles.badgePrimary}>
-          <Text style={styles.badgeText}>{pinnedCount} Pinned</Text>
+          <Text style={styles.badgeText}>{t('vetAnnouncements.stats.pinned', { count: pinnedCount })}</Text>
         </View>
       </View>
 
@@ -128,19 +131,19 @@ export function VetAnnouncementsScreen() {
           style={[styles.filterBtn, filter === 'all' && styles.filterBtnActive]}
           onPress={() => { setFilter('all'); setPage(1); }}
         >
-          <Text style={[styles.filterBtnText, filter === 'all' && styles.filterBtnTextActive]}>All ({announcements.length})</Text>
+          <Text style={[styles.filterBtnText, filter === 'all' && styles.filterBtnTextActive]}>{t('vetAnnouncements.filters.all', { count: announcements.length })}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.filterBtn, filter === 'unread' && styles.filterBtnActive]}
           onPress={() => { setFilter('unread'); setPage(1); }}
         >
-          <Text style={[styles.filterBtnText, filter === 'unread' && styles.filterBtnTextActive]}>Unread ({unreadCount})</Text>
+          <Text style={[styles.filterBtnText, filter === 'unread' && styles.filterBtnTextActive]}>{t('vetAnnouncements.filters.unread', { count: unreadCount })}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.filterBtn, filter === 'pinned' && styles.filterBtnActive]}
           onPress={() => { setFilter('pinned'); setPage(1); }}
         >
-          <Text style={[styles.filterBtnText, filter === 'pinned' && styles.filterBtnTextActive]}>Pinned ({pinnedCount})</Text>
+          <Text style={[styles.filterBtnText, filter === 'pinned' && styles.filterBtnTextActive]}>{t('vetAnnouncements.filters.pinned', { count: pinnedCount })}</Text>
         </TouchableOpacity>
       </View>
 
@@ -150,13 +153,15 @@ export function VetAnnouncementsScreen() {
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>No announcements found</Text>
-            <Text style={styles.emptySub}>You're all caught up!</Text>
+            <Text style={styles.emptyTitle}>{t('vetAnnouncements.empty.title')}</Text>
+            <Text style={styles.emptySub}>{t('vetAnnouncements.empty.subtitle')}</Text>
           </View>
         }
         renderItem={({ item }) => {
           const priorityStyle = item.priority === 'URGENT' ? styles.priorityUrgent : item.priority === 'IMPORTANT' ? styles.priorityImportant : styles.priorityNormal;
           const imageUri = item.image ? getImageUrl(item.image) : null;
+          const priorityKey = String(item.priority ?? 'NORMAL').toLowerCase();
+          const priorityText = t(`vetAnnouncements.priority.${priorityKey}`, { defaultValue: String(item.priority ?? 'NORMAL') });
           return (
             <Card style={[styles.card, item.isPinned && styles.cardPinned, !item.isRead && styles.cardUnread]}>
               <View style={styles.cardHeader}>
@@ -164,18 +169,18 @@ export function VetAnnouncementsScreen() {
                   {item.isPinned ? '📌 ' : ''}
                   {item.priority === 'URGENT' ? '⚠️ ' : ''}
                   {item.title ?? '—'}
-                  {!item.isRead ? <Text style={styles.newBadge}> New</Text> : null}
+                  {!item.isRead ? <Text style={styles.newBadge}> {t('vetAnnouncements.new')}</Text> : null}
                 </Text>
               </View>
               <View style={styles.metaRow}>
                 <View style={[styles.priorityBadge, priorityStyle]}>
-                  <Text style={styles.priorityText}>{item.priority ?? 'NORMAL'}</Text>
+                  <Text style={styles.priorityText}>{priorityText}</Text>
                 </View>
                 <View style={styles.typeBadge}>
                   <Text style={styles.typeText}>{item.announcementType ?? '—'}</Text>
                 </View>
                 <Text style={styles.dateText}>
-                  {formatDate(item.createdAt)} at {formatTime(item.createdAt)}
+                  {formatDate(item.createdAt, locale)} {t('vetAnnouncements.at')} {formatTime(item.createdAt, locale)}
                 </Text>
               </View>
               <Text style={styles.message}>{item.message ?? ''}</Text>
@@ -184,17 +189,17 @@ export function VetAnnouncementsScreen() {
               ) : null}
               {item.file ? (
                 <TouchableOpacity style={styles.attachBtn} onPress={() => openFile(item.file!)}>
-                  <Text style={styles.attachBtnText}>📎 View Attachment</Text>
+                  <Text style={styles.attachBtnText}>{t('vetAnnouncements.actions.viewAttachment')}</Text>
                 </TouchableOpacity>
               ) : null}
               {item.link ? (
                 <TouchableOpacity style={styles.linkBtn} onPress={() => openLink(item.link!)}>
-                  <Text style={styles.linkBtnText}>🔗 View Link</Text>
+                  <Text style={styles.linkBtnText}>{t('vetAnnouncements.actions.viewLink')}</Text>
                 </TouchableOpacity>
               ) : null}
               {!item.isRead && (
                 <Button
-                  title="Mark as Read"
+                  title={t('vetAnnouncements.actions.markAsRead')}
                   onPress={() => handleMarkAsRead(item._id)}
                   disabled={markRead.isPending}
                   style={styles.markReadBtn}
@@ -212,24 +217,22 @@ export function VetAnnouncementsScreen() {
             onPress={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page <= 1}
           >
-            <Text style={styles.pageBtnText}>‹ Previous</Text>
+            <Text style={styles.pageBtnText}>{t('vetAnnouncements.pagination.previous')}</Text>
           </TouchableOpacity>
-          <Text style={styles.pageText}>Page {page} of {pagination.pages}</Text>
+          <Text style={styles.pageText}>{t('vetAnnouncements.pagination.pageOf', { page, pages: pagination.pages })}</Text>
           <TouchableOpacity
             style={[styles.pageBtn, page >= pagination.pages && styles.pageBtnDisabled]}
             onPress={() => setPage((p) => Math.min(pagination.pages, p + 1))}
             disabled={page >= pagination.pages}
           >
-            <Text style={styles.pageBtnText}>Next ›</Text>
+            <Text style={styles.pageBtnText}>{t('vetAnnouncements.pagination.next')}</Text>
           </TouchableOpacity>
         </View>
       )}
 
       <View style={styles.infoBox}>
-        <Text style={styles.infoTitle}>About Announcements</Text>
-        <Text style={styles.infoText}>
-          Important announcements from the platform appear here. Pinned announcements stay at the top. Read all to stay updated.
-        </Text>
+        <Text style={styles.infoTitle}>{t('vetAnnouncements.info.title')}</Text>
+        <Text style={styles.infoText}>{t('vetAnnouncements.info.body')}</Text>
       </View>
     </ScreenContainer>
   );

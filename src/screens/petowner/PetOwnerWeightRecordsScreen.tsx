@@ -8,27 +8,35 @@ import { typography } from '../../theme/typography';
 import { usePets } from '../../queries/petsQueries';
 import { useWeightRecords, type WeightRecordItem } from '../../queries/medicalQueries';
 import { getImageUrl } from '../../config/api';
-
-function formatDate(d: string | undefined): string {
-  if (!d) return '—';
-  const dt = new Date(d);
-  if (Number.isNaN(dt.getTime())) return '—';
-  return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-function formatWeight(w: WeightRecordItem['weight']): string {
-  if (!w || w.value === undefined || w.value === null) return '—';
-  return `${w.value}${w.unit || ' kg'}`;
-}
+import { useTranslation } from 'react-i18next';
 
 export function PetOwnerWeightRecordsScreen() {
+  const { t, i18n } = useTranslation();
+
+  const formatDate = (d: string | undefined): string => {
+    if (!d) return t('common.na');
+    const dt = new Date(d);
+    if (Number.isNaN(dt.getTime())) return t('common.na');
+    return dt.toLocaleDateString(i18n.language, { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
+  const formatWeight = (w: WeightRecordItem['weight']): string => {
+    if (!w || w.value === undefined || w.value === null) return t('common.na');
+    return `${w.value}${w.unit || t('petOwnerWeightRecords.defaults.unitKg')}`;
+  };
+
   const [selectedPetId, setSelectedPetId] = useState('');
   const [page, setPage] = useState(1);
 
   const { data: petsResponse } = usePets();
   const pets = useMemo(() => {
-    const raw = (petsResponse as { data?: { _id: string; name?: string }[] })?.data ?? (petsResponse as { _id: string; name?: string }[]);
-    return Array.isArray(raw) ? raw : [];
+    const outer = petsResponse as { data?: unknown } | undefined;
+    const raw = outer?.data ?? petsResponse;
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .map((p) => p as { _id?: string; name?: string })
+      .filter((p) => typeof p?._id === 'string' && p._id.length > 0)
+      .map((p) => ({ _id: p._id as string, name: p.name }));
   }, [petsResponse]);
 
   const listParams = useMemo(
@@ -44,15 +52,15 @@ export function PetOwnerWeightRecordsScreen() {
 
   return (
     <ScreenContainer scroll padded>
-      <Text style={styles.title}>Weight Records</Text>
-      <Text style={styles.subtitle}>Track your pet's weight history recorded during appointments</Text>
+      <Text style={styles.title}>{t('petOwnerWeightRecords.title')}</Text>
+      <Text style={styles.subtitle}>{t('petOwnerWeightRecords.subtitle')}</Text>
 
       {pets.length > 0 && (
         <View style={styles.filterRow}>
-          <Text style={styles.filterLabel}>Pet</Text>
+          <Text style={styles.filterLabel}>{t('petOwnerWeightRecords.filters.pet')}</Text>
           <View style={styles.petChips}>
             <TouchableOpacity style={[styles.chip, !selectedPetId && styles.chipActive]} onPress={() => setSelectedPetId('')}>
-              <Text style={[styles.chipText, !selectedPetId && styles.chipTextActive]}>All Pets</Text>
+              <Text style={[styles.chipText, !selectedPetId && styles.chipTextActive]}>{t('petOwnerWeightRecords.filters.allPets')}</Text>
             </TouchableOpacity>
             {pets.map((p) => (
               <TouchableOpacity key={p._id} style={[styles.chip, selectedPetId === p._id && styles.chipActive]} onPress={() => { setSelectedPetId(p._id); setPage(1); }}>
@@ -64,29 +72,29 @@ export function PetOwnerWeightRecordsScreen() {
       )}
 
       <Card style={styles.latestCard}>
-        <Text style={styles.latestTitle}>Latest Weight</Text>
+        <Text style={styles.latestTitle}>{t('petOwnerWeightRecords.latest.title')}</Text>
         {latest ? (
           <View style={styles.latestRow}>
             {latest.petId?.photo ? (
               <View style={styles.latestPetPhoto} />
             ) : null}
-            <Text style={styles.latestPetName}>{latest.petId?.name || 'Pet'}</Text>
+            <Text style={styles.latestPetName}>{latest.petId?.name || t('petOwnerWeightRecords.defaults.pet')}</Text>
             <Text style={styles.latestValue}>{formatWeight(latest.weight)}</Text>
             <Text style={styles.latestDate}>{formatDate(latest.date)}</Text>
           </View>
         ) : (
-          <Text style={styles.muted}>No weight records yet</Text>
+          <Text style={styles.muted}>{t('petOwnerWeightRecords.empty.latest')}</Text>
         )}
       </Card>
 
       <Card>
-        <Text style={styles.sectionTitle}>History</Text>
+        <Text style={styles.sectionTitle}>{t('petOwnerWeightRecords.history.title')}</Text>
         {isLoading ? (
           <View style={styles.loading}>
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
         ) : records.length === 0 ? (
-          <Text style={styles.muted}>No weight records found</Text>
+          <Text style={styles.muted}>{t('petOwnerWeightRecords.empty.history')}</Text>
         ) : (
           <FlatList
             data={records}
@@ -95,18 +103,18 @@ export function PetOwnerWeightRecordsScreen() {
             renderItem={({ item }) => (
               <View style={styles.recordRow}>
                 <Text style={styles.recordId}>#{String(item._id).slice(-6).toUpperCase()}</Text>
-                <Text style={styles.recordPet}>{item.petId?.name || '—'}</Text>
+                <Text style={styles.recordPet}>{item.petId?.name || t('common.na')}</Text>
                 <Text style={styles.recordWeight}>{formatWeight(item.weight)}</Text>
                 <Text style={styles.recordDate}>{formatDate(item.date)}</Text>
-                <Text style={styles.recordBy}>{item.recordedBy?.name || '—'}</Text>
-                <Text style={styles.recordNotes}>{item.notes || '—'}</Text>
+                <Text style={styles.recordBy}>{item.recordedBy?.name || t('common.na')}</Text>
+                <Text style={styles.recordNotes}>{item.notes || t('common.na')}</Text>
               </View>
             )}
           />
         )}
         {pagination.pages && pagination.pages > 1 && (
           <View style={styles.pagination}>
-            <Text style={styles.pageInfo}>Page {pagination.page} of {pagination.pages}</Text>
+            <Text style={styles.pageInfo}>{t('petOwnerWeightRecords.pagination.pageOf', { page: pagination.page, pages: pagination.pages })}</Text>
           </View>
         )}
       </Card>

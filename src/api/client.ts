@@ -10,8 +10,16 @@ import { API_BASE_URL } from '../config/api';
 const AUTH_TOKEN_KEY = 'token';
 const REFRESH_TOKEN_KEY = 'refreshToken';
 const USER_KEY = 'user';
+const LANGUAGE_KEY = 'app_language';
 
-export { AUTH_TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY };
+export { AUTH_TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY, LANGUAGE_KEY };
+
+let currentLanguage: string | null = null;
+
+export const setApiLanguage = (lang: string | null) => {
+  const cleaned = String(lang || '').trim();
+  currentLanguage = cleaned ? cleaned : null;
+};
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -28,6 +36,19 @@ apiClient.interceptors.request.use(
       const token = await SecureStore.getItemAsync(AUTH_TOKEN_KEY);
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+      }
+
+      let langToSend = currentLanguage;
+      if (!langToSend) {
+        const storedLang = await SecureStore.getItemAsync(LANGUAGE_KEY);
+        const cleaned = String(storedLang || '').trim();
+        if (cleaned) {
+          langToSend = cleaned;
+          currentLanguage = cleaned;
+        }
+      }
+      if (langToSend) {
+        (config.headers as any)['Accept-Language'] = langToSend;
       }
     } catch {
       // ignore

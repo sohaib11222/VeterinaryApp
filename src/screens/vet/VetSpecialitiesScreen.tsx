@@ -10,11 +10,13 @@ import { typography } from '../../theme/typography';
 import { useVeterinarianProfile } from '../../queries/veterinarianQueries';
 import { useUpdateVeterinarianProfile } from '../../mutations/veterinarianMutations';
 import { useSpecializations } from '../../queries/specializationQueries';
+import { useTranslation } from 'react-i18next';
 
 type SpecItem = { _id?: string; type?: string; name?: string; slug?: string };
 type ServiceRow = { name: string; price: string; description: string };
 
 export function VetSpecialitiesScreen() {
+  const { t } = useTranslation();
   const { data: profileResponse, isLoading: profileLoading } = useVeterinarianProfile();
   const { data: specsResponse, isLoading: specsLoading } = useSpecializations();
   const updateProfile = useUpdateVeterinarianProfile();
@@ -64,7 +66,7 @@ export function VetSpecialitiesScreen() {
 
   const handleSave = async () => {
     if (!selectedCode) {
-      Alert.alert('Validation', 'Please select a specialization.');
+      Alert.alert(t('common.validation'), t('vetSpecialitiesSettings.validation.selectSpecialization'));
       return;
     }
     const validServices = services
@@ -75,7 +77,7 @@ export function VetSpecialitiesScreen() {
       }))
       .filter((s) => s.name);
     if (validServices.length === 0) {
-      Alert.alert('Validation', 'Please add at least one service with a name.');
+      Alert.alert(t('common.validation'), t('vetSpecialitiesSettings.validation.addService'));
       return;
     }
     try {
@@ -83,10 +85,12 @@ export function VetSpecialitiesScreen() {
         specializations: [selectedCode],
         services: validServices,
       });
-      Alert.alert('Success', 'Specialties & services updated successfully.');
+      Alert.alert(t('common.success'), t('vetSpecialitiesSettings.alerts.updated'));
     } catch (err: unknown) {
-      const message = (err as { response?: { data?: { message?: string }; message?: string }; message?: string })?.response?.data?.message ?? (err as { message?: string })?.message ?? 'Failed to update.';
-      Alert.alert('Error', message);
+      const message = (err as { response?: { data?: { message?: string }; message?: string }; message?: string })?.response?.data?.message
+        ?? (err as { message?: string })?.message
+        ?? t('vetSpecialitiesSettings.errors.updateFailed');
+      Alert.alert(t('common.error'), message);
     }
   };
 
@@ -104,8 +108,8 @@ export function VetSpecialitiesScreen() {
   return (
     <ScreenContainer scroll padded>
       <Card>
-        <Text style={styles.sectionTitle}>Specialties & Services</Text>
-        <Text style={styles.label}>Specialization</Text>
+        <Text style={styles.sectionTitle}>{t('vetSpecialitiesSettings.title')}</Text>
+        <Text style={styles.label}>{t('vetSpecialitiesSettings.fields.specialization')}</Text>
         <View style={styles.specRow}>
           {specializationsList.map((spec) => {
             const code = spec.type ?? (spec.name?.toUpperCase().replace(/\s+/g, '_')) ?? (spec.slug?.toUpperCase().replace(/-/g, '_')) ?? '';
@@ -123,34 +127,34 @@ export function VetSpecialitiesScreen() {
           })}
         </View>
         {specializationsList.length === 0 && (
-          <Text style={styles.muted}>No specializations available.</Text>
+          <Text style={styles.muted}>{t('vetSpecialitiesSettings.empty')}</Text>
         )}
-        <Text style={styles.subsectionTitle}>Services</Text>
+        <Text style={styles.subsectionTitle}>{t('vetSpecialitiesSettings.fields.services')}</Text>
         {services.map((s, index) => (
           <View key={index} style={styles.serviceRow}>
             <View style={styles.serviceInputs}>
               <Input
-                placeholder="Service name"
+                placeholder={t('vetSpecialitiesSettings.placeholders.serviceName')}
                 value={s.name}
                 onChangeText={(v) => handleServiceChange(index, 'name', v)}
               />
               <Input
-                placeholder="Price"
+                placeholder={t('vetSpecialitiesSettings.placeholders.price')}
                 value={s.price}
                 onChangeText={(v) => handleServiceChange(index, 'price', v)}
                 keyboardType="numeric"
               />
               <Input
-                placeholder="Description"
+                placeholder={t('vetSpecialitiesSettings.placeholders.description')}
                 value={s.description}
                 onChangeText={(v) => handleServiceChange(index, 'description', v)}
               />
             </View>
-            <Button title="Remove" onPress={() => removeService(index)} />
+            <Button title={t('common.remove')} onPress={() => removeService(index)} />
           </View>
         ))}
-        <Button title="+ Add Service" onPress={addService} />
-        <Button title="Save Changes" onPress={handleSave} style={{ marginTop: spacing.md }} disabled={updateProfile.isPending} />
+        <Button title={t('vetSpecialitiesSettings.actions.addService')} onPress={addService} />
+        <Button title={t('common.saveChanges')} onPress={handleSave} style={{ marginTop: spacing.md }} disabled={updateProfile.isPending} />
       </Card>
     </ScreenContainer>
   );

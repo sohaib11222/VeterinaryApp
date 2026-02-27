@@ -5,13 +5,14 @@ import { Card } from '../../components/common/Card';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-
-const MOCK_DOCS = [
-  { id: '1', name: 'Vaccination certificate - Max', date: 'Feb 10, 2024' },
-  { id: '2', name: 'Invoice #tx-1', date: 'Feb 10, 2024' },
-];
+import { useTranslation } from 'react-i18next';
 
 export function PetOwnerDocumentsScreen() {
+  const { t } = useTranslation();
+  const MOCK_DOCS = [
+    { id: '1', name: t('petOwnerDocuments.mockDocs.vaccinationCertificateMax'), date: t('petOwnerDocuments.mockDocs.date1') },
+    { id: '2', name: t('petOwnerDocuments.mockDocs.invoiceTx1'), date: t('petOwnerDocuments.mockDocs.date1') },
+  ];
   return (
     <ScreenContainer padded>
       <FlatList
@@ -22,7 +23,7 @@ export function PetOwnerDocumentsScreen() {
           <Card>
             <Text style={styles.name}>{item.name}</Text>
             <Text style={styles.date}>{item.date}</Text>
-            <Text style={styles.download}>Download</Text>
+            <Text style={styles.download}>{t('petOwnerDocuments.actions.download')}</Text>
           </Card>
         )}
       />

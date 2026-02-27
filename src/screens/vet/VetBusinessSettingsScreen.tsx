@@ -9,14 +9,26 @@ import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useVeterinarianProfile } from '../../queries/veterinarianQueries';
 import { useUpdateVeterinarianProfile } from '../../mutations/veterinarianMutations';
+import { useTranslation } from 'react-i18next';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 export function VetBusinessSettingsScreen() {
+  const { t } = useTranslation();
   const { data: profileResponse, isLoading: profileLoading } = useVeterinarianProfile();
   const updateProfile = useUpdateVeterinarianProfile();
   const profile = profileResponse?.data;
   const initialClinics = Array.isArray(profile?.clinics) ? profile.clinics : [];
+
+  const dayLabels: Record<string, string> = {
+    Monday: t('days.monday'),
+    Tuesday: t('days.tuesday'),
+    Wednesday: t('days.wednesday'),
+    Thursday: t('days.thursday'),
+    Friday: t('days.friday'),
+    Saturday: t('days.saturday'),
+    Sunday: t('days.sunday'),
+  };
 
   const [hours, setHours] = useState<Record<string, { startTime: string; endTime: string }>>(
     DAYS.reduce((acc, d) => ({ ...acc, [d]: { startTime: '', endTime: '' } }), {})
@@ -63,10 +75,12 @@ export function VetBusinessSettingsScreen() {
 
     try {
       await updateProfile.mutateAsync({ clinics });
-      Alert.alert('Success', 'Business hours updated successfully.');
+      Alert.alert(t('common.success'), t('vetBusinessSettings.alerts.updated'));
     } catch (err: unknown) {
-      const message = (err as { response?: { data?: { message?: string }; message?: string }; message?: string })?.response?.data?.message ?? (err as { message?: string })?.message ?? 'Failed to update business hours.';
-      Alert.alert('Error', message);
+      const message = (err as { response?: { data?: { message?: string }; message?: string }; message?: string })?.response?.data?.message
+        ?? (err as { message?: string })?.message
+        ?? t('vetBusinessSettings.errors.updateFailed');
+      Alert.alert(t('common.error'), message);
     }
   };
 
@@ -83,27 +97,27 @@ export function VetBusinessSettingsScreen() {
   return (
     <ScreenContainer scroll padded>
       <Card>
-        <Text style={styles.sectionTitle}>Business Hours</Text>
-        <Text style={styles.hint}>Set your clinic availability by day</Text>
+        <Text style={styles.sectionTitle}>{t('vetBusinessSettings.title')}</Text>
+        <Text style={styles.hint}>{t('vetBusinessSettings.subtitle')}</Text>
         {DAYS.map((day) => (
           <View key={day} style={styles.dayRow}>
-            <Text style={styles.dayLabel}>{day}</Text>
+            <Text style={styles.dayLabel}>{dayLabels[day] ?? day}</Text>
             <View style={styles.timeRow}>
               <Input
-                placeholder="09:00"
+                placeholder={t('vetBusinessSettings.placeholders.startTime')}
                 value={hours[day]?.startTime || ''}
                 onChangeText={(v) => update(day, 'startTime', v)}
               />
               <Text style={styles.dash}>–</Text>
               <Input
-                placeholder="17:00"
+                placeholder={t('vetBusinessSettings.placeholders.endTime')}
                 value={hours[day]?.endTime || ''}
                 onChangeText={(v) => update(day, 'endTime', v)}
               />
             </View>
           </View>
         ))}
-        <Button title="Save Changes" onPress={handleSave} style={{ marginTop: spacing.md }} disabled={updateProfile.isPending} />
+        <Button title={t('common.saveChanges')} onPress={handleSave} style={{ marginTop: spacing.md }} disabled={updateProfile.isPending} />
       </Card>
     </ScreenContainer>
   );

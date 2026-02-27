@@ -18,17 +18,20 @@ import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUserById, type UserProfile } from '../../queries/userQueries';
-import { useUpdateUserProfile, useUploadProfileImage } from '../../mutations/userMutations';
+import { useUpdateUserProfile } from '../../mutations/userMutations';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { getImageUrl } from '../../config/api';
+import { uploadProfileImage } from '../../services/upload';
+import { copyToCacheUri, deleteCacheFiles, getExtensionFromMime } from '../../utils/fileUpload';
+import { useTranslation } from 'react-i18next';
 
 const GENDERS = [
-  { value: '', label: 'Select' },
-  { value: 'MALE', label: 'Male' },
-  { value: 'FEMALE', label: 'Female' },
-  { value: 'OTHER', label: 'Other' },
+  { value: '', labelKey: 'petOwnerProfileSettings.genders.select' },
+  { value: 'MALE', labelKey: 'petOwnerProfileSettings.genders.male' },
+  { value: 'FEMALE', labelKey: 'petOwnerProfileSettings.genders.female' },
+  { value: 'OTHER', labelKey: 'petOwnerProfileSettings.genders.other' },
 ];
 
 function toDateInput(d: string | undefined): string {
@@ -44,11 +47,11 @@ function toDateInput(d: string | undefined): string {
 export function PetOwnerProfileSettingsScreen() {
   const { user, updateUser } = useAuth();
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const userId = user?.id ?? (user as { _id?: string })?._id;
 
   const { data: userResponse, isLoading } = useUserById(userId);
   const updateProfile = useUpdateUserProfile();
-  const uploadProfileImage = useUploadProfileImage();
 
   const backendUser = (userResponse as { data?: UserProfile })?.data ?? (userResponse as UserProfile) ?? {};
 
@@ -117,8 +120,8 @@ export function PetOwnerProfileSettingsScreen() {
       setPendingProfileImage({ uri: file.uri, name, type: mime });
       setPendingRemoveProfileImage(false);
     } catch (err: unknown) {
-      const msg = (err as { message?: string })?.message ?? 'Failed to upload image';
-      Alert.alert('Error', msg);
+      const msg = (err as { message?: string })?.message ?? t('petOwnerProfileSettings.errors.uploadImageFailed');
+      Alert.alert(t('common.error'), msg);
     }
   };
 
@@ -127,8 +130,8 @@ export function PetOwnerProfileSettingsScreen() {
       setPendingProfileImage(null);
       setPendingRemoveProfileImage(true);
     } catch (err: unknown) {
-      const msg = (err as { message?: string })?.message ?? 'Failed to remove image';
-      Alert.alert('Error', msg);
+      const msg = (err as { message?: string })?.message ?? t('petOwnerProfileSettings.errors.removeImageFailed');
+      Alert.alert(t('common.error'), msg);
     }
   };
 
@@ -138,10 +141,23 @@ export function PetOwnerProfileSettingsScreen() {
       if (pendingRemoveProfileImage) nextProfileImage = null;
 
       if (pendingProfileImage) {
-        const res = await uploadProfileImage.mutateAsync(pendingProfileImage);
-        const url = (res as { data?: { url?: string } })?.data?.url;
+        const tempUris: string[] = [];
+        let url: string | undefined;
+        try {
+          const mime = pendingProfileImage.type ?? 'image/jpeg';
+          const name = pendingProfileImage.name ?? 'profile.jpg';
+          const ext = getExtensionFromMime(mime);
+          const uri = await copyToCacheUri(pendingProfileImage.uri, 0, ext);
+          tempUris.push(uri);
+          const res = await uploadProfileImage({ uri, name, type: mime });
+          url = (res as { data?: { url?: string } })?.data?.url ?? (res as { url?: string })?.url;
+        } finally {
+          if (tempUris.length > 0) {
+            await deleteCacheFiles(tempUris).catch(() => {});
+          }
+        }
         if (!url) {
-          Alert.alert('Error', 'Upload failed');
+          Alert.alert(t('common.error'), t('petOwnerProfileSettings.errors.uploadFailed'));
           return;
         }
         nextProfileImage = url;
@@ -178,10 +194,10 @@ export function PetOwnerProfileSettingsScreen() {
 
       setPendingProfileImage(null);
       setPendingRemoveProfileImage(false);
-      Alert.alert('Success', 'Profile updated successfully');
+      Alert.alert(t('common.success'), t('petOwnerProfileSettings.alerts.updated'));
     } catch (err: unknown) {
-      const msg = (err as { message?: string })?.message ?? 'Failed to update profile';
-      Alert.alert('Error', msg);
+      const msg = (err as { message?: string })?.message ?? t('petOwnerProfileSettings.errors.updateFailed');
+      Alert.alert(t('common.error'), msg);
     }
   };
 
@@ -203,22 +219,22 @@ export function PetOwnerProfileSettingsScreen() {
                 style={[styles.settingsNavItem, styles.settingsNavItemActive]}
                 onPress={() => {}}
               >
-                <Text style={[styles.settingsNavText, styles.settingsNavTextActive]}>Profile</Text>
+                <Text style={[styles.settingsNavText, styles.settingsNavTextActive]}>{t('petOwnerProfileSettings.settingsNav.profile')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.settingsNavItem}
                 onPress={() => navigation.navigate('PetOwnerChangePassword')}
               >
-                <Text style={styles.settingsNavText}>Change Password</Text>
+                <Text style={styles.settingsNavText}>{t('petOwnerProfileSettings.settingsNav.changePassword')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.settingsNavItem}
                 onPress={() => {}}
               >
-                <Text style={styles.settingsNavText}>2 Factor Authentication</Text>
+                <Text style={styles.settingsNavText}>{t('petOwnerProfileSettings.settingsNav.twoFactor')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.settingsNavItem} onPress={() => {}}>
-                <Text style={styles.settingsNavText}>Delete Account</Text>
+                <Text style={styles.settingsNavText}>{t('petOwnerProfileSettings.settingsNav.deleteAccount')}</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -226,13 +242,13 @@ export function PetOwnerProfileSettingsScreen() {
       ) : null}
 
       <Card>
-        <Text style={styles.sectionTitle}>Profile Settings</Text>
+        <Text style={styles.sectionTitle}>{t('petOwnerProfileSettings.title')}</Text>
 
         {/* Profile Photo */}
         <View style={styles.photoRow}>
           <View style={styles.avatarWrap}>
             {pendingRemoveProfileImage ? (
-              <Text style={styles.avatarPlaceholder}>Photo</Text>
+              <Text style={styles.avatarPlaceholder}>{t('petOwnerProfileSettings.photo.placeholder')}</Text>
             ) : pendingProfileImage?.uri ? (
               <Image source={{ uri: pendingProfileImage.uri }} style={styles.avatarImage} />
             ) : form.profileImage ? (
@@ -240,28 +256,28 @@ export function PetOwnerProfileSettingsScreen() {
             ) : form.name ? (
               <Text style={styles.avatarText}>{String(form.name).charAt(0).toUpperCase()}</Text>
             ) : (
-              <Text style={styles.avatarPlaceholder}>Photo</Text>
+              <Text style={styles.avatarPlaceholder}>{t('petOwnerProfileSettings.photo.placeholder')}</Text>
             )}
           </View>
           <View style={styles.photoActions}>
-            <TouchableOpacity style={styles.photoBtn} onPress={handleUpload} disabled={uploadProfileImage.isPending || updateProfile.isPending}>
-              <Text style={styles.photoBtnText}>Choose Photo</Text>
+            <TouchableOpacity style={styles.photoBtn} onPress={handleUpload} disabled={updateProfile.isPending}>
+              <Text style={styles.photoBtnText}>{t('profileSettings.choosePhoto')}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleRemoveImage} disabled={updateProfile.isPending}>
-              <Text style={styles.removeText}>Remove</Text>
+              <Text style={styles.removeText}>{t('common.remove')}</Text>
             </TouchableOpacity>
-            <Text style={styles.photoHint}>Image below 4 MB, jpg, png, svg</Text>
+            <Text style={styles.photoHint}>{t('profileSettings.photoHintPetOwner')}</Text>
           </View>
         </View>
 
         {/* Basic info row: Name, Gender, DOB */}
         <Input
-          label="First Name *"
-          placeholder="Enter your name"
+          label={t('petOwnerProfileSettings.fields.name.label')}
+          placeholder={t('petOwnerProfileSettings.fields.name.placeholder')}
           value={form.name}
           onChangeText={update('name')}
         />
-        <Text style={styles.label}>Gender</Text>
+        <Text style={styles.label}>{t('petOwnerProfileSettings.fields.gender.label')}</Text>
         <View style={styles.pickerWrap}>
           {GENDERS.map((g) => (
             <TouchableOpacity
@@ -270,98 +286,98 @@ export function PetOwnerProfileSettingsScreen() {
               onPress={() => update('gender')(g.value)}
             >
               <Text style={[styles.pickerOptionText, form.gender === g.value && styles.pickerOptionTextActive]}>
-                {g.label}
+                {t(g.labelKey)}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
         <Input
-          label="Date of Birth"
-          placeholder="YYYY-MM-DD"
+          label={t('petOwnerProfileSettings.fields.dob.label')}
+          placeholder={t('petOwnerProfileSettings.fields.dob.placeholder')}
           value={form.dob}
           onChangeText={update('dob')}
         />
 
         {/* Phone, Email, Blood Group */}
         <Input
-          label="Phone Number"
-          placeholder="Enter phone"
+          label={t('petOwnerProfileSettings.fields.phone.label')}
+          placeholder={t('petOwnerProfileSettings.fields.phone.placeholder')}
           value={form.phone}
           onChangeText={update('phone')}
           keyboardType="phone-pad"
         />
         <Input
-          label="Email Address"
-          placeholder="Email"
+          label={t('petOwnerProfileSettings.fields.email.label')}
+          placeholder={t('petOwnerProfileSettings.fields.email.placeholder')}
           value={form.email}
           onChangeText={() => {}}
           editable={false}
         />
         <Input
-          label="Blood Group"
-          placeholder="e.g. O+"
+          label={t('petOwnerProfileSettings.fields.bloodGroup.label')}
+          placeholder={t('petOwnerProfileSettings.fields.bloodGroup.placeholder')}
           value={form.bloodGroup}
           onChangeText={update('bloodGroup')}
         />
 
         {/* Address Information */}
-        <Text style={styles.subsectionTitle}>Address Information</Text>
+        <Text style={styles.subsectionTitle}>{t('petOwnerProfileSettings.sections.address')}</Text>
         <Input
-          label="Address *"
-          placeholder="Enter your address"
+          label={t('petOwnerProfileSettings.fields.addressLine1.label')}
+          placeholder={t('petOwnerProfileSettings.fields.addressLine1.placeholder')}
           value={form.addressLine1}
           onChangeText={update('addressLine1')}
         />
         <Input
-          label="Address Line 2"
-          placeholder="Apartment, suite, etc."
+          label={t('petOwnerProfileSettings.fields.addressLine2.label')}
+          placeholder={t('petOwnerProfileSettings.fields.addressLine2.placeholder')}
           value={form.addressLine2}
           onChangeText={update('addressLine2')}
         />
         <Input
-          label="City"
-          placeholder="City"
+          label={t('petOwnerProfileSettings.fields.city.label')}
+          placeholder={t('petOwnerProfileSettings.fields.city.placeholder')}
           value={form.city}
           onChangeText={update('city')}
         />
         <Input
-          label="State"
-          placeholder="State"
+          label={t('petOwnerProfileSettings.fields.state.label')}
+          placeholder={t('petOwnerProfileSettings.fields.state.placeholder')}
           value={form.state}
           onChangeText={update('state')}
         />
         <Input
-          label="Country"
-          placeholder="Country"
+          label={t('petOwnerProfileSettings.fields.country.label')}
+          placeholder={t('petOwnerProfileSettings.fields.country.placeholder')}
           value={form.country}
           onChangeText={update('country')}
         />
         <Input
-          label="Pincode"
-          placeholder="Pincode"
+          label={t('petOwnerProfileSettings.fields.zip.label')}
+          placeholder={t('petOwnerProfileSettings.fields.zip.placeholder')}
           value={form.zip}
           onChangeText={update('zip')}
           keyboardType="numeric"
         />
 
         {/* Emergency Contact */}
-        <Text style={styles.subsectionTitle}>Emergency Contact</Text>
+        <Text style={styles.subsectionTitle}>{t('petOwnerProfileSettings.sections.emergency')}</Text>
         <Input
-          label="Name"
-          placeholder="Emergency contact name"
+          label={t('petOwnerProfileSettings.fields.emergencyName.label')}
+          placeholder={t('petOwnerProfileSettings.fields.emergencyName.placeholder')}
           value={form.emergencyName}
           onChangeText={update('emergencyName')}
         />
         <Input
-          label="Phone"
-          placeholder="Emergency contact phone"
+          label={t('petOwnerProfileSettings.fields.emergencyPhone.label')}
+          placeholder={t('petOwnerProfileSettings.fields.emergencyPhone.placeholder')}
           value={form.emergencyPhone}
           onChangeText={update('emergencyPhone')}
           keyboardType="phone-pad"
         />
         <Input
-          label="Relation"
-          placeholder="Relation"
+          label={t('petOwnerProfileSettings.fields.emergencyRelation.label')}
+          placeholder={t('petOwnerProfileSettings.fields.emergencyRelation.placeholder')}
           value={form.emergencyRelation}
           onChangeText={update('emergencyRelation')}
         />
@@ -373,9 +389,9 @@ export function PetOwnerProfileSettingsScreen() {
         ) : null}
         <View style={styles.actions}>
           <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()}>
-            <Text style={styles.cancelBtnText}>Cancel</Text>
+            <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
           </TouchableOpacity>
-          <Button title="Save Changes" onPress={handleSave} disabled={updateProfile.isPending || uploadProfileImage.isPending} />
+          <Button title={t('common.saveChanges')} onPress={handleSave} disabled={updateProfile.isPending} />
         </View>
       </Card>
     </ScreenContainer>

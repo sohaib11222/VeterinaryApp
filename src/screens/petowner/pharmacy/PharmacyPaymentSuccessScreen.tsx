@@ -7,9 +7,11 @@ import { Button } from '../../../components/common/Button';
 import { colors } from '../../../theme/colors';
 import { spacing } from '../../../theme/spacing';
 import { typography } from '../../../theme/typography';
+import { useTranslation } from 'react-i18next';
 
 export function PharmacyPaymentSuccessScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <ScreenContainer padded>
@@ -19,11 +21,11 @@ export function PharmacyPaymentSuccessScreen() {
             <View style={styles.iconWrap}>
               <Text style={styles.icon}>✓</Text>
             </View>
-            <Text style={styles.title}>Payment Successfully!</Text>
-            <Text style={styles.subtitle}>Your order has been placed. You can pay when the pharmacy sets shipping.</Text>
-            <Button title="Back to shop" onPress={() => navigation.navigate('PharmacyHome')} style={styles.btn} />
+            <Text style={styles.title}>{t('petOwnerPharmacyPaymentSuccess.title')}</Text>
+            <Text style={styles.subtitle}>{t('petOwnerPharmacyPaymentSuccess.subtitle')}</Text>
+            <Button title={t('petOwnerPharmacyPaymentSuccess.actions.backToShop')} onPress={() => navigation.navigate('PharmacyHome')} style={styles.btn} />
             <Button
-              title="View orders"
+              title={t('petOwnerPharmacyPaymentSuccess.actions.viewOrders')}
               onPress={() => {
                 const root = (navigation as any).getParent()?.getParent();
                 root?.navigate('PetOwnerOrderHistory');

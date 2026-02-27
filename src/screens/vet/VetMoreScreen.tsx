@@ -9,39 +9,7 @@ import { useVetHeaderRightAction } from '../../contexts/VetHeaderRightActionCont
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-
-const MENU_SECTIONS: { title: string; items: { label: string; icon: string; screen: string }[] }[] = [
-  {
-    title: 'Practice',
-    items: [
-      { label: 'Pet Requests', icon: '📋', screen: 'VetPetRequests' },
-      { label: 'Clinic Hours', icon: '🕐', screen: 'VetClinicHours' },
-      { label: 'My Pets (Patients)', icon: '🐾', screen: 'VetMyPets' },
-      { label: 'Vaccinations', icon: '💉', screen: 'VetVaccinations' },
-      { label: 'Reviews', icon: '⭐', screen: 'VetReviews' },
-      { label: 'Reschedule Requests', icon: '📅', screen: 'VetRescheduleRequests' },
-    ],
-  },
-  {
-    title: 'Finance & Invoices',
-    items: [
-      { label: 'Invoices', icon: '📄', screen: 'VetInvoices' },
-      { label: 'Payment Settings', icon: '💳', screen: 'VetPaymentSettings' },
-    ],
-  },
-  {
-    title: 'Content & Settings',
-    items: [
-      // { label: 'Blog Posts', icon: '📝', screen: 'VetBlogList' },
-      { label: 'Clinic Announcements', icon: '📢', screen: 'VetAnnouncements' },
-      { label: 'Subscription', icon: '👑', screen: 'VetSubscription' },
-      { label: 'Profile Settings', icon: '👤', screen: 'VetProfileSettings' },
-      // { label: 'Social Media', icon: '🔗', screen: 'VetSocialMedia' },
-      { label: 'Notifications', icon: '🔔', screen: 'VetNotifications' },
-      { label: 'Change Password', icon: '🔒', screen: 'VetChangePassword' },
-    ],
-  },
-];
+import { useTranslation } from 'react-i18next';
 
 export function VetMoreScreen() {
   const navigation = useNavigation<any>();
@@ -49,6 +17,39 @@ export function VetMoreScreen() {
   const stackNav = navigation.getParent();
   const headerSearch = useVetHeaderSearch();
   const headerRight = useVetHeaderRightAction();
+  const { t } = useTranslation();
+
+  const menuSections: { title: string; items: { label: string; icon: string; screen: string }[] }[] = [
+    {
+      title: t('more.vet.practice'),
+      items: [
+        { label: t('menu.petRequests'), icon: '📋', screen: 'VetPetRequests' },
+        { label: t('menu.clinicHours'), icon: '🕐', screen: 'VetClinicHours' },
+        { label: t('menu.myPetsPatients'), icon: '🐾', screen: 'VetMyPets' },
+        { label: t('menu.vaccinations'), icon: '💉', screen: 'VetVaccinations' },
+        { label: t('menu.reviews'), icon: '⭐', screen: 'VetReviews' },
+        { label: t('menu.rescheduleRequests'), icon: '📅', screen: 'VetRescheduleRequests' },
+      ],
+    },
+    {
+      title: t('more.vet.financeInvoices'),
+      items: [
+        { label: t('menu.invoices'), icon: '📄', screen: 'VetInvoices' },
+        { label: t('menu.paymentSettings'), icon: '💳', screen: 'VetPaymentSettings' },
+      ],
+    },
+    {
+      title: t('more.vet.contentSettings'),
+      items: [
+        { label: t('menu.clinicAnnouncements'), icon: '📢', screen: 'VetAnnouncements' },
+        { label: t('menu.subscription'), icon: '👑', screen: 'VetSubscription' },
+        { label: t('menu.profileSettings'), icon: '👤', screen: 'VetProfileSettings' },
+        { label: t('menu.notifications'), icon: '�', screen: 'VetNotifications' },
+        { label: t('menu.language'), icon: '🌐', screen: 'Language' },
+        { label: t('menu.changePassword'), icon: '🔒', screen: 'VetChangePassword' },
+      ],
+    },
+  ];
 
   // More tab: no header search, no right icons
   useFocusEffect(
@@ -73,14 +74,14 @@ export function VetMoreScreen() {
               <Text style={styles.avatarText}>{user?.name?.charAt(0) || 'V'}</Text>
             </View>
             <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>{user?.name || 'Veterinarian'}</Text>
-              <Text style={styles.profileRole}>Veterinarian</Text>
+              <Text style={styles.profileName}>{user?.name || t('common.veterinarian')}</Text>
+              <Text style={styles.profileRole}>{t('common.veterinarian')}</Text>
               <Text style={styles.profileEmail}>{user?.email}</Text>
             </View>
           </View>
         </Card>
 
-        {MENU_SECTIONS.map((section, si) => (
+        {menuSections.map((section, si) => (
           <View key={si} style={styles.section}>
             <Text style={styles.sectionTitle}>{section.title}</Text>
             <Card>
@@ -102,7 +103,7 @@ export function VetMoreScreen() {
 
         <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.8}>
           <Text style={styles.logoutIcon}>🚪</Text>
-          <Text style={styles.logoutText}>Logout</Text>
+          <Text style={styles.logoutText}>{t('common.logout')}</Text>
         </TouchableOpacity>
 
         <View style={styles.bottomSpacer} />

@@ -20,6 +20,7 @@ import { typography } from '../../../theme/typography';
 import { useProducts } from '../../../queries/productQueries';
 import { useCart } from '../../../contexts/CartContext';
 import { getImageUrl } from '../../../config/api';
+import { useTranslation } from 'react-i18next';
 
 type Route = RouteProp<PetOwnerPharmacyStackParamList, 'ProductCatalog'>;
 type Nav = NativeStackNavigationProp<PetOwnerPharmacyStackParamList>;
@@ -29,6 +30,7 @@ export function ProductCatalogScreen() {
   const route = useRoute<Route>();
   const { width } = useWindowDimensions();
   const { pharmacyId, sellerId } = route.params ?? {};
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const { addToCart } = useCart();
 
@@ -39,8 +41,8 @@ export function ProductCatalogScreen() {
     limit: 50,
   });
 
-  const payload = productsRes?.data ?? (productsRes as { data?: { products?: unknown[] } } | undefined);
-  const products = Array.isArray(payload?.products) ? payload.products : [];
+  const payload: any = (productsRes as any)?.data ?? productsRes ?? {};
+  const products = Array.isArray(payload?.products) ? payload.products : (Array.isArray(payload?.data?.products) ? payload.data.products : []);
 
   const cardWidth = (width - spacing.md * 2 - spacing.sm) / 2;
 
@@ -49,7 +51,7 @@ export function ProductCatalogScreen() {
       <View style={styles.searchWrap}>
         <Text style={styles.searchIcon}>🔍</Text>
         <Input
-          placeholder="Search products..."
+          placeholder={t('petOwnerPharmacyCatalog.searchPlaceholder')}
           value={searchTerm}
           onChangeText={setSearchTerm}
           style={styles.searchInputInner}
@@ -57,7 +59,10 @@ export function ProductCatalogScreen() {
       </View>
 
       <Text style={styles.resultCount}>
-        Showing {products.length} products{pharmacyId || sellerId ? ' from this pharmacy' : ''}
+        {t('petOwnerPharmacyCatalog.results', {
+          count: products.length,
+          suffix: pharmacyId || sellerId ? t('petOwnerPharmacyCatalog.fromThisPharmacySuffix') : '',
+        })}
       </Text>
 
       {isLoading ? (
@@ -65,17 +70,18 @@ export function ProductCatalogScreen() {
       ) : products.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyIcon}>📦</Text>
-          <Text style={styles.emptyText}>No products found. Try adjusting your search or category.</Text>
+          <Text style={styles.emptyText}>{t('petOwnerPharmacyCatalog.empty')}</Text>
         </View>
       ) : (
         <View style={styles.productsGrid}>
           {products.map((p: Record<string, unknown>) => {
             const id = String(p._id ?? p.id ?? '');
-            const name = (p.name as string) ?? 'Product';
+            const name = (p.name as string) ?? t('petOwnerPharmacyCatalog.defaults.product');
             const price = Number(p.discountPrice ?? p.price ?? 0);
             const originalPrice = typeof p.price === 'number' ? p.price : undefined;
             const images = p.images as string[] | undefined;
             const imageUri = getImageUrl(Array.isArray(images) && images[0] ? images[0] : undefined);
+
             return (
               <TouchableOpacity
                 key={id}

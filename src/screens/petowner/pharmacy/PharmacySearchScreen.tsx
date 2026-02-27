@@ -20,11 +20,10 @@ import { spacing } from '../../../theme/spacing';
 import { typography } from '../../../theme/typography';
 import { usePetStores } from '../../../queries/petStoreQueries';
 import { getImageUrl } from '../../../config/api';
+import { useTranslation } from 'react-i18next';
 
 type StoreKind = 'PHARMACY' | 'PARAPHARMACY';
 type Nav = NativeStackNavigationProp<PetOwnerPharmacyStackParamList>;
-
-const POPULAR_CITIES = ['City', 'Town', 'Village', 'Downtown', 'Central'];
 
 function formatAddress(addr: { line1?: string; line2?: string; city?: string; state?: string; zip?: string; country?: string } | null | undefined): string {
   if (!addr || typeof addr !== 'object') return '';
@@ -34,9 +33,15 @@ function formatAddress(addr: { line1?: string; line2?: string; city?: string; st
 
 export function PharmacySearchScreen() {
   const navigation = useNavigation<Nav>();
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [cityFilter, setCityFilter] = useState('');
   const [selectedKind, setSelectedKind] = useState<StoreKind>('PHARMACY');
+
+  const popularCities = useMemo(() => {
+    const raw = t('petOwnerPharmacySearch.popularCities', { returnObjects: true }) as unknown;
+    return Array.isArray(raw) ? raw.map((c) => String(c)) : [];
+  }, [t]);
 
   const { data: storesRes, isLoading } = usePetStores({
     kind: selectedKind,
@@ -46,8 +51,8 @@ export function PharmacySearchScreen() {
     limit: 30,
   });
 
-  const payload = storesRes?.data ?? (storesRes as { data?: { petStores?: unknown[] } } | undefined);
-  const petStores = Array.isArray(payload?.petStores) ? payload.petStores : [];
+  const payload: any = (storesRes as any)?.data ?? storesRes ?? {};
+  const petStores = Array.isArray(payload?.petStores) ? payload.petStores : (Array.isArray(payload?.data?.petStores) ? payload.data.petStores : []);
 
   const clearFilters = () => {
     setSearchTerm('');
@@ -68,7 +73,7 @@ export function PharmacySearchScreen() {
 
   const renderPharmacyCard = ({ item: store }: { item: Record<string, unknown> }) => {
     const id = String(store._id ?? store.id ?? '');
-    const name = (store.name as string) ?? 'Pharmacy';
+    const name = (store.name as string) ?? t('petOwnerPharmacySearch.defaults.pharmacy');
     const phone = (store.phone as string) ?? '';
     const addressStr = formatAddress(store.address as Parameters<typeof formatAddress>[0]);
     const logo = getImageUrl((store.logo as string) ?? undefined);
@@ -101,11 +106,11 @@ export function PharmacySearchScreen() {
               style={styles.browseButton}
               onPress={() => navigation.navigate('ProductCatalog', { sellerId: sellerId ?? undefined, pharmacyId: id })}
             >
-              <Text style={styles.browseButtonText}>Browse Products</Text>
+              <Text style={styles.browseButtonText}>{t('petOwnerPharmacySearch.actions.browseProducts')}</Text>
             </TouchableOpacity>
             {phone ? (
               <TouchableOpacity style={styles.callButton} onPress={() => handleCall(phone)}>
-                <Text style={styles.callButtonText}>Call</Text>
+                <Text style={styles.callButtonText}>{t('petOwnerPharmacySearch.actions.call')}</Text>
               </TouchableOpacity>
             ) : null}
           </View>
@@ -122,13 +127,13 @@ export function PharmacySearchScreen() {
           style={[styles.kindTab, selectedKind === 'PHARMACY' && styles.kindTabActive]}
           onPress={() => setSelectedKind('PHARMACY')}
         >
-          <Text style={[styles.kindTabText, selectedKind === 'PHARMACY' && styles.kindTabTextActive]}>Pharmacies</Text>
+          <Text style={[styles.kindTabText, selectedKind === 'PHARMACY' && styles.kindTabTextActive]}>{t('petOwnerPharmacySearch.kinds.pharmacies')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.kindTab, selectedKind === 'PARAPHARMACY' && styles.kindTabActive]}
           onPress={() => setSelectedKind('PARAPHARMACY')}
         >
-          <Text style={[styles.kindTabText, selectedKind === 'PARAPHARMACY' && styles.kindTabTextActive]}>Parapharmacies</Text>
+          <Text style={[styles.kindTabText, selectedKind === 'PARAPHARMACY' && styles.kindTabTextActive]}>{t('petOwnerPharmacySearch.kinds.parapharmacies')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -138,7 +143,7 @@ export function PharmacySearchScreen() {
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
             style={styles.searchInput}
-            placeholder={selectedKind === 'PARAPHARMACY' ? 'Search parapharmacies...' : 'Search pharmacies...'}
+            placeholder={selectedKind === 'PARAPHARMACY' ? t('petOwnerPharmacySearch.placeholders.searchParapharmacies') : t('petOwnerPharmacySearch.placeholders.searchPharmacies')}
             placeholderTextColor={colors.textLight}
             value={searchTerm}
             onChangeText={setSearchTerm}
@@ -148,14 +153,14 @@ export function PharmacySearchScreen() {
           <Text style={styles.filterIcon}>📍</Text>
           <TextInput
             style={styles.filterInput}
-            placeholder="Enter city or location..."
+            placeholder={t('petOwnerPharmacySearch.placeholders.cityOrLocation')}
             placeholderTextColor={colors.textLight}
             value={cityFilter}
             onChangeText={setCityFilter}
           />
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.citiesList}>
-          {POPULAR_CITIES.map((city) => (
+          {popularCities.map((city) => (
             <TouchableOpacity
               key={city}
               style={[styles.cityChip, cityFilter === city && styles.cityChipActive]}
@@ -166,20 +171,20 @@ export function PharmacySearchScreen() {
           ))}
         </ScrollView>
         <TouchableOpacity style={styles.clearButton} onPress={clearFilters}>
-          <Text style={styles.clearButtonText}>Clear filters</Text>
+          <Text style={styles.clearButtonText}>{t('petOwnerPharmacySearch.actions.clearFilters')}</Text>
         </TouchableOpacity>
       </View>
 
       <Text style={styles.resultsText}>
-        Showing {petStores.length} {selectedKind === 'PARAPHARMACY' ? 'parapharmacies' : 'pharmacies'}
+        {t('petOwnerPharmacySearch.results', { count: petStores.length, kind: selectedKind === 'PARAPHARMACY' ? t('petOwnerPharmacySearch.kinds.parapharmaciesLower') : t('petOwnerPharmacySearch.kinds.pharmaciesLower') })}
       </Text>
       {isLoading ? (
         <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: spacing.lg }} />
       ) : petStores.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyIcon}>🏪</Text>
-          <Text style={styles.emptyText}>No pharmacies found</Text>
-          <Text style={styles.emptySubtext}>Try adjusting your search or filters</Text>
+          <Text style={styles.emptyText}>{t('petOwnerPharmacySearch.empty.title')}</Text>
+          <Text style={styles.emptySubtext}>{t('petOwnerPharmacySearch.empty.subtitle')}</Text>
         </View>
       ) : (
         <FlatList

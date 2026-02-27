@@ -9,6 +9,7 @@ import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useConversations } from '../../queries/chatQueries';
+import { useTranslation } from 'react-i18next';
 
 type Conversation = {
   _id: string;
@@ -24,10 +25,10 @@ type Conversation = {
   unreadCount?: number;
 };
 
-function getConversationPeerName(c: Conversation): string {
+function getConversationPeerName(c: Conversation, fallbackName: string): string {
   const owner = c?.petOwnerId;
   const o = typeof owner === 'object' ? owner : null;
-  return (o?.fullName ?? o?.name ?? 'Pet owner') as string;
+  return (o?.fullName ?? o?.name ?? fallbackName) as string;
 }
 
 function getConversationPeerImage(c: Conversation): string | null {
@@ -36,7 +37,7 @@ function getConversationPeerImage(c: Conversation): string | null {
   return getImageUrl((owner as { profileImage?: string }).profileImage) ?? null;
 }
 
-function formatTime(c: Conversation): string {
+function formatTime(c: Conversation, yesterdayLabel: string): string {
   const dt = c?.lastMessageAt || c?.updatedAt || c?.createdAt;
   if (!dt) return '';
   const d = new Date(dt);
@@ -44,7 +45,7 @@ function formatTime(c: Conversation): string {
   const now = new Date();
   const diffDays = Math.floor((now.getTime() - d.getTime()) / (24 * 60 * 60 * 1000));
   if (diffDays === 0) return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  if (diffDays === 1) return 'Yesterday';
+  if (diffDays === 1) return yesterdayLabel;
   if (diffDays < 7) return d.toLocaleDateString(undefined, { weekday: 'short' });
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
@@ -54,6 +55,10 @@ export function VetMessagesScreen() {
   const stackNav = navigation.getParent();
   const headerSearch = useVetHeaderSearch();
   const [searchQuery, setSearchQuery] = useState('');
+  const { t } = useTranslation();
+
+  const petOwnerFallbackName = t('common.petOwner');
+  const yesterdayLabel = t('common.yesterday');
 
   const { data: conversationsResponse, isLoading, error } = useConversations({ limit: 50 });
 
@@ -66,12 +71,12 @@ export function VetMessagesScreen() {
   useFocusEffect(
     React.useCallback(() => {
       headerSearch?.setConfig({
-        placeholder: 'Search conversations...',
+        placeholder: t('messages.searchPlaceholder'),
         value: searchQuery,
         onChangeText: setSearchQuery,
       });
       return () => headerSearch?.setConfig(null);
-    }, [searchQuery])
+    }, [searchQuery, t])
   );
 
   /** Only show pet-owner conversations in list; admin chat is via "Admin Messages" button */
@@ -83,15 +88,15 @@ export function VetMessagesScreen() {
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return petOwnerConversations;
-    return petOwnerConversations.filter((c) => getConversationPeerName(c).toLowerCase().includes(q));
-  }, [petOwnerConversations, searchQuery]);
+    return petOwnerConversations.filter((c) => getConversationPeerName(c, petOwnerFallbackName).toLowerCase().includes(q));
+  }, [petOwnerConversations, searchQuery, petOwnerFallbackName]);
 
   const openChat = (c: Conversation) => {
     const id = c?._id;
     if (!id) return;
     const ownerId = c?.petOwnerId && (typeof c.petOwnerId === 'object' ? c.petOwnerId._id : c.petOwnerId);
     const aptId = c?.appointmentId && (typeof c.appointmentId === 'object' ? c.appointmentId._id : c.appointmentId);
-    const peerName = getConversationPeerName(c);
+    const peerName = getConversationPeerName(c, petOwnerFallbackName);
     const peerImageUri = getConversationPeerImage(c);
     stackNav?.navigate('VetChatDetail', {
       conversationId: id,
@@ -99,7 +104,7 @@ export function VetMessagesScreen() {
       petOwnerId: ownerId ?? undefined,
       appointmentId: aptId ?? undefined,
       title: peerName,
-      subtitle: 'Chat',
+      subtitle: t('common.chat'),
       peerImageUri: peerImageUri ?? undefined,
     });
   };
@@ -108,6 +113,7 @@ export function VetMessagesScreen() {
     const preview = item?.lastMessage?.message || item?.lastMessage?.fileName || '—';
     const unread = item?.unreadCount ?? 0;
     const avatarUri = getConversationPeerImage(item);
+    const peerName = getConversationPeerName(item, petOwnerFallbackName);
     return (
       <TouchableOpacity activeOpacity={0.8} onPress={() => openChat(item)}>
         <Card>
@@ -116,19 +122,19 @@ export function VetMessagesScreen() {
               {avatarUri ? (
                 <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
               ) : (
-                <Text style={styles.avatarText}>{getConversationPeerName(item).charAt(0)}</Text>
+                <Text style={styles.avatarText}>{peerName.charAt(0)}</Text>
               )}
             </View>
             <View style={styles.content}>
               <View style={styles.topRow}>
-                <Text style={styles.name} numberOfLines={1}>{getConversationPeerName(item)}</Text>
+                <Text style={styles.name} numberOfLines={1}>{peerName}</Text>
                 <View style={styles.rightMeta}>
                   {unread > 0 ? (
                     <View style={styles.unreadBadge}>
                       <Text style={styles.unreadText}>{unread > 99 ? '99+' : unread}</Text>
                     </View>
                   ) : (
-                    <Text style={styles.time}>{formatTime(item)}</Text>
+                    <Text style={styles.time}>{formatTime(item, yesterdayLabel)}</Text>
                   )}
                 </View>
               </View>
@@ -146,7 +152,7 @@ export function VetMessagesScreen() {
       <View style={styles.adminLink}>
         <TouchableOpacity style={styles.adminCard} onPress={() => stackNav?.navigate('VetAdminChat')}>
           <Text style={styles.adminIcon}>🛟</Text>
-          <Text style={styles.adminLabel}>Admin Messages</Text>
+          <Text style={styles.adminLabel}>{t('messages.adminMessages')}</Text>
           <Text style={styles.chevron}>›</Text>
         </TouchableOpacity>
       </View>
@@ -156,7 +162,7 @@ export function VetMessagesScreen() {
         </View>
       ) : error ? (
         <View style={styles.centered}>
-          <Text style={styles.errorText}>{(error as { message?: string })?.message ?? 'Failed to load conversations'}</Text>
+          <Text style={styles.errorText}>{(error as { message?: string })?.message ?? t('messages.errors.loadFailed')}</Text>
         </View>
       ) : (
         <FlatList
@@ -167,7 +173,7 @@ export function VetMessagesScreen() {
           ListEmptyComponent={
             <View style={styles.empty}>
               <Text style={styles.emptyIcon}>💬</Text>
-              <Text style={styles.emptyText}>No conversations yet</Text>
+              <Text style={styles.emptyText}>{t('messages.empty')}</Text>
             </View>
           }
         />

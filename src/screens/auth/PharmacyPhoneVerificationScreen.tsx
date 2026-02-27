@@ -108,7 +108,7 @@ export function PharmacyPhoneVerificationScreen() {
               value={code}
               onChangeText={(t) => setCode(t.replace(/\D/g, ''))}
               placeholder="Enter code"
-              keyboardType="number-pad"
+              keyboardType="numeric"
               maxLength={10}
               editable={!verifying}
             />

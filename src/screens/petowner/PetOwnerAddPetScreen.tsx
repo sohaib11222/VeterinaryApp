@@ -10,12 +10,14 @@ import { useCreatePetWithUpload } from '../../mutations/petsMutations';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { useTranslation } from 'react-i18next';
 
 const PET_SPECIES = ['DOG', 'CAT', 'BIRD', 'RABBIT', 'REPTILE', 'FISH', 'HAMSTER', 'GUINEA_PIG', 'FERRET', 'HORSE', 'OTHER'];
 const PET_GENDER = ['MALE', 'FEMALE', 'NEUTERED', 'SPAYED', 'UNKNOWN'];
 
 export function PetOwnerAddPetScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [species, setSpecies] = useState('DOG');
   const [breed, setBreed] = useState('');
@@ -37,7 +39,7 @@ export function PetOwnerAddPetScreen() {
   const onSave = async () => {
     const nm = name.trim();
     if (!nm) {
-      Alert.alert('Validation', 'Name is required');
+      Alert.alert(t('common.validation'), t('petOwnerAddPet.validation.nameRequired'));
       return;
     }
 
@@ -65,10 +67,10 @@ export function PetOwnerAddPetScreen() {
             } as any)
           : null,
       });
-      Alert.alert('Success', 'Pet created');
+      Alert.alert(t('common.success'), t('petOwnerAddPet.toasts.created'));
       navigation.goBack();
     } catch (err: unknown) {
-      Alert.alert('Error', (err as { message?: string })?.message ?? 'Failed to create pet');
+      Alert.alert(t('common.error'), (err as { message?: string })?.message ?? t('petOwnerAddPet.errors.createFailed'));
     }
   };
 
@@ -76,45 +78,45 @@ export function PetOwnerAddPetScreen() {
     <ScreenContainer scroll padded>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <Card style={styles.card}>
-          <Text style={styles.sectionTitle}>Add Pet</Text>
-          <Text style={styles.hint}>All fields as in VeterinaryFrontend. Name and species required.</Text>
-          <Input label="Name *" placeholder="Enter pet name" value={name} onChangeText={setName} />
-          <Text style={styles.fieldLabel}>Species *</Text>
+          <Text style={styles.sectionTitle}>{t('petOwnerAddPet.title')}</Text>
+          <Text style={styles.hint}>{t('petOwnerAddPet.hint')}</Text>
+          <Input label={t('petOwnerAddPet.fields.name.label')} placeholder={t('petOwnerAddPet.fields.name.placeholder')} value={name} onChangeText={setName} />
+          <Text style={styles.fieldLabel}>{t('petOwnerAddPet.fields.species.label')}</Text>
           <View style={styles.chipRow}>
             {PET_SPECIES.slice(0, 6).map((s) => (
               <TouchableOpacity key={s} style={[styles.chip, species === s && styles.chipActive]} onPress={() => setSpecies(s)}>
-                <Text style={[styles.chipText, species === s && styles.chipTextActive]}>{s}</Text>
+                <Text style={[styles.chipText, species === s && styles.chipTextActive]}>{t(`petOwnerPets.species.${s}`)}</Text>
               </TouchableOpacity>
             ))}
           </View>
           <View style={styles.chipRow}>
             {PET_SPECIES.slice(6).map((s) => (
               <TouchableOpacity key={s} style={[styles.chip, species === s && styles.chipActive]} onPress={() => setSpecies(s)}>
-                <Text style={[styles.chipText, species === s && styles.chipTextActive]}>{s}</Text>
+                <Text style={[styles.chipText, species === s && styles.chipTextActive]}>{t(`petOwnerPets.species.${s}`)}</Text>
               </TouchableOpacity>
             ))}
           </View>
-          <Input label="Breed" placeholder="Enter breed" value={breed} onChangeText={setBreed} />
-          <Text style={styles.fieldLabel}>Gender</Text>
+          <Input label={t('petOwnerAddPet.fields.breed.label')} placeholder={t('petOwnerAddPet.fields.breed.placeholder')} value={breed} onChangeText={setBreed} />
+          <Text style={styles.fieldLabel}>{t('petOwnerAddPet.fields.gender.label')}</Text>
           <View style={styles.chipRow}>
             {PET_GENDER.map((g) => (
               <TouchableOpacity key={g} style={[styles.chip, gender === g && styles.chipActive]} onPress={() => setGender(g)}>
-                <Text style={[styles.chipText, gender === g && styles.chipTextActive]}>{g}</Text>
+                <Text style={[styles.chipText, gender === g && styles.chipTextActive]}>{t(`petOwnerPets.gender.${g}`)}</Text>
               </TouchableOpacity>
             ))}
           </View>
-          <Input label="Age (months)" placeholder="e.g. 24" value={ageMonths} onChangeText={setAgeMonths} keyboardType="numeric" />
-          <Input label="Weight (kg)" placeholder="Optional" value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" />
-          <Input label="Microchip number" placeholder="Optional" value={microchipNumber} onChangeText={setMicrochipNumber} />
-          <Text style={styles.fieldLabel}>Photo</Text>
+          <Input label={t('petOwnerAddPet.fields.ageMonths.label')} placeholder={t('petOwnerAddPet.fields.ageMonths.placeholder')} value={ageMonths} onChangeText={setAgeMonths} keyboardType="numeric" />
+          <Input label={t('petOwnerAddPet.fields.weightKg.label')} placeholder={t('petOwnerAddPet.fields.weightKg.placeholder')} value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" />
+          <Input label={t('petOwnerAddPet.fields.microchipNumber.label')} placeholder={t('petOwnerAddPet.fields.microchipNumber.placeholder')} value={microchipNumber} onChangeText={setMicrochipNumber} />
+          <Text style={styles.fieldLabel}>{t('petOwnerAddPet.fields.photo.label')}</Text>
           <TouchableOpacity style={styles.photoPlaceholder} onPress={pickPhoto}>
             {photo?.uri ? (
               <Image source={{ uri: photo.uri }} style={styles.photoPreview} />
             ) : (
-              <Text style={styles.photoText}>📷 Add photo (optional)</Text>
+              <Text style={styles.photoText}>{t('petOwnerAddPet.fields.photo.placeholder')}</Text>
             )}
           </TouchableOpacity>
-          <Button title={createPet.isPending ? 'Saving...' : 'Save Pet'} onPress={onSave} style={styles.saveBtn} disabled={createPet.isPending} />
+          <Button title={createPet.isPending ? t('petOwnerAddPet.actions.saving') : t('petOwnerAddPet.actions.savePet')} onPress={onSave} style={styles.saveBtn} disabled={createPet.isPending} />
         </Card>
       </ScrollView>
     </ScreenContainer>

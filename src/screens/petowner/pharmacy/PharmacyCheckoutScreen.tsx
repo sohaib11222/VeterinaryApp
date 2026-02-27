@@ -17,10 +17,12 @@ import { spacing } from '../../../theme/spacing';
 import { useCart } from '../../../contexts/CartContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useCreateOrder } from '../../../mutations/orderMutations';
+import { useTranslation } from 'react-i18next';
 
 export function PharmacyCheckoutScreen() {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const { cartItems, getCartTotal, clearCart } = useCart();
   const createOrderMutation = useCreateOrder();
 
@@ -56,15 +58,15 @@ export function PharmacyCheckoutScreen() {
   }, [user]);
 
   const subtotal = getCartTotal();
-  const shipping = 0;
-  const total = subtotal;
+  let shipping = 0;
+  let total = subtotal;
 
   const update = (key: string) => (value: string | boolean) =>
     setFormData((prev) => ({ ...prev, [key]: value }));
 
   useEffect(() => {
     if (cartItems.length === 0 && !createOrderMutation.isPending) {
-      Toast.show({ type: 'info', text1: 'Cart is empty', text2: 'Add products to checkout.' });
+      Toast.show({ type: 'info', text1: t('petOwnerPharmacyCheckout.toasts.cartEmpty.title'), text2: t('petOwnerPharmacyCheckout.toasts.cartEmpty.subtitle') });
       const parent = navigation.getParent?.();
       const root = parent?.getParent?.();
       if (root?.navigate) {
@@ -77,11 +79,11 @@ export function PharmacyCheckoutScreen() {
 
   const handlePlaceOrder = async () => {
     if (!user) {
-      Toast.show({ type: 'error', text1: 'Please log in to place an order.' });
+      Toast.show({ type: 'error', text1: t('petOwnerPharmacyCheckout.validation.loginRequired') });
       return;
     }
     if (!formData.termsAccepted) {
-      Toast.show({ type: 'error', text1: 'Please accept the Terms & Conditions.' });
+      Toast.show({ type: 'error', text1: t('petOwnerPharmacyCheckout.validation.acceptTerms') });
       return;
     }
     const orderItems = cartItems
@@ -91,7 +93,7 @@ export function PharmacyCheckoutScreen() {
         quantity: item.quantity || 1,
       }));
     if (orderItems.length === 0) {
-      Toast.show({ type: 'error', text1: 'Your cart is empty.' });
+      Toast.show({ type: 'error', text1: t('petOwnerPharmacyCheckout.validation.cartEmpty') });
       return;
     }
     let shippingAddress: { line1: string; line2?: string; city: string; state: string; country: string; zip: string } | undefined;
@@ -102,7 +104,7 @@ export function PharmacyCheckoutScreen() {
         formData.shippingState?.trim() &&
         formData.shippingZip?.trim();
       if (!hasRequired) {
-        Toast.show({ type: 'error', text1: 'Please fill all required shipping fields.' });
+        Toast.show({ type: 'error', text1: t('petOwnerPharmacyCheckout.validation.shippingRequired') });
         return;
       }
       shippingAddress = {
@@ -117,7 +119,7 @@ export function PharmacyCheckoutScreen() {
     try {
       await createOrderMutation.mutateAsync({ items: orderItems, shippingAddress });
       clearCart();
-      Toast.show({ type: 'success', text1: 'Order placed', text2: 'You can pay when shipping is set.' });
+      Toast.show({ type: 'success', text1: t('petOwnerPharmacyCheckout.toasts.orderPlaced.title'), text2: t('petOwnerPharmacyCheckout.toasts.orderPlaced.subtitle') });
       const parent = navigation.getParent?.();
       const root = parent?.getParent?.();
       if (root?.navigate) {
@@ -131,15 +133,15 @@ export function PharmacyCheckoutScreen() {
         errObj?.data?.message ||
         errObj?.message ||
         (err && typeof err === 'object' && 'message' in err ? String((err as { message: unknown }).message) : null) ||
-        'Failed to place order';
-      Toast.show({ type: 'error', text1: 'Order failed', text2: String(message) });
+        t('petOwnerPharmacyCheckout.errors.placeOrderFailed');
+      Toast.show({ type: 'error', text1: t('petOwnerPharmacyCheckout.errors.orderFailedTitle'), text2: String(message) });
     }
   };
 
   if (cartItems.length === 0 && !createOrderMutation.isPending) {
     return (
       <ScreenContainer padded>
-        <Text style={styles.redirectText}>Redirecting...</Text>
+        <Text style={styles.redirectText}>{t('petOwnerPharmacyCheckout.redirecting')}</Text>
       </ScreenContainer>
     );
   }
@@ -149,37 +151,37 @@ export function PharmacyCheckoutScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Billing Details – single column like mydoctor-app */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Billing details</Text>
+          <Text style={styles.sectionTitle}>{t('petOwnerPharmacyCheckout.sections.billingDetails')}</Text>
 
-          <Text style={styles.subSectionTitle}>Personal information</Text>
+          <Text style={styles.subSectionTitle}>{t('petOwnerPharmacyCheckout.sections.personalInfo')}</Text>
           <Input
-            label="First name"
+            label={t('petOwnerPharmacyCheckout.fields.firstName.label')}
             value={formData.firstName}
             onChangeText={update('firstName') as (t: string) => void}
-            placeholder="First name"
+            placeholder={t('petOwnerPharmacyCheckout.fields.firstName.placeholder')}
           />
           <Input
-            label="Last name"
+            label={t('petOwnerPharmacyCheckout.fields.lastName.label')}
             value={formData.lastName}
             onChangeText={update('lastName') as (t: string) => void}
-            placeholder="Last name"
+            placeholder={t('petOwnerPharmacyCheckout.fields.lastName.placeholder')}
           />
           <Input
-            label="Email"
+            label={t('petOwnerPharmacyCheckout.fields.email.label')}
             value={formData.email}
             onChangeText={update('email') as (t: string) => void}
-            placeholder="Email"
+            placeholder={t('petOwnerPharmacyCheckout.fields.email.placeholder')}
             keyboardType="email-address"
           />
           <Input
-            label="Phone"
+            label={t('petOwnerPharmacyCheckout.fields.phone.label')}
             value={formData.phone}
             onChangeText={update('phone') as (t: string) => void}
-            placeholder="Phone"
+            placeholder={t('petOwnerPharmacyCheckout.fields.phone.placeholder')}
             keyboardType="phone-pad"
           />
 
-          <Text style={styles.subSectionTitle}>Shipping details</Text>
+          <Text style={styles.subSectionTitle}>{t('petOwnerPharmacyCheckout.sections.shippingDetails')}</Text>
           <TouchableOpacity
             style={styles.checkboxContainer}
             onPress={() =>
@@ -199,56 +201,56 @@ export function PharmacyCheckoutScreen() {
               )}
             </View>
             <Text style={styles.checkboxLabel}>
-              Ship to a different address?
+              {t('petOwnerPharmacyCheckout.fields.shipToDifferentAddress')}
             </Text>
           </TouchableOpacity>
           {formData.shipToDifferentAddress && (
             <>
               <Input
-                label="Address line 1"
+                label={t('petOwnerPharmacyCheckout.fields.shippingLine1.label')}
                 value={formData.shippingLine1}
                 onChangeText={update('shippingLine1') as (t: string) => void}
-                placeholder="Street address"
+                placeholder={t('petOwnerPharmacyCheckout.fields.shippingLine1.placeholder')}
               />
               <Input
-                label="Address line 2 (optional)"
+                label={t('petOwnerPharmacyCheckout.fields.shippingLine2.label')}
                 value={formData.shippingLine2}
                 onChangeText={update('shippingLine2') as (t: string) => void}
-                placeholder="Apartment, suite..."
+                placeholder={t('petOwnerPharmacyCheckout.fields.shippingLine2.placeholder')}
               />
               <View style={styles.row}>
                 <View style={styles.halfInput}>
                   <Input
-                    label="City"
+                    label={t('petOwnerPharmacyCheckout.fields.shippingCity.label')}
                     value={formData.shippingCity}
                     onChangeText={update('shippingCity') as (t: string) => void}
-                    placeholder="City"
+                    placeholder={t('petOwnerPharmacyCheckout.fields.shippingCity.placeholder')}
                   />
                 </View>
                 <View style={styles.halfInput}>
                   <Input
-                    label="State"
+                    label={t('petOwnerPharmacyCheckout.fields.shippingState.label')}
                     value={formData.shippingState}
                     onChangeText={update('shippingState') as (t: string) => void}
-                    placeholder="State"
+                    placeholder={t('petOwnerPharmacyCheckout.fields.shippingState.placeholder')}
                   />
                 </View>
               </View>
               <View style={styles.row}>
                 <View style={styles.halfInput}>
                   <Input
-                    label="Country"
+                    label={t('petOwnerPharmacyCheckout.fields.shippingCountry.label')}
                     value={formData.shippingCountry}
                     onChangeText={update('shippingCountry') as (t: string) => void}
-                    placeholder="Country"
+                    placeholder={t('petOwnerPharmacyCheckout.fields.shippingCountry.placeholder')}
                   />
                 </View>
                 <View style={styles.halfInput}>
                   <Input
-                    label="ZIP code"
+                    label={t('petOwnerPharmacyCheckout.fields.shippingZip.label')}
                     value={formData.shippingZip}
                     onChangeText={update('shippingZip') as (t: string) => void}
-                    placeholder="ZIP"
+                    placeholder={t('petOwnerPharmacyCheckout.fields.shippingZip.placeholder')}
                     keyboardType="numeric"
                   />
                 </View>
@@ -256,24 +258,24 @@ export function PharmacyCheckoutScreen() {
             </>
           )}
           <View style={styles.textAreaContainer}>
-            <Text style={styles.label}>Order notes (optional)</Text>
+            <Text style={styles.label}>{t('petOwnerPharmacyCheckout.fields.orderNotes.label')}</Text>
             <TextInput
               style={styles.textArea}
               value={formData.orderNotes}
               onChangeText={update('orderNotes') as (t: string) => void}
-              placeholder="Notes about your order..."
+              placeholder={t('petOwnerPharmacyCheckout.fields.orderNotes.placeholder')}
               placeholderTextColor={colors.textLight}
               multiline
               numberOfLines={4}
             />
           </View>
 
-          <Text style={styles.subSectionTitle}>Payment method</Text>
+          <Text style={styles.subSectionTitle}>{t('petOwnerPharmacyCheckout.sections.paymentMethod')}</Text>
           <View style={styles.paymentOption}>
             <View style={[styles.radio, styles.radioChecked]}>
               <View style={styles.radioInner} />
             </View>
-            <Text style={styles.paymentOptionText}>Card / Stripe</Text>
+            <Text style={styles.paymentOptionText}>{t('petOwnerPharmacyCheckout.paymentMethods.cardStripe')}</Text>
           </View>
 
           <TouchableOpacity
@@ -291,15 +293,15 @@ export function PharmacyCheckoutScreen() {
               )}
             </View>
             <Text style={styles.checkboxLabel}>
-              I have read and accept the{' '}
-              <Text style={styles.linkText}>Terms & Conditions</Text>
+              {t('petOwnerPharmacyCheckout.terms.prefix')}{' '}
+              <Text style={styles.linkText}>{t('petOwnerPharmacyCheckout.terms.link')}</Text>
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* Order summary */}
         <View style={styles.orderSummary}>
-          <Text style={styles.orderSummaryTitle}>Your order</Text>
+          <Text style={styles.orderSummaryTitle}>{t('petOwnerPharmacyCheckout.sections.yourOrder')}</Text>
           <View style={styles.orderItemsList}>
             {cartItems.map((item) => {
               const lineTotal = Number(item.price || 0) * Number(item.quantity || 0);
@@ -316,29 +318,29 @@ export function PharmacyCheckoutScreen() {
           </View>
           <View style={styles.orderTotals}>
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Subtotal</Text>
+              <Text style={styles.totalLabel}>{t('petOwnerPharmacyCheckout.totals.subtotal')}</Text>
               <Text style={styles.totalValue}>€{subtotal.toFixed(2)}</Text>
             </View>
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Shipping</Text>
+              <Text style={styles.totalLabel}>{t('petOwnerPharmacyCheckout.totals.shipping')}</Text>
               <Text style={styles.totalValue}>
                 {shipping === 0 ? (
-                  <Text style={styles.freeShippingText}>Free</Text>
+                  <Text style={styles.freeShippingText}>{t('petOwnerPharmacyCheckout.totals.free')}</Text>
                 ) : (
                   `€${shipping.toFixed(2)}`
                 )}
               </Text>
             </View>
             <View style={[styles.totalRow, styles.totalRowMain]}>
-              <Text style={styles.totalLabelMain}>Total</Text>
+              <Text style={styles.totalLabelMain}>{t('petOwnerPharmacyCheckout.totals.total')}</Text>
               <Text style={styles.totalValueMain}>€{total.toFixed(2)}</Text>
             </View>
           </View>
           {!user && (
-            <Text style={styles.loginHint}>Please log in to place an order.</Text>
+            <Text style={styles.loginHint}>{t('petOwnerPharmacyCheckout.validation.loginRequired')}</Text>
           )}
           <Button
-            title={createOrderMutation.isPending ? 'Placing order...' : 'Place order'}
+            title={createOrderMutation.isPending ? t('petOwnerPharmacyCheckout.actions.placingOrder') : t('petOwnerPharmacyCheckout.actions.placeOrder')}
             onPress={handlePlaceOrder}
             disabled={!user || !formData.termsAccepted || createOrderMutation.isPending}
             style={styles.submitButton}

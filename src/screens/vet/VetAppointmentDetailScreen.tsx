@@ -13,6 +13,7 @@ import {
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Toast from 'react-native-toast-message';
+import { useTranslation } from 'react-i18next';
 import { VetStackParamList } from '../../navigation/types';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
@@ -45,6 +46,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function VetAppointmentDetailScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const appointmentId = route.params?.appointmentId ?? null;
@@ -55,7 +57,7 @@ export function VetAppointmentDetailScreen() {
   const [vaccinationsDraft, setVaccinationsDraft] = useState<Array<{ vaccineId: string; vaccinationDate: string; nextDueDate: string; batchNumber: string; notes: string }>>([
     { vaccineId: '', vaccinationDate: todayStr, nextDueDate: '', batchNumber: '', notes: '' },
   ]);
-  const [weightDraft, setWeightDraft] = useState({ value: '', unit: 'kg' as const, notes: '' });
+  const [weightDraft, setWeightDraft] = useState<{ value: string; unit: 'kg' | 'lbs'; notes: string }>({ value: '', unit: 'kg', notes: '' });
 
   const { user } = useAuth();
   const currentUserId = (user as { id?: string })?.id ?? (user as { _id?: string })?._id ?? '';
@@ -68,8 +70,13 @@ export function VetAppointmentDetailScreen() {
   const getOrCreateConversation = useGetOrCreateConversation();
   const { data: vaccinesResponse } = useVaccines();
   const vaccines = useMemo(() => {
-    const d = (vaccinesResponse as { data?: { _id: string; name: string }[] })?.data ?? vaccinesResponse as { _id: string; name: string }[];
-    return Array.isArray(d) ? d : [];
+    const outer = (vaccinesResponse as { data?: unknown })?.data ?? vaccinesResponse;
+    const list = (outer as { data?: unknown })?.data ?? outer;
+    if (!Array.isArray(list)) return [];
+    return list.filter((v): v is { _id: string; name: string } => {
+      const o = v as { _id?: unknown; name?: unknown };
+      return typeof o?._id === 'string' && typeof o?.name === 'string';
+    });
   }, [vaccinesResponse]);
 
   const appointment = useMemo(() => {
@@ -108,7 +115,7 @@ export function VetAppointmentDetailScreen() {
       const conv = (res as { _id?: string; data?: { _id?: string } })?.data ?? (res as { _id?: string });
       const conversationId = conv?._id;
       if (!conversationId) {
-        Toast.show({ type: 'error', text1: 'Could not open chat' });
+        Toast.show({ type: 'error', text1: t('vetAppointmentDetail.errors.couldNotOpenChat') });
         return;
       }
       const stackNav = navigation.getParent();
@@ -117,8 +124,8 @@ export function VetAppointmentDetailScreen() {
         conversationType: 'VETERINARIAN_PET_OWNER',
         petOwnerId: ownerId,
         appointmentId,
-        title: (owner.name as string) || (owner.fullName as string) || 'Pet Owner',
-        subtitle: 'Chat',
+        title: (owner.name as string) || (owner.fullName as string) || t('common.petOwner'),
+        subtitle: t('common.chat'),
       });
     } catch (err) {
       Toast.show({ type: 'error', text1: getErrorMessage(err) });
@@ -136,7 +143,7 @@ export function VetAppointmentDetailScreen() {
     if (!appointmentId) return;
     try {
       await acceptAppointment.mutateAsync(appointmentId);
-      Toast.show({ type: 'success', text1: 'Appointment accepted' });
+      Toast.show({ type: 'success', text1: t('vetAppointmentDetail.toasts.accepted') });
       refetch();
     } catch (err) {
       Toast.show({ type: 'error', text1: getErrorMessage(err) });
@@ -150,7 +157,7 @@ export function VetAppointmentDetailScreen() {
         appointmentId,
         data: { reason: rejectReason || undefined },
       });
-      Toast.show({ type: 'success', text1: 'Appointment rejected' });
+      Toast.show({ type: 'success', text1: t('vetAppointmentDetail.toasts.rejected') });
       setShowRejectModal(false);
       refetch();
     } catch (err) {
@@ -195,7 +202,7 @@ export function VetAppointmentDetailScreen() {
             : {}),
         },
       });
-      Toast.show({ type: 'success', text1: 'Appointment marked as completed' });
+      Toast.show({ type: 'success', text1: t('vetAppointmentDetail.toasts.completed') });
       setShowCompleteModal(false);
       refetch();
     } catch (err) {
@@ -207,7 +214,7 @@ export function VetAppointmentDetailScreen() {
     if (!appointmentId) return;
     try {
       await updateStatus.mutateAsync({ appointmentId, data: { status: 'NO_SHOW' } });
-      Toast.show({ type: 'success', text1: 'Appointment marked as no-show' });
+      Toast.show({ type: 'success', text1: t('vetAppointmentDetail.toasts.noShow') });
       refetch();
     } catch (err) {
       Toast.show({ type: 'error', text1: getErrorMessage(err) });
@@ -219,7 +226,7 @@ export function VetAppointmentDetailScreen() {
       <ScreenContainer padded>
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading appointment...</Text>
+          <Text style={styles.loadingText}>{t('vetAppointmentDetail.loading')}</Text>
         </View>
       </ScreenContainer>
     );
@@ -229,8 +236,8 @@ export function VetAppointmentDetailScreen() {
     return (
       <ScreenContainer padded>
         <View style={styles.empty}>
-          <Text style={styles.emptyTitle}>Appointment not found</Text>
-          <Text style={styles.emptySubtitle}>Please go back to appointments and select one.</Text>
+          <Text style={styles.emptyTitle}>{t('vetAppointmentDetail.notFound.title')}</Text>
+          <Text style={styles.emptySubtitle}>{t('vetAppointmentDetail.notFound.subtitle')}</Text>
         </View>
       </ScreenContainer>
     );
@@ -251,16 +258,16 @@ export function VetAppointmentDetailScreen() {
                 {(appointment.appointmentNumber as string) || (appointment._id as string)}
               </Text>
               <Text style={styles.petName}>
-                {(pet.name as string) || 'Pet'}
+                {(pet.name as string) || t('common.pet')}
                 {(pet.breed as string) ? ` (${pet.breed})` : ''}
               </Text>
               {status === 'PENDING' && (
                 <View style={styles.newBadge}>
-                  <Text style={styles.newBadgeText}>New</Text>
+                  <Text style={styles.newBadgeText}>{t('vetAppointmentDetail.badges.new')}</Text>
                 </View>
               )}
               <Text style={styles.ownerLabel}>
-                Owner: {(owner.name as string) || (owner.fullName as string) || '—'}
+                {t('vetAppointmentDetail.labels.owner')}: {(owner.name as string) || (owner.fullName as string) || '—'}
               </Text>
               <Text style={styles.contact}>{(owner.email as string) || '—'}</Text>
               <Text style={styles.contact}>{(owner.phone as string) || '—'}</Text>
@@ -268,13 +275,13 @@ export function VetAppointmentDetailScreen() {
           </View>
 
           <View style={styles.typeRow}>
-            <Text style={styles.typeLabel}>Type of Appointment</Text>
+            <Text style={styles.typeLabel}>{t('vetAppointmentDetail.labels.typeOfAppointment')}</Text>
             <View style={styles.badgeRow}>
               <View style={[styles.badge, styles.badgeType]}>
                 <Text style={styles.badgeText}>
                   {(appointment.bookingType as string) === 'ONLINE'
-                    ? '📹 Video Call'
-                    : '🏥 Clinic Visit'}
+                    ? t('vetAppointmentDetail.labels.videoCall')
+                    : t('vetAppointmentDetail.labels.clinicVisit')}
                 </Text>
               </View>
             </View>
@@ -284,24 +291,24 @@ export function VetAppointmentDetailScreen() {
             <View style={[styles.statusBadge, { backgroundColor: statusColor + '25' }]}>
               <Text style={[styles.statusText, { color: statusColor }]}>{status}</Text>
             </View>
-            <Text style={styles.fees}>Consultation: €50</Text>
+            <Text style={styles.fees}>{t('vetAppointmentDetail.labels.consultationFee')}</Text>
           </View>
 
           <View style={styles.detailGrid}>
-            <Row label="Appointment Date & Time" value={`${dateStr} ${timeStr}`} />
-            <Row label="Visit Reason" value={(appointment.reason as string) || 'Consultation'} />
+            <Row label={t('vetAppointmentDetail.details.dateTime')} value={`${dateStr} ${timeStr}`} />
+            <Row label={t('vetAppointmentDetail.details.reason')} value={(appointment.reason as string) || t('vetAppointmentDetail.details.defaultReason')} />
             {appointment.petSymptoms ? (
-              <Row label="Pet Symptoms" value={appointment.petSymptoms as string} />
+              <Row label={t('vetAppointmentDetail.details.petSymptoms')} value={appointment.petSymptoms as string} />
             ) : null}
             {appointment.notes ? (
-              <Row label="Notes" value={appointment.notes as string} />
+              <Row label={t('vetAppointmentDetail.details.notes')} value={appointment.notes as string} />
             ) : null}
           </View>
 
           <View style={styles.actions}>
             {canAccept && (
               <Button
-                title={acceptAppointment.isPending ? 'Accepting...' : 'Accept Appointment'}
+                title={acceptAppointment.isPending ? t('vetAppointmentDetail.actions.accepting') : t('vetAppointmentDetail.actions.acceptAppointment')}
                 onPress={handleAccept}
                 disabled={isProcessing}
                 style={styles.actionBtn}
@@ -309,7 +316,7 @@ export function VetAppointmentDetailScreen() {
             )}
             {canReject && (
               <Button
-                title="Reject"
+                title={t('vetAppointmentDetail.actions.reject')}
                 onPress={() => setShowRejectModal(true)}
                 variant="outline"
                 style={[styles.actionBtn, styles.rejectBtn]}
@@ -318,7 +325,7 @@ export function VetAppointmentDetailScreen() {
             )}
             {canComplete && (
               <Button
-                title="Mark as Completed"
+                title={t('vetAppointmentDetail.actions.markCompleted')}
                 onPress={openCompleteModal}
                 disabled={isProcessing}
                 style={styles.actionBtn}
@@ -326,7 +333,7 @@ export function VetAppointmentDetailScreen() {
             )}
             {canMarkNoShow && (
               <Button
-                title={updateStatus.isPending ? 'Updating...' : 'Mark as No-Show'}
+                title={updateStatus.isPending ? t('vetAppointmentDetail.actions.updating') : t('vetAppointmentDetail.actions.markNoShow')}
                 onPress={handleNoShow}
                 variant="outline"
                 style={styles.actionBtn}
@@ -335,14 +342,14 @@ export function VetAppointmentDetailScreen() {
             )}
             {canStartVideo && (
               <Button
-                title="Start Video Session"
+                title={t('vetAppointmentDetail.actions.startVideo')}
                 onPress={() => navigation.navigate('VetStartAppointment', { appointmentId })}
                 style={[styles.actionBtn, { backgroundColor: colors.accent }]}
               />
             )}
             {status === 'CONFIRMED' && (
               <Button
-                title="💬 Chat with pet owner"
+                title={t('vetAppointmentDetail.actions.chatWithPetOwner')}
                 variant="outline"
                 onPress={openChat}
                 style={styles.actionBtn}
@@ -351,7 +358,7 @@ export function VetAppointmentDetailScreen() {
             )}
             {canPrescription && (
               <Button
-                title="Prescription"
+                title={t('vetAppointmentDetail.actions.prescription')}
                 onPress={() => navigation.navigate('VetPrescription', { appointmentId })}
                 variant="outline"
                 style={styles.actionBtn}
@@ -365,17 +372,17 @@ export function VetAppointmentDetailScreen() {
         <Pressable style={styles.modalOverlay} onPress={() => !completeAppointment.isPending && setShowCompleteModal(false)}>
           <Pressable style={[styles.modalBox, styles.modalBoxLarge]} onPress={(e) => e.stopPropagation()}>
             <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>Complete Appointment & Record Vaccinations</Text>
+              <Text style={styles.modalTitle}>{t('vetAppointmentDetail.completeModal.title')}</Text>
               <TouchableOpacity onPress={() => !completeAppointment.isPending && setShowCompleteModal(false)} hitSlop={12}>
                 <Text style={styles.modalClose}>✕</Text>
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.completeModalScroll} showsVerticalScrollIndicator={false}>
-              <Text style={styles.completeSectionLabel}>Weight (optional)</Text>
+              <Text style={styles.completeSectionLabel}>{t('vetAppointmentDetail.completeModal.weightOptional')}</Text>
               <View style={styles.weightRow}>
                 <TextInput
                   style={[styles.input, { flex: 1 }]}
-                  placeholder="Value"
+                  placeholder={t('vetAppointmentDetail.completeModal.valuePlaceholder')}
                   placeholderTextColor={colors.textLight}
                   value={weightDraft.value}
                   onChangeText={(t) => setWeightDraft((p) => ({ ...p, value: t }))}
@@ -396,12 +403,12 @@ export function VetAppointmentDetailScreen() {
               </View>
               <TextInput
                 style={[styles.input, { marginTop: spacing.xs }]}
-                placeholder="Weight notes (optional)"
+                placeholder={t('vetAppointmentDetail.completeModal.weightNotesPlaceholder')}
                 placeholderTextColor={colors.textLight}
                 value={weightDraft.notes}
                 onChangeText={(t) => setWeightDraft((p) => ({ ...p, notes: t }))}
               />
-              <Text style={[styles.completeSectionLabel, { marginTop: spacing.md }]}>Vaccinations (optional)</Text>
+              <Text style={[styles.completeSectionLabel, { marginTop: spacing.md }]}>{t('vetAppointmentDetail.completeModal.vaccinationsOptional')}</Text>
               {vaccinationsDraft.map((row, idx) => (
                 <View key={idx} style={styles.vaccineRow}>
                   <View style={{ flex: 1 }}>
@@ -428,14 +435,14 @@ export function VetAppointmentDetailScreen() {
                           disabled={completeAppointment.isPending}
                           style={styles.removeVaccineBtn}
                         >
-                          <Text style={styles.removeVaccineText}>Remove</Text>
+                          <Text style={styles.removeVaccineText}>{t('common.remove')}</Text>
                         </TouchableOpacity>
                       )}
                     </View>
                     <View style={styles.vaccineDatesRow}>
                       <TextInput
                         style={[styles.input, { flex: 1 }]}
-                        placeholder="Date (YYYY-MM-DD)"
+                        placeholder={t('vetAppointmentDetail.completeModal.datePlaceholder')}
                         placeholderTextColor={colors.textLight}
                         value={row.vaccinationDate}
                         onChangeText={(t) =>
@@ -444,7 +451,7 @@ export function VetAppointmentDetailScreen() {
                       />
                       <TextInput
                         style={[styles.input, { flex: 1, marginLeft: spacing.xs }]}
-                        placeholder="Next due (YYYY-MM-DD)"
+                        placeholder={t('vetAppointmentDetail.completeModal.nextDuePlaceholder')}
                         placeholderTextColor={colors.textLight}
                         value={row.nextDueDate}
                         onChangeText={(t) =>
@@ -454,7 +461,7 @@ export function VetAppointmentDetailScreen() {
                     </View>
                     <TextInput
                       style={[styles.input, { marginTop: 4 }]}
-                      placeholder="Batch number (optional)"
+                      placeholder={t('vetAppointmentDetail.completeModal.batchNumberPlaceholder')}
                       placeholderTextColor={colors.textLight}
                       value={row.batchNumber}
                       onChangeText={(t) =>
@@ -463,7 +470,7 @@ export function VetAppointmentDetailScreen() {
                     />
                     <TextInput
                       style={[styles.input, { marginTop: 4 }]}
-                      placeholder="Notes (optional)"
+                      placeholder={t('vetAppointmentDetail.completeModal.notesPlaceholder')}
                       placeholderTextColor={colors.textLight}
                       value={row.notes}
                       onChangeText={(t) =>
@@ -483,19 +490,19 @@ export function VetAppointmentDetailScreen() {
                 }
                 disabled={completeAppointment.isPending}
               >
-                <Text style={styles.addVaccineText}>+ Add another vaccine</Text>
+                <Text style={styles.addVaccineText}>{t('vetAppointmentDetail.completeModal.addAnotherVaccine')}</Text>
               </TouchableOpacity>
             </ScrollView>
             <View style={styles.modalActions}>
               <Button
-                title="Cancel"
+                title={t('common.cancel')}
                 variant="outline"
                 onPress={() => setShowCompleteModal(false)}
                 style={styles.modalBtn}
                 disabled={completeAppointment.isPending}
               />
               <Button
-                title={completeAppointment.isPending ? 'Completing...' : 'Complete Appointment'}
+                title={completeAppointment.isPending ? t('vetAppointmentDetail.completeModal.completing') : t('vetAppointmentDetail.completeModal.completeAppointment')}
                 onPress={handleCompleteSubmit}
                 style={styles.modalBtn}
                 disabled={completeAppointment.isPending}
@@ -508,14 +515,14 @@ export function VetAppointmentDetailScreen() {
       <Modal visible={showRejectModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Reject Appointment</Text>
+            <Text style={styles.modalTitle}>{t('vetAppointmentDetail.rejectModal.title')}</Text>
             <Text style={styles.modalText}>
-              Are you sure you want to reject this appointment?
+              {t('vetAppointmentDetail.rejectModal.confirmText')}
             </Text>
-            <Text style={styles.inputLabel}>Reason (optional)</Text>
+            <Text style={styles.inputLabel}>{t('vetAppointmentDetail.rejectModal.reasonLabel')}</Text>
             <TextInput
               style={styles.textArea}
-              placeholder="Enter reason..."
+              placeholder={t('vetAppointmentDetail.rejectModal.reasonPlaceholder')}
               placeholderTextColor={colors.textLight}
               value={rejectReason}
               onChangeText={setRejectReason}
@@ -524,13 +531,13 @@ export function VetAppointmentDetailScreen() {
             />
             <View style={styles.modalActions}>
               <Button
-                title="Cancel"
+                title={t('common.cancel')}
                 variant="outline"
                 onPress={() => setShowRejectModal(false)}
                 style={styles.modalBtn}
               />
               <Button
-                title={rejectAppointment.isPending ? 'Rejecting...' : 'Reject Appointment'}
+                title={rejectAppointment.isPending ? t('vetAppointmentDetail.rejectModal.rejecting') : t('vetAppointmentDetail.rejectModal.rejectAppointment')}
                 onPress={handleReject}
                 style={[styles.modalBtn, styles.rejectBtn]}
                 disabled={rejectAppointment.isPending}

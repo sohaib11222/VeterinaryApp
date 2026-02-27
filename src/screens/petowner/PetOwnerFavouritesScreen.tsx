@@ -22,6 +22,7 @@ import { useQueries } from '@tanstack/react-query';
 import { api } from '../../api/api';
 import { API_ROUTES } from '../../api/apiConfig';
 import Toast from 'react-native-toast-message';
+import { useTranslation } from 'react-i18next';
 
 function renderStars(rating: number) {
   const stars = [];
@@ -38,6 +39,7 @@ const starStyle = StyleSheet.create({
 export function PetOwnerFavouritesScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const userId = (user as { id?: string })?.id ?? (user as { _id?: string })?._id ?? null;
 
@@ -83,21 +85,21 @@ export function PetOwnerFavouritesScreen() {
       const vetUserId = vetUser && (typeof vetUser === 'object' ? (vetUser as { _id?: string })._id : vetUser);
       const profile = vetUserId ? vetProfileByUserId[String(vetUserId)] : null;
       const userObj = (profile?.userId ?? vetUser) as { fullName?: string; name?: string; profileImage?: string };
-      const name = userObj?.fullName ?? userObj?.name ?? 'Veterinarian';
+      const name = userObj?.fullName ?? userObj?.name ?? t('common.veterinarian');
       const image = getImageUrl(userObj?.profileImage) ?? null;
-      const speciality = (profile?.specializations as { name?: string }[])?.[0]?.name ?? 'Veterinary';
+      const speciality = (profile?.specializations as { name?: string }[])?.[0]?.name ?? t('petOwnerFavourites.defaults.specialty');
       const clinics = (profile?.clinics ?? []) as { address?: string; city?: string; state?: string; country?: string }[];
       const firstClinic = clinics[0];
       const location = firstClinic
-        ? ([firstClinic.address, firstClinic.city, firstClinic.state, firstClinic.country].filter(Boolean).join(', ') || '—')
-        : '—';
+        ? ([firstClinic.address, firstClinic.city, firstClinic.state, firstClinic.country].filter(Boolean).join(', ') || t('common.na'))
+        : t('common.na');
       const rating = Number(profile?.ratingAvg ?? 0);
       const fees = profile?.consultationFees as { online?: number; clinic?: number } | undefined;
       const fee = fees?.online ?? fees?.clinic ?? 0;
       const available = (profile as { isAvailableOnline?: boolean })?.isAvailableOnline !== false;
       return { ...fav, vetUserId, name, image, speciality, location, rating, fee, available };
     });
-  }, [favorites, vetProfileByUserId]);
+  }, [favorites, vetProfileByUserId, t]);
 
   const filtered = useMemo(() => {
     if (!searchQuery.trim()) return favoritesWithDetails;
@@ -112,9 +114,12 @@ export function PetOwnerFavouritesScreen() {
 
   const handleRemove = (favoriteId: string) => {
     removeFavorite.mutate(favoriteId, {
-      onSuccess: () => Toast.show({ type: 'success', text1: 'Removed from favorites' }),
+      onSuccess: () => Toast.show({ type: 'success', text1: t('petOwnerFavourites.toasts.removedFromFavorites') }),
       onError: (err: { response?: { data?: { message?: string } }; message?: string }) =>
-        Toast.show({ type: 'error', text1: (err?.response?.data as { message?: string })?.message ?? err?.message ?? 'Failed to remove' }),
+        Toast.show({
+          type: 'error',
+          text1: (err?.response?.data as { message?: string })?.message ?? err?.message ?? t('petOwnerFavourites.errors.removeFailed'),
+        }),
     });
   };
 
@@ -124,7 +129,7 @@ export function PetOwnerFavouritesScreen() {
         <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search favourites..."
+          placeholder={t('petOwnerFavourites.searchPlaceholder')}
           placeholderTextColor={colors.textLight}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -137,15 +142,15 @@ export function PetOwnerFavouritesScreen() {
         </View>
       ) : error ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>Failed to load favorites.</Text>
+          <Text style={styles.emptyText}>{t('petOwnerFavourites.errors.loadFailed')}</Text>
         </View>
       ) : filtered.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyIcon}>♥</Text>
-          <Text style={styles.emptyTitle}>No favourites yet</Text>
-          <Text style={styles.emptyText}>Add veterinarians from the search page to see them here.</Text>
+          <Text style={styles.emptyTitle}>{t('petOwnerFavourites.empty.title')}</Text>
+          <Text style={styles.emptyText}>{t('petOwnerFavourites.empty.subtitle')}</Text>
           <TouchableOpacity style={styles.browseButton} onPress={() => navigation.navigate('PetOwnerSearch')}>
-            <Text style={styles.browseButtonText}>Find Veterinarians</Text>
+            <Text style={styles.browseButtonText}>{t('petOwnerBooking.actions.findVeterinarians')}</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -164,7 +169,7 @@ export function PetOwnerFavouritesScreen() {
                   <Image source={{ uri: item.image }} style={styles.avatarImg} />
                 ) : (
                   <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>{item.name?.charAt(0) ?? 'V'}</Text>
+                    <Text style={styles.avatarText}>{item.name?.charAt(0) ?? t('petOwnerFavourites.defaults.vetAvatarLetter')}</Text>
                   </View>
                 )}
                 <View style={styles.vetDetails}>
@@ -179,22 +184,25 @@ export function PetOwnerFavouritesScreen() {
                   </View>
                   <View style={styles.infoRow}>
                     <Text style={styles.infoIcon}>📍</Text>
-                    <Text style={styles.infoText}>{item.location ?? '—'}</Text>
+                    <Text style={styles.infoText}>{item.location ?? t('common.na')}</Text>
                   </View>
-                  {typeof (item as { fee?: number }).fee === 'number' && (item as { fee?: number }).fee > 0 ? (
-                    <Text style={styles.feeText}>€{(item as { fee: number }).fee} consultation</Text>
-                  ) : null}
+                  {(() => {
+                    const fee = (item as { fee?: number }).fee;
+                    return typeof fee === 'number' && fee > 0 ? (
+                      <Text style={styles.feeText}>{t('petOwnerFavourites.feeConsultation', { amount: fee })}</Text>
+                    ) : null;
+                  })()}
                   <Text style={[styles.availText, (item as { available?: boolean }).available === false && styles.availNo]}>
-                    {(item as { available?: boolean }).available !== false ? 'Available' : 'Unavailable'}
+                    {(item as { available?: boolean }).available !== false ? t('petOwnerSearch.status.available') : t('petOwnerSearch.status.unavailable')}
                   </Text>
                 </View>
               </TouchableOpacity>
               <View style={styles.actionButtons}>
                 <TouchableOpacity style={styles.viewProfileButton} onPress={() => navigation.navigate('PetOwnerVetProfile', { vetId: item.vetUserId ?? '' })}>
-                  <Text style={styles.viewProfileButtonText}>View profile</Text>
+                  <Text style={styles.viewProfileButtonText}>{t('petOwnerSearch.actions.viewProfile')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.bookButton} onPress={() => navigation.navigate('PetOwnerBooking', { vetId: item.vetUserId ?? '' })}>
-                  <Text style={styles.bookButtonText}>Book now</Text>
+                  <Text style={styles.bookButtonText}>{t('petOwnerFavourites.actions.bookNow')}</Text>
                 </TouchableOpacity>
               </View>
             </View>

@@ -17,7 +17,7 @@ import { Button } from '../../components/common/Button';
 import { useAuth } from '../../contexts/AuthContext';
 import { useVeterinarianProfile } from '../../queries/veterinarianQueries';
 import { useUpdateVeterinarianProfile } from '../../mutations/veterinarianMutations';
-import { useUploadProfileImage } from '../../mutations/userMutations';
+import { uploadProfileImage } from '../../services/upload';
 import { api } from '../../api/api';
 import { API_ROUTES } from '../../api/apiConfig';
 import { colors } from '../../theme/colors';
@@ -25,24 +25,26 @@ import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import Toast from 'react-native-toast-message';
 import { getImageUrl } from '../../config/api';
+import { copyToCacheUri, deleteCacheFiles, getExtensionFromMime } from '../../utils/fileUpload';
+import { useTranslation } from 'react-i18next';
 
 const PROFILE_SECTIONS = [
-  { label: 'Basic Details', screen: 'VetProfileSettings' as const },
-  { label: 'Specialties & Services', screen: 'VetSpecialities' as const },
-  { label: 'Experience', screen: 'VetExperienceSettings' as const },
-  { label: 'Education', screen: 'VetEducationSettings' as const },
-  { label: 'Awards', screen: 'VetAwardsSettings' as const },
-  { label: 'Insurances', screen: 'VetInsuranceSettings' as const },
-  { label: 'Clinics', screen: 'VetClinicsSettings' as const },
-  { label: 'Business Hours', screen: 'VetBusinessSettings' as const },
+  { key: 'basicDetails', screen: 'VetProfileSettings' as const },
+  { key: 'specialtiesServices', screen: 'VetSpecialities' as const },
+  { key: 'experience', screen: 'VetExperienceSettings' as const },
+  { key: 'education', screen: 'VetEducationSettings' as const },
+  { key: 'awards', screen: 'VetAwardsSettings' as const },
+  { key: 'insurances', screen: 'VetInsuranceSettings' as const },
+  { key: 'clinics', screen: 'VetClinicsSettings' as const },
+  { key: 'businessHours', screen: 'VetBusinessSettings' as const },
 ];
 
 export function VetProfileSettingsScreen() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const navigation = useNavigation<any>();
   const { data: profileResponse, isLoading: profileLoading } = useVeterinarianProfile();
   const updateProfile = useUpdateVeterinarianProfile();
-  const uploadProfileImage = useUploadProfileImage();
 
   const profile = useMemo(() => {
     const d = (profileResponse as { data?: Record<string, unknown> })?.data ?? profileResponse as Record<string, unknown>;
@@ -51,6 +53,7 @@ export function VetProfileSettingsScreen() {
   const profileUser = (profile?.userId as Record<string, unknown>) ?? user ?? {};
 
   const [profileImage, setProfileImage] = useState('');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const [form, setForm] = useState({
     firstName: '',
@@ -89,17 +92,36 @@ export function VetProfileSettingsScreen() {
       const result = await DocumentPicker.getDocumentAsync({ type: 'image/*', copyToCacheDirectory: true });
       if (result.canceled) return;
       const asset = result.assets[0];
-      const res = await uploadProfileImage.mutateAsync(asset as any);
-      const url = (res as { data?: { url?: string } })?.data?.url;
+      setUploadingPhoto(true);
+      const tempUris: string[] = [];
+      let url: string | undefined;
+      try {
+        const mime = asset.mimeType ?? 'image/jpeg';
+        const name = asset.name ?? 'profile.jpg';
+        const ext = getExtensionFromMime(mime);
+        const uri = await copyToCacheUri(asset.uri, 0, ext);
+        tempUris.push(uri);
+        const res = await uploadProfileImage({ uri, name, type: mime });
+        url = (res as { data?: { url?: string } })?.data?.url ?? (res as { url?: string })?.url;
+      } finally {
+        if (tempUris.length > 0) {
+          await deleteCacheFiles(tempUris).catch(() => {});
+        }
+        setUploadingPhoto(false);
+      }
       if (!url) {
-        Toast.show({ type: 'error', text1: 'Upload failed' });
+        Toast.show({ type: 'error', text1: t('vetProfileSettings.toasts.uploadFailed') });
         return;
       }
       await api.put(API_ROUTES.USERS.PROFILE, { profileImage: url });
       setProfileImage(url);
-      Toast.show({ type: 'success', text1: 'Profile image updated' });
+      Toast.show({ type: 'success', text1: t('vetProfileSettings.toasts.profileImageUpdated') });
     } catch (err) {
-      Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? 'Failed to upload' });
+      Toast.show({
+        type: 'error',
+        text1: (err as { message?: string })?.message ?? t('vetProfileSettings.toasts.uploadFailedGeneric'),
+      });
+      setUploadingPhoto(false);
     }
   };
 
@@ -107,9 +129,12 @@ export function VetProfileSettingsScreen() {
     try {
       await api.put(API_ROUTES.USERS.PROFILE, { profileImage: null });
       setProfileImage('');
-      Toast.show({ type: 'success', text1: 'Profile image removed' });
+      Toast.show({ type: 'success', text1: t('vetProfileSettings.toasts.profileImageRemoved') });
     } catch (err) {
-      Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? 'Failed to remove' });
+      Toast.show({
+        type: 'error',
+        text1: (err as { message?: string })?.message ?? t('vetProfileSettings.toasts.removeFailedGeneric'),
+      });
     }
   };
 
@@ -155,13 +180,13 @@ export function VetProfileSettingsScreen() {
           .filter(Boolean)
           .map((name) => ({ name })),
       });
-      Toast.show({ type: 'success', text1: 'Profile updated successfully' });
+      Toast.show({ type: 'success', text1: t('vetProfileSettings.toasts.profileUpdated') });
     } catch (err) {
       Toast.show({
         type: 'error',
         text1: (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message
           ?? (err as { message?: string })?.message
-          ?? 'Failed to update profile',
+          ?? t('vetProfileSettings.toasts.updateFailedGeneric'),
       });
     }
   };
@@ -171,7 +196,7 @@ export function VetProfileSettingsScreen() {
       <ScreenContainer padded>
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading profile...</Text>
+          <Text style={styles.loadingText}>{t('vetProfileSettings.loading')}</Text>
         </View>
       </ScreenContainer>
     );
@@ -183,58 +208,27 @@ export function VetProfileSettingsScreen() {
       <Card style={styles.navCard}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.tabsRow}>
-            <TouchableOpacity style={[styles.tab, styles.tabActive]}>
-              <Text style={[styles.tabText, styles.tabTextActive]}>Basic Details</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.tab}
-              onPress={() => navigation.navigate('VetSpecialities')}
-            >
-              <Text style={styles.tabText}>Specialties & Services</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.tab}
-              onPress={() => navigation.navigate('VetExperienceSettings')}
-            >
-              <Text style={styles.tabText}>Experience</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.tab}
-              onPress={() => navigation.navigate('VetEducationSettings')}
-            >
-              <Text style={styles.tabText}>Education</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.tab}
-              onPress={() => navigation.navigate('VetAwardsSettings')}
-            >
-              <Text style={styles.tabText}>Awards</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.tab}
-              onPress={() => navigation.navigate('VetInsuranceSettings')}
-            >
-              <Text style={styles.tabText}>Insurances</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.tab}
-              onPress={() => navigation.navigate('VetClinicsSettings')}
-            >
-              <Text style={styles.tabText}>Clinics</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.tab}
-              onPress={() => navigation.navigate('VetBusinessSettings')}
-            >
-              <Text style={styles.tabText}>Business Hours</Text>
-            </TouchableOpacity>
+            {PROFILE_SECTIONS.map((s) => {
+              const active = s.screen === 'VetProfileSettings';
+              return (
+                <TouchableOpacity
+                  key={s.key}
+                  style={[styles.tab, active && styles.tabActive]}
+                  onPress={active ? undefined : () => navigation.navigate(s.screen)}
+                >
+                  <Text style={[styles.tabText, active && styles.tabTextActive]}>
+                    {t(`vetProfileSettings.tabs.${s.key}`)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </ScrollView>
       </Card>
 
       <Card>
         {/* Profile Image */}
-        <Text style={styles.sectionTitle}>Profile Image</Text>
+        <Text style={styles.sectionTitle}>{t('vetProfileSettings.sections.profileImage')}</Text>
         <View style={styles.photoRow}>
           <View style={styles.avatarWrap}>
             {profileImage ? (
@@ -246,86 +240,72 @@ export function VetProfileSettingsScreen() {
             )}
           </View>
           <View style={styles.photoActions}>
-            <TouchableOpacity style={styles.photoBtn} onPress={handleUploadPhoto} disabled={uploadProfileImage.isPending}>
-              <Text style={styles.photoBtnText}>{uploadProfileImage.isPending ? 'Uploading...' : 'Upload Photo'}</Text>
+            <TouchableOpacity style={styles.photoBtn} onPress={handleUploadPhoto} disabled={uploadingPhoto}>
+              <Text style={styles.photoBtnText}>{uploadingPhoto ? t('vetProfileSettings.actions.uploading') : t('vetProfileSettings.actions.uploadPhoto')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleRemovePhoto} disabled={uploadProfileImage.isPending}>
-              <Text style={styles.removeText}>Remove</Text>
+            <TouchableOpacity onPress={handleRemovePhoto} disabled={uploadingPhoto}>
+              <Text style={styles.removeText}>{t('common.remove')}</Text>
             </TouchableOpacity>
-            <Text style={styles.photoHint}>Below 4MB, JPG, PNG, SVG</Text>
+            <Text style={styles.photoHint}>{t('vetProfileSettings.photoHint')}</Text>
           </View>
         </View>
 
         {/* Basic Information */}
-        <Text style={styles.sectionTitle}>Basic Information</Text>
-        <View style={styles.row}>
-          <View style={styles.flex1}>
-            <Input
-              label="First Name *"
-              placeholder="First name"
-              value={form.firstName}
-              onChangeText={update('firstName')}
-            />
-          </View>
-          <View style={styles.flex1}>
-            <Input
-              label="Last Name *"
-              placeholder="Last name"
-              value={form.lastName}
-              onChangeText={update('lastName')}
-            />
-          </View>
-        </View>
+        <Text style={styles.sectionTitle}>{t('vetProfileSettings.sections.basicInformation')}</Text>
         <Input
-          label="Display Name *"
-          placeholder="How you want to be known"
+          label={t('vetProfileSettings.fields.firstName')}
+          placeholder={t('vetProfileSettings.placeholders.firstName')}
+          value={form.firstName}
+          onChangeText={update('firstName')}
+        />
+        <Input
+          label={t('vetProfileSettings.fields.lastName')}
+          placeholder={t('vetProfileSettings.placeholders.lastName')}
+          value={form.lastName}
+          onChangeText={update('lastName')}
+        />
+        <Input
+          label={t('vetProfileSettings.fields.displayName')}
+          placeholder={t('vetProfileSettings.placeholders.displayName')}
           value={displayName}
           onChangeText={() => {}}
           editable={false}
         />
-        <View style={styles.row}>
-          <View style={styles.flex1}>
-            <Input
-              label="Professional Title *"
-              placeholder="e.g. DVM, Veterinarian"
-              value={form.title}
-              onChangeText={update('title')}
-            />
-          </View>
-          <View style={styles.flex1}>
-            <Input
-              label="Phone Number *"
-              placeholder="Phone"
-              value={user?.phone || ''}
-              onChangeText={() => {}}
-              editable={false}
-            />
-          </View>
-          <View style={styles.flex1}>
-            <Input
-              label="Email Address *"
-              placeholder="Email"
-              value={user?.email || ''}
-              onChangeText={() => {}}
-              editable={false}
-            />
-          </View>
-        </View>
         <Input
-          label="Biography"
-          placeholder="Describe your veterinary background, expertise..."
+          label={t('vetProfileSettings.fields.professionalTitle')}
+          placeholder={t('vetProfileSettings.placeholders.professionalTitle')}
+          value={form.title}
+          onChangeText={update('title')}
+        />
+        <Input
+          label={t('vetProfileSettings.fields.phone')}
+          placeholder={t('vetProfileSettings.placeholders.phone')}
+          value={user?.phone || ''}
+          onChangeText={() => {}}
+          editable={false}
+        />
+        <Input
+          label={t('vetProfileSettings.fields.email')}
+          placeholder={t('vetProfileSettings.placeholders.email')}
+          value={user?.email || ''}
+          onChangeText={() => {}}
+          editable={false}
+        />
+        <Input
+          label={t('vetProfileSettings.fields.biography')}
+          placeholder={t('vetProfileSettings.placeholders.biography')}
           value={form.biography}
           onChangeText={update('biography')}
           style={styles.bioInput}
         />
 
         {/* Consultation Fees */}
-        <Text style={styles.sectionTitle}>Consultation Fees</Text>
+        <Text style={styles.sectionTitle}>{t('vetProfileSettings.sections.consultationFees')}</Text>
         <View style={styles.row}>
           <View style={styles.flex1}>
             <Input
-              label="In-Clinic Consultation Fee"
-              placeholder="e.g. 50"
+              label={t('vetProfileSettings.fields.inClinicFee')}
+              placeholder={t('vetProfileSettings.placeholders.feeExample', { value: 50 })}
               value={form.clinicFee}
               onChangeText={update('clinicFee')}
               keyboardType="numeric"
@@ -333,8 +313,8 @@ export function VetProfileSettingsScreen() {
           </View>
           <View style={styles.flex1}>
             <Input
-              label="Online Consultation Fee"
-              placeholder="e.g. 40"
+              label={t('vetProfileSettings.fields.onlineFee')}
+              placeholder={t('vetProfileSettings.placeholders.feeExample', { value: 40 })}
               value={form.onlineFee}
               onChangeText={update('onlineFee')}
               keyboardType="numeric"
@@ -343,13 +323,13 @@ export function VetProfileSettingsScreen() {
         </View>
 
         {/* Professional Memberships */}
-        <Text style={styles.sectionTitle}>Professional Memberships</Text>
+        <Text style={styles.sectionTitle}>{t('vetProfileSettings.sections.professionalMemberships')}</Text>
         {form.memberships.map((value, index) => (
           <View key={index} style={styles.membershipRow}>
             <View style={styles.membershipInputWrap}>
               <Input
-                label={index === 0 ? 'Organization' : undefined}
-                placeholder="e.g. AVMA"
+                label={index === 0 ? t('vetProfileSettings.fields.organization') : undefined}
+                placeholder={t('vetProfileSettings.placeholders.organizationExample', { value: 'AVMA' })}
                 value={value}
                 onChangeText={(v) => handleMembershipChange(index, v)}
               />
@@ -358,20 +338,20 @@ export function VetProfileSettingsScreen() {
               style={styles.removeBtn}
               onPress={() => removeMembership(index)}
             >
-              <Text style={styles.removeBtnText}>Remove</Text>
+              <Text style={styles.removeBtnText}>{t('common.remove')}</Text>
             </TouchableOpacity>
           </View>
         ))}
         <TouchableOpacity style={styles.addMembershipBtn} onPress={addMembership}>
-          <Text style={styles.addMembershipText}>+ Add Membership</Text>
+          <Text style={styles.addMembershipText}>{t('vetProfileSettings.actions.addMembership')}</Text>
         </TouchableOpacity>
 
         <View style={styles.actions}>
           <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()}>
-            <Text style={styles.cancelBtnText}>Cancel</Text>
+            <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
           </TouchableOpacity>
           <Button
-            title={updateProfile.isPending ? 'Saving...' : 'Save Changes'}
+            title={updateProfile.isPending ? t('vetProfileSettings.actions.saving') : t('common.saveChanges')}
             onPress={handleSave}
             disabled={updateProfile.isPending}
           />

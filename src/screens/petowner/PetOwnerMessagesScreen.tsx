@@ -9,6 +9,7 @@ import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useConversations } from '../../queries/chatQueries';
+import { useTranslation } from 'react-i18next';
 
 type Conversation = {
   _id: string;
@@ -23,11 +24,11 @@ type Conversation = {
   unreadCount?: number;
 };
 
-function getConversationName(c: Conversation): string {
+function getConversationName(c: Conversation, veterinarianLabel: string, naLabel: string): string {
   const vet = c?.veterinarianId;
-  if (!vet) return '—';
+  if (!vet) return naLabel;
   const o = typeof vet === 'object' ? vet : null;
-  return (o?.fullName ?? o?.name ?? 'Veterinarian') as string;
+  return (o?.fullName ?? o?.name ?? veterinarianLabel) as string;
 }
 
 function getConversationImage(c: Conversation): string | null {
@@ -36,7 +37,7 @@ function getConversationImage(c: Conversation): string | null {
   return getImageUrl((vet as { profileImage?: string }).profileImage) ?? null;
 }
 
-function formatTime(c: Conversation): string {
+function formatTime(c: Conversation, yesterdayLabel: string): string {
   const dt = c?.lastMessageAt || c?.updatedAt || c?.createdAt;
   if (!dt) return '';
   const d = new Date(dt);
@@ -44,7 +45,7 @@ function formatTime(c: Conversation): string {
   const now = new Date();
   const diffDays = Math.floor((now.getTime() - d.getTime()) / (24 * 60 * 60 * 1000));
   if (diffDays === 0) return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  if (diffDays === 1) return 'Yesterday';
+  if (diffDays === 1) return yesterdayLabel;
   if (diffDays < 7) return d.toLocaleDateString(undefined, { weekday: 'short' });
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
@@ -53,6 +54,7 @@ export function PetOwnerMessagesScreen() {
   const navigation = useNavigation<any>();
   const stackNav = navigation.getParent();
   const headerSearch = useVetHeaderSearch();
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
 
   const { data: conversationsResponse, isLoading, error } = useConversations({ limit: 50 });
@@ -66,19 +68,19 @@ export function PetOwnerMessagesScreen() {
   useFocusEffect(
     React.useCallback(() => {
       headerSearch?.setConfig({
-        placeholder: 'Search conversations...',
+        placeholder: t('messages.searchPlaceholder'),
         value: searchQuery,
         onChangeText: setSearchQuery,
       });
       return () => headerSearch?.setConfig(null);
-    }, [searchQuery])
+    }, [headerSearch, searchQuery, t])
   );
 
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return conversations;
-    return conversations.filter((c) => getConversationName(c).toLowerCase().includes(q));
-  }, [conversations, searchQuery]);
+    return conversations.filter((c) => getConversationName(c, t('common.veterinarian'), t('common.na')).toLowerCase().includes(q));
+  }, [conversations, searchQuery, t]);
 
   const openChat = (c: Conversation) => {
     const id = c?._id;
@@ -86,7 +88,7 @@ export function PetOwnerMessagesScreen() {
     const vetId = c?.veterinarianId && (typeof c.veterinarianId === 'object' ? c.veterinarianId._id : c.veterinarianId);
     const ownerId = c?.petOwnerId && (typeof c.petOwnerId === 'object' ? c.petOwnerId._id : c.petOwnerId);
     const aptId = c?.appointmentId && (typeof c.appointmentId === 'object' ? c.appointmentId._id : c.appointmentId);
-    const peerName = getConversationName(c);
+    const peerName = getConversationName(c, t('common.veterinarian'), t('common.na'));
     const peerImageUri = getConversationImage(c);
     stackNav?.navigate('PetOwnerChatDetail', {
       conversationId: id,
@@ -95,13 +97,13 @@ export function PetOwnerMessagesScreen() {
       appointmentId: aptId ?? '',
       conversationType: c.conversationType ?? 'VETERINARIAN_PET_OWNER',
       title: peerName,
-      subtitle: 'Chat',
+      subtitle: t('common.chat'),
       peerImageUri: peerImageUri ?? undefined,
     });
   };
 
   const renderItem = ({ item }: { item: Conversation }) => {
-    const preview = item?.lastMessage?.message || item?.lastMessage?.fileName || '—';
+    const preview = item?.lastMessage?.message || item?.lastMessage?.fileName || t('common.na');
     const unread = item?.unreadCount ?? 0;
     const avatarUri = getConversationImage(item);
     return (
@@ -112,19 +114,21 @@ export function PetOwnerMessagesScreen() {
               {avatarUri ? (
                 <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
               ) : (
-                <Text style={styles.avatarText}>{getConversationName(item).charAt(0)}</Text>
+                <Text style={styles.avatarText}>{getConversationName(item, t('common.veterinarian'), t('common.na')).charAt(0)}</Text>
               )}
             </View>
             <View style={styles.content}>
               <View style={styles.topRow}>
-                <Text style={styles.name} numberOfLines={1}>{getConversationName(item)}</Text>
+                <Text style={styles.name} numberOfLines={1}>{getConversationName(item, t('common.veterinarian'), t('common.na'))}</Text>
                 <View style={styles.rightMeta}>
                   {unread > 0 ? (
                     <View style={styles.unreadBadge}>
-                      <Text style={styles.unreadText}>{unread > 99 ? '99+' : unread}</Text>
+                      <Text style={styles.unreadText}>
+                        {unread > 99 ? t('messages.unreadOverflow') : unread}
+                      </Text>
                     </View>
                   ) : (
-                    <Text style={styles.time}>{formatTime(item)}</Text>
+                    <Text style={styles.time}>{formatTime(item, t('common.yesterday'))}</Text>
                   )}
                 </View>
               </View>
@@ -145,7 +149,7 @@ export function PetOwnerMessagesScreen() {
         </View>
       ) : error ? (
         <View style={styles.centered}>
-          <Text style={styles.errorText}>{(error as { message?: string })?.message ?? 'Failed to load conversations'}</Text>
+          <Text style={styles.errorText}>{(error as { message?: string })?.message ?? t('messages.errors.loadFailed')}</Text>
         </View>
       ) : (
         <FlatList
@@ -156,7 +160,7 @@ export function PetOwnerMessagesScreen() {
           ListEmptyComponent={
             <View style={styles.empty}>
               <Text style={styles.emptyIcon}>💬</Text>
-              <Text style={styles.emptyText}>No conversations yet</Text>
+              <Text style={styles.emptyText}>{t('messages.empty')}</Text>
             </View>
           }
         />

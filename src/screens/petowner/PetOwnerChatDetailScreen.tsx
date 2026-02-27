@@ -29,6 +29,7 @@ import { useSendMessage, useMarkConversationRead } from '../../mutations/chatMut
 import { useUploadChatFile } from '../../mutations/uploadMutations';
 import { copyToCacheUri, deleteCacheFiles, getExtensionFromMime } from '../../utils/fileUpload';
 import Toast from 'react-native-toast-message';
+import { useTranslation } from 'react-i18next';
 
 type Route = RouteProp<PetOwnerStackParamList, 'PetOwnerChatDetail'>;
 
@@ -49,19 +50,22 @@ function formatMessageTime(dateStr?: string): string {
   return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
-function getMessageAttachments(m: Message): { url: string; name: string; type?: string; mimeType?: string }[] {
+function getMessageAttachments(
+  m: Message,
+  fileLabel: string
+): { url: string; name: string; type?: string; mimeType?: string }[] {
   if (Array.isArray(m?.attachments) && m.attachments.length > 0) {
     const base = API_BASE_URL.replace(/\/api\/?$/, '');
     return m.attachments.map((a) => ({
       url: a?.url?.startsWith('http') ? a.url : `${base}${a?.url?.startsWith('/') ? '' : '/'}${a?.url ?? ''}`,
-      name: a?.name ?? 'File',
+      name: a?.name ?? fileLabel,
       type: a?.type,
       mimeType: a?.mimeType,
     }));
   }
   if (m?.fileUrl) {
     const url = getImageUrl(m.fileUrl) ?? `${API_BASE_URL.replace(/\/api\/?$/, '')}${m.fileUrl.startsWith('/') ? '' : '/'}${m.fileUrl}`;
-    return [{ url, name: m?.fileName ?? 'File', type: 'file', mimeType: undefined }];
+    return [{ url, name: m?.fileName ?? fileLabel, type: 'file', mimeType: undefined }];
   }
   return [];
 }
@@ -80,6 +84,7 @@ export function PetOwnerChatDetailScreen() {
   const route = useRoute<Route>();
   const { conversationId, veterinarianId, petOwnerId, appointmentId } = route.params ?? {};
   const { user } = useAuth();
+  const { t } = useTranslation();
   const currentUserId = (user as { id?: string })?.id ?? (user as { _id?: string })?._id ?? '';
 
   const [message, setMessage] = useState('');
@@ -128,7 +133,7 @@ export function PetOwnerChatDetailScreen() {
     const text = (message ?? '').trim();
     if (!text) return;
     if (!conversationId || !veterinarianId || !petOwnerId || !appointmentId) {
-      Toast.show({ type: 'error', text1: 'Invalid conversation' });
+      Toast.show({ type: 'error', text1: t('petOwnerChatDetail.errors.invalidConversation') });
       return;
     }
     try {
@@ -142,14 +147,17 @@ export function PetOwnerChatDetailScreen() {
       });
       setMessage('');
     } catch (err) {
-      Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? 'Failed to send' });
+      Toast.show({
+        type: 'error',
+        text1: (err as { message?: string })?.message ?? t('petOwnerChatDetail.errors.failedToSend'),
+      });
     }
   };
 
   const handleAttach = async () => {
     try {
       if (!conversationId || !veterinarianId || !petOwnerId || !appointmentId) {
-        Toast.show({ type: 'error', text1: 'Invalid conversation' });
+        Toast.show({ type: 'error', text1: t('petOwnerChatDetail.errors.invalidConversation') });
         return;
       }
       const result = await DocumentPicker.getDocumentAsync({
@@ -169,7 +177,7 @@ export function PetOwnerChatDetailScreen() {
         const data = res as { data?: { url?: string } };
         const url = data?.data?.url;
         if (!url) {
-          Toast.show({ type: 'error', text1: 'Upload failed' });
+          Toast.show({ type: 'error', text1: t('petOwnerChatDetail.errors.uploadFailed') });
           return;
         }
         await sendMessage.mutateAsync({
@@ -178,7 +186,7 @@ export function PetOwnerChatDetailScreen() {
           petOwnerId,
           appointmentId,
           fileUrl: url,
-          fileName: file.name ?? 'File',
+          fileName: file.name ?? t('common.file'),
           type: 'FILE',
           message: (message ?? '').trim() || undefined,
         });
@@ -189,12 +197,15 @@ export function PetOwnerChatDetailScreen() {
         }
       }
     } catch (err) {
-      Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? 'Failed to send file' });
+      Toast.show({
+        type: 'error',
+        text1: (err as { message?: string })?.message ?? t('petOwnerChatDetail.errors.failedToSendFile'),
+      });
     }
   };
 
   const openFileUrl = (url: string) => {
-    Linking.openURL(url).catch(() => Toast.show({ type: 'error', text1: 'Could not open file' }));
+    Linking.openURL(url).catch(() => Toast.show({ type: 'error', text1: t('petOwnerChatDetail.errors.couldNotOpenFile') }));
   };
 
   const isMe = (m: Message) => {
@@ -206,7 +217,7 @@ export function PetOwnerChatDetailScreen() {
   if (!conversationId) {
     return (
       <ScreenContainer padded>
-        <Text style={styles.errorText}>Missing conversation</Text>
+        <Text style={styles.errorText}>{t('petOwnerChatDetail.missingConversation')}</Text>
       </ScreenContainer>
     );
   }
@@ -232,12 +243,12 @@ export function PetOwnerChatDetailScreen() {
               contentContainerStyle={styles.messagesList}
               ListEmptyComponent={
                 <View style={styles.empty}>
-                  <Text style={styles.emptyText}>No messages yet</Text>
+                  <Text style={styles.emptyText}>{t('petOwnerChatDetail.empty')}</Text>
                 </View>
               }
               renderItem={({ item }) => {
                 const me = isMe(item);
-                const attachments = getMessageAttachments(item);
+                const attachments = getMessageAttachments(item, t('common.file'));
                 const body = item?.message;
                 return (
                   <View style={[styles.bubbleWrap, me ? styles.bubbleMe : styles.bubbleThem]}>
@@ -276,7 +287,7 @@ export function PetOwnerChatDetailScreen() {
                         </View>
                       ) : null}
                       {!body && attachments.length === 0 ? (
-                        <Text style={[styles.bubbleText, me && { color: colors.textInverse }]}>—</Text>
+                        <Text style={[styles.bubbleText, me && { color: colors.textInverse }]}>{t('common.na')}</Text>
                       ) : null}
                       <Text style={styles.bubbleTime}>{formatMessageTime(item?.createdAt)}</Text>
                     </View>
@@ -295,7 +306,7 @@ export function PetOwnerChatDetailScreen() {
             </TouchableOpacity>
             <TextInput
               style={styles.input}
-              placeholder="Type a message..."
+              placeholder={t('petOwnerChatDetail.placeholders.typeMessage')}
               placeholderTextColor={colors.textLight}
               value={message}
               onChangeText={setMessage}
@@ -308,7 +319,7 @@ export function PetOwnerChatDetailScreen() {
               onPress={handleSend}
               disabled={sendMessage.isPending || !(message ?? '').trim()}
             >
-              <Text style={styles.sendText}>Send</Text>
+              <Text style={styles.sendText}>{t('common.send')}</Text>
             </TouchableOpacity>
           </View>
       </ScreenContainer>

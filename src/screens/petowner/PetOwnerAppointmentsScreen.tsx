@@ -19,6 +19,7 @@ import { useAppointments } from '../../queries/appointmentQueries';
 import { useGetOrCreateConversation } from '../../mutations/chatMutations';
 import { getImageUrl } from '../../config/api';
 import Toast from 'react-native-toast-message';
+import { useTranslation } from 'react-i18next';
 
 type Tab = 'all' | 'upcoming' | 'cancelled' | 'completed';
 
@@ -31,6 +32,7 @@ interface AppointmentCardItem {
   date: string;
   reason: string;
   bookingType: string;
+  bookingTypeLabel: string;
   status: string;
   email: string;
   phone: string;
@@ -39,10 +41,14 @@ interface AppointmentCardItem {
   petOwnerId: string;
 }
 
-function normalizeAppointments(response: unknown): AppointmentCardItem[] {
+function normalizeAppointments(
+  response: unknown,
+  t: (key: string, options?: Record<string, unknown>) => string
+): AppointmentCardItem[] {
   const body = response as { data?: { appointments?: unknown[] } };
   const list = Array.isArray(body?.data?.appointments) ? body.data.appointments : [];
-  return list.map((a: Record<string, unknown>) => {
+  return list.map((item) => {
+    const a = item as Record<string, unknown>;
     const vet = (a.veterinarianId as Record<string, unknown>) || {};
     const vetId = (vet._id as string) ?? (a.veterinarianId as string) ?? '';
     const ownerId = (a.petOwnerId as Record<string, unknown>)?._id
@@ -58,17 +64,25 @@ function normalizeAppointments(response: unknown): AppointmentCardItem[] {
       _id: id,
       appointmentId: id,
       appointmentNumber: (a.appointmentNumber as string) || id,
-      doctor: (vet.name as string) || (vet.fullName as string) || (vet.email as string) || 'Veterinarian',
+      doctor:
+        (vet.name as string) ||
+        (vet.fullName as string) ||
+        (vet.email as string) ||
+        t('common.veterinarian'),
       doctorImg: getImageUrl((vet.profileImage as string) || undefined) || null,
       date: `${dateStr} ${timeStr}`.trim(),
-      reason: (a.reason as string) || 'Consultation',
-      bookingType: (a.bookingType as string) === 'ONLINE' ? 'Video Call' : 'Clinic Visit',
+      reason: (a.reason as string) || t('petOwnerAppointmentDetail.defaults.consultation'),
+      bookingType: (a.bookingType as string) || '',
+      bookingTypeLabel:
+        (a.bookingType as string) === 'ONLINE'
+          ? t('petOwnerAppointmentDetail.bookingTypes.videoCall')
+          : t('petOwnerAppointmentDetail.bookingTypes.clinicVisit'),
       status: String((a.status as string) || '').toUpperCase(),
       email: (vet.email as string) || '',
       phone: (vet.phone as string) || '',
       pet: (pet.name as string)
         ? `${pet.name as string}${(pet.breed as string) ? ` (${pet.breed})` : ''}`
-        : 'Pet',
+        : t('common.pet'),
       veterinarianId: vetId,
       petOwnerId: ownerId,
     };
@@ -79,6 +93,7 @@ export function PetOwnerAppointmentsScreen() {
   const navigation = useNavigation<any>();
   const stackNav = navigation.getParent();
   const headerSearch = useVetHeaderSearch();
+  const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<Tab>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -86,8 +101,8 @@ export function PetOwnerAppointmentsScreen() {
   const getOrCreateConversation = useGetOrCreateConversation();
 
   const appointments = useMemo(
-    () => normalizeAppointments(appointmentsResponse ?? {}),
-    [appointmentsResponse]
+    () => normalizeAppointments(appointmentsResponse ?? {}, t),
+    [appointmentsResponse, t, i18n.language]
   );
 
   const filteredByTab = useMemo(() => {
@@ -124,19 +139,19 @@ export function PetOwnerAppointmentsScreen() {
   useFocusEffect(
     React.useCallback(() => {
       headerSearch?.setConfig({
-        placeholder: 'Search by vet or pet...',
+        placeholder: t('appointments.searchPlaceholderPetOwner'),
         value: searchQuery,
         onChangeText: setSearchQuery,
       });
       return () => headerSearch?.setConfig(null);
-    }, [searchQuery, headerSearch])
+    }, [searchQuery, headerSearch, t])
   );
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'all', label: 'All' },
-    { key: 'upcoming', label: 'Upcoming' },
-    { key: 'cancelled', label: 'Cancelled' },
-    { key: 'completed', label: 'Completed' },
+    { key: 'all', label: t('appointments.tabs.all') },
+    { key: 'upcoming', label: t('appointments.tabs.upcoming') },
+    { key: 'cancelled', label: t('appointments.tabs.cancelled') },
+    { key: 'completed', label: t('appointments.tabs.completed') },
   ];
 
   const openDetail = (appointmentId: string) => {
@@ -147,7 +162,7 @@ export function PetOwnerAppointmentsScreen() {
     if (item.status !== 'CONFIRMED') return;
     const { veterinarianId: vetId, petOwnerId: ownerId, appointmentId: aptId, doctor, doctorImg } = item;
     if (!vetId || !ownerId || !aptId) {
-      Toast.show({ type: 'error', text1: 'Cannot open chat for this appointment' });
+      Toast.show({ type: 'error', text1: t('appointments.errors.cannotOpenChat') });
       return;
     }
     try {
@@ -159,7 +174,7 @@ export function PetOwnerAppointmentsScreen() {
       const conv = (res as { _id?: string; data?: { _id?: string } })?.data ?? (res as { _id?: string });
       const conversationId = conv?._id;
       if (!conversationId) {
-        Toast.show({ type: 'error', text1: 'Could not open chat' });
+        Toast.show({ type: 'error', text1: t('appointments.errors.couldNotOpenChat') });
         return;
       }
       stackNav?.navigate('PetOwnerChatDetail', {
@@ -169,11 +184,11 @@ export function PetOwnerAppointmentsScreen() {
         appointmentId: aptId,
         conversationType: 'VETERINARIAN_PET_OWNER',
         title: doctor,
-        subtitle: 'Chat',
+        subtitle: t('appointments.actions.chat'),
         peerImageUri: doctorImg ?? undefined,
       });
     } catch (err) {
-      Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? 'Could not open chat' });
+      Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? t('appointments.errors.couldNotOpenChat') });
     }
   };
 
@@ -186,13 +201,15 @@ export function PetOwnerAppointmentsScreen() {
               <Image source={{ uri: item.doctorImg }} style={styles.vetImage} />
             ) : (
               <View style={styles.vetImagePlaceholder}>
-                <Text style={styles.vetImageLetter}>{item.doctor.charAt(0) || '?'}</Text>
+                <Text style={styles.vetImageLetter}>
+                  {item.doctor?.charAt(0) || t('petOwnerAppointmentDetail.defaults.vetAvatarLetter')}
+                </Text>
               </View>
             )}
             <View style={styles.vetInfo}>
               <Text style={styles.appointmentNumber}>{item.appointmentNumber}</Text>
               <Text style={styles.vetName}>{item.doctor}</Text>
-              <Text style={styles.petLabel}>Pet: {item.pet}</Text>
+              <Text style={styles.petLabel}>{t('appointments.labels.pet')}: {item.pet}</Text>
             </View>
           </View>
           <View
@@ -216,10 +233,10 @@ export function PetOwnerAppointmentsScreen() {
           <View
             style={[
               styles.typeBadge,
-              item.bookingType === 'Video Call' ? styles.typeVideo : styles.typeVisit,
+              item.bookingType === 'ONLINE' ? styles.typeVideo : styles.typeVisit,
             ]}
           >
-            <Text style={styles.badgeTextSmall}>{item.bookingType}</Text>
+            <Text style={styles.badgeTextSmall}>{item.bookingTypeLabel}</Text>
           </View>
         </View>
         <View style={styles.contactRow}>
@@ -236,12 +253,12 @@ export function PetOwnerAppointmentsScreen() {
               }}
               disabled={getOrCreateConversation.isPending}
             >
-              <Text style={styles.chatBtnIcon}>💬</Text>
-              <Text style={styles.viewBtnText}>Chat</Text>
+              {/* <Text style={styles.chatBtnIcon}>💬</Text> */}
+              <Text style={styles.viewBtnText}>{t('appointments.actions.chat')}</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity style={styles.viewBtn} onPress={() => openDetail(item.appointmentId)}>
-            <Text style={styles.viewBtnText}>View</Text>
+            <Text style={styles.viewBtnText}>{t('appointments.actions.view')}</Text>
           </TouchableOpacity>
         </View>
       </Card>
@@ -249,10 +266,10 @@ export function PetOwnerAppointmentsScreen() {
   );
 
   const emptyMessages: Record<Tab, string> = {
-    all: 'No appointments found',
-    upcoming: 'No upcoming appointments',
-    cancelled: 'No cancelled appointments',
-    completed: 'No completed appointments',
+    all: t('appointments.empty.petOwnerAll'),
+    upcoming: t('appointments.empty.petOwnerUpcoming'),
+    cancelled: t('appointments.empty.petOwnerCancelled'),
+    completed: t('appointments.empty.petOwnerCompleted'),
   };
 
   return (
@@ -273,7 +290,7 @@ export function PetOwnerAppointmentsScreen() {
       {isLoading ? (
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading appointments...</Text>
+          <Text style={styles.loadingText}>{t('appointments.loading')}</Text>
         </View>
       ) : (
         <FlatList

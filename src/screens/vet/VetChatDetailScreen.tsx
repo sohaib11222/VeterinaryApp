@@ -27,7 +27,9 @@ import { API_BASE_URL } from '../../config/api';
 import { useMessages } from '../../queries/chatQueries';
 import { useSendMessage, useMarkConversationRead } from '../../mutations/chatMutations';
 import { useUploadChatFile } from '../../mutations/uploadMutations';
+import { copyToCacheUri, deleteCacheFiles, getExtensionFromMime } from '../../utils/fileUpload';
 import Toast from 'react-native-toast-message';
+import { useTranslation } from 'react-i18next';
 
 type Route = RouteProp<VetStackParamList, 'VetChatDetail'>;
 
@@ -53,14 +55,14 @@ function getMessageAttachments(m: Message): { url: string; name: string; type?: 
     const base = API_BASE_URL.replace(/\/api\/?$/, '');
     return m.attachments.map((a) => ({
       url: a?.url?.startsWith('http') ? a.url : `${base}${a?.url?.startsWith('/') ? '' : '/'}${a?.url ?? ''}`,
-      name: a?.name ?? 'File',
+      name: a?.name ?? '',
       type: a?.type,
       mimeType: a?.mimeType,
     }));
   }
   if (m?.fileUrl) {
     const url = getImageUrl(m.fileUrl) ?? `${API_BASE_URL.replace(/\/api\/?$/, '')}${m.fileUrl.startsWith('/') ? '' : '/'}${m.fileUrl}`;
-    return [{ url, name: m?.fileName ?? 'File', type: 'file', mimeType: undefined }];
+    return [{ url, name: m?.fileName ?? '', type: 'file', mimeType: undefined }];
   }
   return [];
 }
@@ -78,6 +80,7 @@ function isImageAttachment(att: { type?: string; mimeType?: string; url?: string
 export function VetChatDetailScreen() {
   const route = useRoute<Route>();
   const { conversationId, conversationType, petOwnerId, appointmentId, adminId } = route.params ?? {};
+  const { t } = useTranslation();
   const { user } = useAuth();
   const currentUserId = (user as { id?: string })?.id ?? (user as { _id?: string })?._id ?? '';
 
@@ -125,13 +128,13 @@ export function VetChatDetailScreen() {
     const text = (message ?? '').trim();
     if (!text) return;
     if (!conversationId || !currentUserId) {
-      Toast.show({ type: 'error', text1: 'Invalid conversation' });
+      Toast.show({ type: 'error', text1: t('vetChatDetail.errors.invalidConversation') });
       return;
     }
     try {
       if (conversationType === 'ADMIN_VETERINARIAN') {
         if (!adminId) {
-          Toast.show({ type: 'error', text1: 'Invalid admin conversation' });
+          Toast.show({ type: 'error', text1: t('vetChatDetail.errors.invalidAdminConversation') });
           return;
         }
         await sendMessage.mutateAsync({
@@ -143,7 +146,7 @@ export function VetChatDetailScreen() {
         });
       } else {
         if (!petOwnerId || !appointmentId) {
-          Toast.show({ type: 'error', text1: 'Invalid conversation details' });
+          Toast.show({ type: 'error', text1: t('vetChatDetail.errors.invalidConversationDetails') });
           return;
         }
         await sendMessage.mutateAsync({
@@ -157,58 +160,79 @@ export function VetChatDetailScreen() {
       }
       setMessage('');
     } catch (err) {
-      Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? 'Failed to send' });
+      Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? t('vetChatDetail.errors.failedToSend') });
     }
   };
 
   const handleAttach = async () => {
     try {
+      if (!conversationId || !currentUserId) {
+        Toast.show({ type: 'error', text1: t('vetChatDetail.errors.invalidConversation') });
+        return;
+      }
       const result = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
       if (result.canceled) return;
       const file = result.assets[0];
-      const formData = new FormData();
-      formData.append('file', {
-        uri: file.uri,
-        name: file.name ?? 'file',
-        type: file.mimeType ?? 'application/octet-stream',
-      } as any);
-      const res = await uploadChatFile.mutateAsync(formData);
-      const data = res as { data?: { url?: string } };
-      const url = data?.data?.url;
-      if (!url) {
-        Toast.show({ type: 'error', text1: 'Upload failed' });
-        return;
+      const tempUris: string[] = [];
+      const mime = file.mimeType ?? 'application/octet-stream';
+      const name = file.name ?? 'file';
+      try {
+        const ext = getExtensionFromMime(mime);
+        const uri = await copyToCacheUri(file.uri, 0, ext);
+        tempUris.push(uri);
+
+        const res = await uploadChatFile.mutateAsync({ uri, name, type: mime } as any);
+        const data = res as { data?: { url?: string } };
+        const url = data?.data?.url;
+        if (!url) {
+          Toast.show({ type: 'error', text1: t('vetChatDetail.errors.uploadFailed') });
+          return;
+        }
+
+        if (conversationType === 'ADMIN_VETERINARIAN') {
+          if (!adminId) {
+            Toast.show({ type: 'error', text1: t('vetChatDetail.errors.invalidAdminConversation') });
+            return;
+          }
+          await sendMessage.mutateAsync({
+            conversationId,
+            veterinarianId: currentUserId,
+            adminId,
+            fileUrl: url,
+            fileName: name,
+            type: 'FILE',
+            message: (message ?? '').trim() || undefined,
+          });
+        } else {
+          if (!petOwnerId || !appointmentId) {
+            Toast.show({ type: 'error', text1: t('vetChatDetail.errors.invalidConversationDetails') });
+            return;
+          }
+          await sendMessage.mutateAsync({
+            conversationId,
+            veterinarianId: currentUserId,
+            petOwnerId,
+            appointmentId,
+            fileUrl: url,
+            fileName: name,
+            type: 'FILE',
+            message: (message ?? '').trim() || undefined,
+          });
+        }
+
+        setMessage('');
+      } finally {
+        if (tempUris.length > 0) {
+          await deleteCacheFiles(tempUris).catch(() => {});
+        }
       }
-      if (conversationType === 'ADMIN_VETERINARIAN' && adminId) {
-        await sendMessage.mutateAsync({
-          conversationId,
-          veterinarianId: currentUserId,
-          adminId,
-          fileUrl: url,
-          fileName: file.name ?? 'File',
-          type: 'FILE',
-          message: (message ?? '').trim() || undefined,
-        });
-      } else if (petOwnerId && appointmentId) {
-        await sendMessage.mutateAsync({
-          conversationId,
-          veterinarianId: currentUserId,
-          petOwnerId,
-          appointmentId,
-          fileUrl: url,
-          fileName: file.name ?? 'File',
-          type: 'FILE',
-          message: (message ?? '').trim() || undefined,
-        });
-      }
-      setMessage('');
     } catch (err) {
-      Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? 'Failed to send file' });
+      Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? t('vetChatDetail.errors.failedToSendFile') });
     }
   };
 
   const openFileUrl = (url: string) => {
-    Linking.openURL(url).catch(() => Toast.show({ type: 'error', text1: 'Could not open file' }));
+    Linking.openURL(url).catch(() => Toast.show({ type: 'error', text1: t('vetChatDetail.errors.couldNotOpenFile') }));
   };
 
   const isMe = (m: Message) => {
@@ -220,14 +244,20 @@ export function VetChatDetailScreen() {
   if (!conversationId) {
     return (
       <ScreenContainer padded>
-        <Text style={styles.errorText}>Missing conversation</Text>
+        <Text style={styles.errorText}>{t('vetChatDetail.errors.missingConversation')}</Text>
       </ScreenContainer>
     );
   }
 
   return (
     <View style={styles.container}>
-      <ScreenContainer style={[styles.screenWrap, keyboardHeight > 0 && { paddingBottom: keyboardHeight }]} padded={false}>
+      <ScreenContainer
+        style={{
+          ...styles.screenWrap,
+          ...(keyboardHeight > 0 ? { paddingBottom: keyboardHeight } : {}),
+        }}
+        padded={false}
+      >
           {messagesLoading ? (
             <View style={styles.centered}>
               <ActivityIndicator size="large" color={colors.primary} />
@@ -240,7 +270,7 @@ export function VetChatDetailScreen() {
               contentContainerStyle={styles.messagesList}
               ListEmptyComponent={
                 <View style={styles.empty}>
-                  <Text style={styles.emptyText}>No messages yet</Text>
+                  <Text style={styles.emptyText}>{t('vetChatDetail.empty')}</Text>
                 </View>
               }
               renderItem={({ item }) => {
@@ -275,7 +305,7 @@ export function VetChatDetailScreen() {
                                 onPress={() => openFileUrl(att.url)}
                               >
                                 <Text style={[styles.fileAttachmentName, me && { color: colors.textInverse }]} numberOfLines={1}>
-                                  {att.name}
+                                  {att.name || t('common.file')}
                                 </Text>
                                 <Text style={styles.fileAttachmentIcon}>📥</Text>
                               </TouchableOpacity>
@@ -303,7 +333,7 @@ export function VetChatDetailScreen() {
             </TouchableOpacity>
             <TextInput
               style={styles.input}
-              placeholder="Type a message..."
+              placeholder={t('vetChatDetail.placeholders.message')}
               placeholderTextColor={colors.textLight}
               value={message}
               onChangeText={setMessage}
@@ -316,7 +346,7 @@ export function VetChatDetailScreen() {
               onPress={handleSend}
               disabled={sendMessage.isPending || !(message ?? '').trim()}
             >
-              <Text style={styles.sendText}>Send</Text>
+              <Text style={styles.sendText}>{t('common.send')}</Text>
             </TouchableOpacity>
           </View>
       </ScreenContainer>

@@ -22,6 +22,7 @@ import { usePrescriptionByAppointment, downloadPrescriptionPdf } from '../../que
 import { useUpsertPrescriptionForAppointment } from '../../mutations/prescriptionMutations';
 import type { MedicationItem } from '../../mutations/prescriptionMutations';
 import { getErrorMessage } from '../../utils/errorUtils';
+import { useTranslation } from 'react-i18next';
 
 type Route = RouteProp<VetStackParamList, 'VetPrescription'>;
 
@@ -41,6 +42,7 @@ const emptyMedication = (): MedicationItem => ({
 });
 
 export function VetPrescriptionScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<Route>();
   const appointmentId = route.params?.appointmentId ?? null;
@@ -126,7 +128,7 @@ export function VetPrescriptionScreen() {
 
   const handleSave = async () => {
     if (!appointmentId) {
-      Toast.show({ type: 'error', text1: 'Appointment ID is required' });
+      Toast.show({ type: 'error', text1: t('vetPrescription.errors.appointmentIdRequired') });
       return;
     }
     const tests = form.testsText
@@ -166,7 +168,7 @@ export function VetPrescriptionScreen() {
           status: form.status,
         },
       });
-      Toast.show({ type: 'success', text1: 'Prescription saved' });
+      Toast.show({ type: 'success', text1: t('vetPrescription.toasts.saved') });
     } catch (err) {
       Toast.show({ type: 'error', text1: getErrorMessage(err) });
     }
@@ -175,12 +177,12 @@ export function VetPrescriptionScreen() {
   const handleDownload = async () => {
     const id = (prescription as { _id?: string })?._id;
     if (!id) {
-      Toast.show({ type: 'error', text1: 'Save prescription first to download PDF' });
+      Toast.show({ type: 'error', text1: t('vetPrescription.errors.saveFirstToDownload') });
       return;
     }
     try {
-      const blob = await downloadPrescriptionPdf(id);
-      Toast.show({ type: 'info', text1: 'PDF download not supported in-app yet. Use web for PDF.' });
+      await downloadPrescriptionPdf(id);
+      Toast.show({ type: 'info', text1: t('vetPrescription.info.pdfNotSupported') });
     } catch (err) {
       Toast.show({ type: 'error', text1: getErrorMessage(err) });
     }
@@ -189,7 +191,7 @@ export function VetPrescriptionScreen() {
   if (!appointmentId) {
     return (
       <ScreenContainer padded>
-        <Text style={styles.error}>Appointment ID is required.</Text>
+        <Text style={styles.error}>{t('vetPrescription.errors.appointmentIdRequiredInline')}</Text>
       </ScreenContainer>
     );
   }
@@ -199,7 +201,7 @@ export function VetPrescriptionScreen() {
       <ScreenContainer padded>
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading appointment...</Text>
+          <Text style={styles.loadingText}>{t('vetPrescription.loading')}</Text>
         </View>
       </ScreenContainer>
     );
@@ -208,7 +210,7 @@ export function VetPrescriptionScreen() {
   if (!appointment) {
     return (
       <ScreenContainer padded>
-        <Text style={styles.error}>Appointment not found.</Text>
+        <Text style={styles.error}>{t('vetPrescription.errors.appointmentNotFound')}</Text>
       </ScreenContainer>
     );
   }
@@ -217,9 +219,9 @@ export function VetPrescriptionScreen() {
     return (
       <ScreenContainer padded>
         <Text style={styles.warning}>
-          Prescription can only be created after the appointment is completed.
+          {t('vetPrescription.errors.onlyAfterCompleted')}
         </Text>
-        <Button title="Back" variant="outline" onPress={() => navigation.goBack()} style={styles.btn} />
+        <Button title={t('common.back')} variant="outline" onPress={() => navigation.goBack()} style={styles.btn} />
       </ScreenContainer>
     );
   }
@@ -234,25 +236,25 @@ export function VetPrescriptionScreen() {
     <ScreenContainer scroll padded>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Card>
-          <Text style={styles.title}>Prescription</Text>
-          <Text style={styles.meta}>Appointment {appointmentNumber}</Text>
-          <Text style={styles.meta}>Veterinarian: {(vet.name as string) || (vet.fullName as string) || '—'}</Text>
-          <Text style={styles.meta}>Pet owner: {(owner.name as string) || (owner.fullName as string) || '—'}</Text>
+          <Text style={styles.title}>{t('vetPrescription.title')}</Text>
+          <Text style={styles.meta}>{t('vetPrescription.meta.appointment', { number: appointmentNumber })}</Text>
+          <Text style={styles.meta}>{t('vetPrescription.meta.veterinarian', { name: (vet.name as string) || (vet.fullName as string) || '—' })}</Text>
+          <Text style={styles.meta}>{t('vetPrescription.meta.petOwner', { name: (owner.name as string) || (owner.fullName as string) || '—' })}</Text>
           <Text style={styles.meta}>
-            Pet: {(pet.name as string) || '—'}
+            {t('vetPrescription.meta.pet', { name: (pet.name as string) || '—' })}
             {(pet.breed as string) ? ` (${pet.breed})` : ''}
           </Text>
 
           <View style={styles.actions}>
             <Button
-              title="Download PDF"
+              title={t('vetPrescription.actions.downloadPdf')}
               variant="outline"
               onPress={handleDownload}
               style={styles.actionBtn}
               disabled={!(prescription as { _id?: string })?._id}
             />
             <Button
-              title={upsertRx.isPending ? 'Saving...' : 'Save prescription'}
+              title={upsertRx.isPending ? t('vetPrescription.actions.saving') : t('vetPrescription.actions.savePrescription')}
               onPress={handleSave}
               style={styles.actionBtn}
               disabled={upsertRx.isPending}
@@ -265,38 +267,38 @@ export function VetPrescriptionScreen() {
             </View>
           )}
 
-          <Text style={styles.sectionLabel}>Diagnosis</Text>
+          <Text style={styles.sectionLabel}>{t('vetPrescription.fields.diagnosis')}</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
             value={form.diagnosis}
             onChangeText={(t) => setForm((p) => ({ ...p, diagnosis: t }))}
-            placeholder="Diagnosis"
+            placeholder={t('vetPrescription.placeholders.diagnosis')}
             placeholderTextColor={colors.textLight}
             multiline
           />
-          <Text style={styles.sectionLabel}>Allergies</Text>
+          <Text style={styles.sectionLabel}>{t('vetPrescription.fields.allergies')}</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
             value={form.allergies}
             onChangeText={(t) => setForm((p) => ({ ...p, allergies: t }))}
-            placeholder="Allergies"
+            placeholder={t('vetPrescription.placeholders.allergies')}
             placeholderTextColor={colors.textLight}
             multiline
           />
-          <Text style={styles.sectionLabel}>Clinical notes</Text>
+          <Text style={styles.sectionLabel}>{t('vetPrescription.fields.clinicalNotes')}</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
             value={form.clinicalNotes}
             onChangeText={(t) => setForm((p) => ({ ...p, clinicalNotes: t }))}
-            placeholder="Clinical notes"
+            placeholder={t('vetPrescription.placeholders.clinicalNotes')}
             placeholderTextColor={colors.textLight}
             multiline
           />
 
           <View style={styles.medHeader}>
-            <Text style={styles.sectionLabel}>Medications</Text>
+            <Text style={styles.sectionLabel}>{t('vetPrescription.fields.medications')}</Text>
             <TouchableOpacity onPress={addMedication}>
-              <Text style={styles.addMedText}>+ Add medication</Text>
+              <Text style={styles.addMedText}>{t('vetPrescription.actions.addMedication')}</Text>
             </TouchableOpacity>
           </View>
           {(form.medications || []).map((m, idx) => (
@@ -305,100 +307,100 @@ export function VetPrescriptionScreen() {
                 style={styles.input}
                 value={m.name}
                 onChangeText={(t) => updateMedication(idx, 'name', t)}
-                placeholder="Name *"
+                placeholder={t('vetPrescription.placeholders.medicationNameRequired')}
                 placeholderTextColor={colors.textLight}
               />
               <TextInput
                 style={styles.input}
-                value={m.strength}
+                value={m.strength ?? ''}
                 onChangeText={(t) => updateMedication(idx, 'strength', t)}
-                placeholder="Strength"
+                placeholder={t('vetPrescription.placeholders.strength')}
                 placeholderTextColor={colors.textLight}
               />
               <TextInput
                 style={styles.input}
-                value={m.dosage}
+                value={m.dosage ?? ''}
                 onChangeText={(t) => updateMedication(idx, 'dosage', t)}
-                placeholder="Dosage"
+                placeholder={t('vetPrescription.placeholders.dosage')}
                 placeholderTextColor={colors.textLight}
               />
               <TextInput
                 style={styles.input}
-                value={m.frequency}
+                value={m.frequency ?? ''}
                 onChangeText={(t) => updateMedication(idx, 'frequency', t)}
-                placeholder="Frequency"
+                placeholder={t('vetPrescription.placeholders.frequency')}
                 placeholderTextColor={colors.textLight}
               />
               <TextInput
                 style={styles.input}
-                value={m.duration}
+                value={m.duration ?? ''}
                 onChangeText={(t) => updateMedication(idx, 'duration', t)}
-                placeholder="Duration"
+                placeholder={t('vetPrescription.placeholders.duration')}
                 placeholderTextColor={colors.textLight}
               />
               <TextInput
                 style={styles.input}
-                value={m.quantity}
+                value={m.quantity ?? ''}
                 onChangeText={(t) => updateMedication(idx, 'quantity', t)}
-                placeholder="Qty"
+                placeholder={t('vetPrescription.placeholders.quantity')}
                 placeholderTextColor={colors.textLight}
               />
               <TextInput
                 style={styles.input}
-                value={String(m.refills)}
+                value={String(m.refills ?? 0)}
                 onChangeText={(t) => updateMedication(idx, 'refills', Number(t) || 0)}
-                placeholder="Refills"
+                placeholder={t('vetPrescription.placeholders.refills')}
                 placeholderTextColor={colors.textLight}
                 keyboardType="number-pad"
               />
               <TextInput
                 style={[styles.input, styles.instructions]}
-                value={m.instructions}
+                value={m.instructions ?? ''}
                 onChangeText={(t) => updateMedication(idx, 'instructions', t)}
-                placeholder="Instructions"
+                placeholder={t('vetPrescription.placeholders.instructions')}
                 placeholderTextColor={colors.textLight}
               />
               <TouchableOpacity onPress={() => removeMedication(idx)} style={styles.removeMed}>
-                <Text style={styles.removeMedText}>Remove</Text>
+                <Text style={styles.removeMedText}>{t('common.remove')}</Text>
               </TouchableOpacity>
             </View>
           ))}
 
-          <Text style={styles.sectionLabel}>Recommended tests (one per line)</Text>
+          <Text style={styles.sectionLabel}>{t('vetPrescription.fields.recommendedTests')}</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
             value={form.testsText}
             onChangeText={(t) => setForm((p) => ({ ...p, testsText: t }))}
-            placeholder="One per line"
+            placeholder={t('vetPrescription.placeholders.onePerLine')}
             placeholderTextColor={colors.textLight}
             multiline
           />
-          <Text style={styles.sectionLabel}>Follow-up</Text>
+          <Text style={styles.sectionLabel}>{t('vetPrescription.fields.followUp')}</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
             value={form.followUp}
             onChangeText={(t) => setForm((p) => ({ ...p, followUp: t }))}
-            placeholder="Follow-up"
+            placeholder={t('vetPrescription.placeholders.followUp')}
             placeholderTextColor={colors.textLight}
             multiline
           />
-          <Text style={styles.sectionLabel}>Advice</Text>
+          <Text style={styles.sectionLabel}>{t('vetPrescription.fields.advice')}</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
             value={form.advice}
             onChangeText={(t) => setForm((p) => ({ ...p, advice: t }))}
-            placeholder="Advice"
+            placeholder={t('vetPrescription.placeholders.advice')}
             placeholderTextColor={colors.textLight}
             multiline
           />
-          <Text style={styles.sectionLabel}>Status</Text>
+          <Text style={styles.sectionLabel}>{t('vetPrescription.fields.status')}</Text>
           <View style={styles.statusRow}>
             <TouchableOpacity
               style={[styles.statusChip, form.status === 'ISSUED' && styles.statusChipActive]}
               onPress={() => setForm((p) => ({ ...p, status: 'ISSUED' }))}
             >
               <Text style={[styles.statusChipText, form.status === 'ISSUED' && styles.statusChipTextActive]}>
-                ISSUED
+                {t('vetPrescription.status.issued')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -406,7 +408,7 @@ export function VetPrescriptionScreen() {
               onPress={() => setForm((p) => ({ ...p, status: 'DRAFT' }))}
             >
               <Text style={[styles.statusChipText, form.status === 'DRAFT' && styles.statusChipTextActive]}>
-                DRAFT
+                {t('vetPrescription.status.draft')}
               </Text>
             </TouchableOpacity>
           </View>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useRoute, RouteProp } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { VetStackParamList } from '../../navigation/types';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
@@ -14,16 +15,18 @@ type Route = RouteProp<VetStackParamList, 'VetBlogDetail'>;
 export function VetBlogDetailScreen() {
   const route = useRoute<Route>();
   const id = route.params?.id;
+  const { t } = useTranslation();
+
+  const postKey = id === '2' ? 'post2' : 'post1';
+  const dateISO = id === '2' ? '2024-02-05' : '2024-02-10';
 
   return (
     <ScreenContainer scroll padded>
       <Card>
-        <Text style={styles.title}>5 Tips for Pet Dental Care</Text>
-        <Text style={styles.date}>Feb 10, 2024</Text>
-        <Text style={styles.body}>
-          Keeping your pet's teeth healthy is essential for their overall wellbeing. Here are five simple tips...
-        </Text>
-        <Button title="Edit" variant="outline" onPress={() => {}} style={styles.btn} />
+        <Text style={styles.title}>{t(`vetBlog.mockPosts.${postKey}.title`)}</Text>
+        <Text style={styles.date}>{new Date(dateISO).toLocaleDateString()}</Text>
+        <Text style={styles.body}>{t(`vetBlog.mockPosts.${postKey}.body`)}</Text>
+        <Button title={t('common.edit')} variant="outline" onPress={() => {}} style={styles.btn} />
       </Card>
     </ScreenContainer>
   );

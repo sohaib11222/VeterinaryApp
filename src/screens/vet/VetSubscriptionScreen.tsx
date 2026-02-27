@@ -18,6 +18,7 @@ import { typography } from '../../theme/typography';
 import { useSubscriptionPlans, useMySubscription } from '../../queries/subscriptionQueries';
 import { usePurchaseSubscriptionPlan } from '../../mutations/subscriptionMutations';
 import Toast from 'react-native-toast-message';
+import { useTranslation } from 'react-i18next';
 
 type PlanItem = {
   _id: string;
@@ -31,15 +32,18 @@ function normalizePlans(response: unknown): PlanItem[] {
   const body = response as { data?: unknown[] };
   const list = Array.isArray(body?.data) ? body.data : [];
   const byName = new Map<string, PlanItem>();
-  list.forEach((p: Record<string, unknown>) => {
-    const name = String(p?.name ?? '').trim().toUpperCase();
+  list.forEach((p) => {
+    const rec = p as Record<string, unknown>;
+    const name = String(rec?.name ?? '').trim().toUpperCase();
     if (!name) return;
-    if (!byName.has(name)) byName.set(name, p as PlanItem);
+    if (!byName.has(name)) byName.set(name, rec as PlanItem);
   });
   return Array.from(byName.values());
 }
 
 export function VetSubscriptionScreen() {
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language?.startsWith('it') ? 'it-IT' : 'en-US';
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PlanItem | null>(null);
 
@@ -54,7 +58,7 @@ export function VetSubscriptionScreen() {
     return payload ?? null;
   }, [myResponse]);
 
-  const currentPlanId = mySubscription?.subscriptionPlan?._id as string | undefined;
+  const currentPlanId = (mySubscription as { subscriptionPlan?: { _id?: string } } | null)?.subscriptionPlan?._id;
   const expiresAt = mySubscription?.expiresAt as string | undefined;
   const hasActiveSubscription = !!mySubscription?.hasActiveSubscription;
   const usage = mySubscription?.usage as Record<string, number> | undefined;
@@ -69,11 +73,11 @@ export function VetSubscriptionScreen() {
     if (!selectedPlan?._id) return;
     try {
       await purchase.mutateAsync({ planId: selectedPlan._id });
-      Toast.show({ type: 'success', text1: 'Subscription updated' });
+      Toast.show({ type: 'success', text1: t('vetSubscription.toasts.updated') });
       setShowPaymentModal(false);
       setSelectedPlan(null);
     } catch (err) {
-      Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? 'Failed to purchase subscription' });
+      Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? t('vetSubscription.errors.purchaseFailed') });
     }
   };
 
@@ -94,28 +98,41 @@ export function VetSubscriptionScreen() {
           <View style={styles.currentRow}>
             <View>
               <Text style={styles.currentLabel}>
-                Current Plan: {hasActiveSubscription ? (mySubscription?.subscriptionPlan as { name?: string })?.name ?? '—' : 'No active plan'}
+                {hasActiveSubscription
+                  ? t('vetSubscription.currentPlan', { plan: (mySubscription?.subscriptionPlan as { name?: string })?.name ?? '—' })
+                  : t('vetSubscription.noActivePlan')}
               </Text>
               <Text style={styles.currentSub}>
                 {hasActiveSubscription && expiresAt
-                  ? `Renews on: ${new Date(expiresAt).toLocaleDateString()}`
-                  : 'Subscribe to unlock booking & chat'}
+                  ? t('vetSubscription.renewsOn', { date: new Date(expiresAt).toLocaleDateString(locale) })
+                  : t('vetSubscription.subscribeToUnlock')}
               </Text>
               {hasActiveSubscription && usage && remaining && (
                 <Text style={styles.usageText}>
-                  Usage: Private {usage.privateConsultations ?? 0} / {remaining.privateConsultations === null ? 'Unlimited' : (usage.privateConsultations ?? 0) + (remaining.privateConsultations ?? 0)}
-                  , Video {usage.videoConsultations ?? 0} / {remaining.videoConsultations === null ? 'Unlimited' : (usage.videoConsultations ?? 0) + (remaining.videoConsultations ?? 0)}
-                  , Chat {usage.chatSessions ?? 0} / {remaining.chatSessions === null ? 'Unlimited' : (usage.chatSessions ?? 0) + (remaining.chatSessions ?? 0)}
+                  {t('vetSubscription.usage', {
+                    privateUsed: usage.privateConsultations ?? 0,
+                    privateTotal: remaining.privateConsultations === null
+                      ? t('vetSubscription.unlimited')
+                      : (usage.privateConsultations ?? 0) + (remaining.privateConsultations ?? 0),
+                    videoUsed: usage.videoConsultations ?? 0,
+                    videoTotal: remaining.videoConsultations === null
+                      ? t('vetSubscription.unlimited')
+                      : (usage.videoConsultations ?? 0) + (remaining.videoConsultations ?? 0),
+                    chatUsed: usage.chatSessions ?? 0,
+                    chatTotal: remaining.chatSessions === null
+                      ? t('vetSubscription.unlimited')
+                      : (usage.chatSessions ?? 0) + (remaining.chatSessions ?? 0),
+                  })}
                 </Text>
               )}
             </View>
             <View style={[styles.badge, hasActiveSubscription ? styles.badgeActive : styles.badgeInactive]}>
-              <Text style={styles.badgeText}>{hasActiveSubscription ? 'Active' : 'Inactive'}</Text>
+              <Text style={styles.badgeText}>{hasActiveSubscription ? t('vetSubscription.status.active') : t('vetSubscription.status.inactive')}</Text>
             </View>
           </View>
         </Card>
 
-        <Text style={styles.sectionTitle}>Subscription Plans</Text>
+        <Text style={styles.sectionTitle}>{t('vetSubscription.sectionTitle')}</Text>
         {plans.map((plan) => {
           const isCurrent = currentPlanId && String(plan._id) === String(currentPlanId);
           const popular = String(plan?.name ?? '').toUpperCase() === 'PRO';
@@ -123,18 +140,18 @@ export function VetSubscriptionScreen() {
             <Card key={plan._id} style={[styles.planCard, popular && styles.planCardPopular, isCurrent && styles.planCardCurrent]}>
               {popular && (
                 <View style={styles.popularBadge}>
-                  <Text style={styles.popularBadgeText}>Most Popular</Text>
+                  <Text style={styles.popularBadgeText}>{t('vetSubscription.badges.mostPopular')}</Text>
                 </View>
               )}
               {isCurrent && (
                 <View style={styles.currentBadge}>
-                  <Text style={styles.currentBadgeText}>Current Plan</Text>
+                  <Text style={styles.currentBadgeText}>{t('vetSubscription.badges.currentPlan')}</Text>
                 </View>
               )}
-              <Text style={styles.planName}>{plan?.name ?? 'Plan'} PLAN</Text>
+              <Text style={styles.planName}>{t('vetSubscription.planName', { name: plan?.name ?? t('vetSubscription.planFallback') })}</Text>
               <View style={styles.priceRow}>
                 <Text style={styles.price}>€{Number(plan?.price ?? 0)}</Text>
-                <Text style={styles.perMonth}>per month</Text>
+                <Text style={styles.perMonth}>{t('vetSubscription.perMonth')}</Text>
               </View>
               {(plan?.features?.length ?? 0) > 0 && (
                 <View style={styles.features}>
@@ -144,10 +161,10 @@ export function VetSubscriptionScreen() {
                 </View>
               )}
               {isCurrent ? (
-                <Button title="Current Plan" variant="outline" disabled style={styles.planBtn} />
+                <Button title={t('vetSubscription.badges.currentPlan')} variant="outline" disabled onPress={() => {}} style={styles.planBtn} />
               ) : (
                 <Button
-                  title="Choose Plan"
+                  title={t('vetSubscription.actions.choosePlan')}
                   onPress={() => handleUpgrade(plan)}
                   style={[styles.planBtn, popular && styles.planBtnPrimary]}
                 />
@@ -157,10 +174,8 @@ export function VetSubscriptionScreen() {
         })}
 
         <View style={styles.infoBox}>
-          <Text style={styles.infoTitle}>Veterinary Subscription Information</Text>
-          <Text style={styles.infoText}>
-            You can upgrade or downgrade your plan at any time. Changes will be reflected immediately. Cancel anytime with no long-term commitment.
-          </Text>
+          <Text style={styles.infoTitle}>{t('vetSubscription.info.title')}</Text>
+          <Text style={styles.infoText}>{t('vetSubscription.info.body')}</Text>
         </View>
       </ScrollView>
 
@@ -168,20 +183,20 @@ export function VetSubscriptionScreen() {
         <Pressable style={styles.modalOverlay} onPress={() => setShowPaymentModal(false)}>
           <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Upgrade Veterinary Subscription</Text>
+              <Text style={styles.modalTitle}>{t('vetSubscription.modal.title')}</Text>
               <TouchableOpacity onPress={() => setShowPaymentModal(false)} hitSlop={12}>
                 <Text style={styles.modalClose}>✕</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.modalBody}>
-              <Text style={styles.modalPlanName}>Selected Plan: {selectedPlan?.name ?? '—'} PLAN</Text>
-              <Text style={styles.modalPrice}>Price: €{Number(selectedPlan?.price ?? 0)} per month</Text>
-              <Text style={styles.modalHint}>Tap Pay Now to confirm. Payment will be processed.</Text>
+              <Text style={styles.modalPlanName}>{t('vetSubscription.modal.selectedPlan', { name: selectedPlan?.name ?? '—' })}</Text>
+              <Text style={styles.modalPrice}>{t('vetSubscription.modal.pricePerMonth', { price: Number(selectedPlan?.price ?? 0) })}</Text>
+              <Text style={styles.modalHint}>{t('vetSubscription.modal.hint')}</Text>
             </View>
             <View style={styles.modalFooter}>
-              <Button title="Cancel" variant="outline" onPress={() => setShowPaymentModal(false)} style={styles.modalBtn} />
+              <Button title={t('common.cancel')} variant="outline" onPress={() => setShowPaymentModal(false)} style={styles.modalBtn} />
               <Button
-                title={purchase.isPending ? 'Processing...' : 'Pay Now'}
+                title={purchase.isPending ? t('vetSubscription.actions.processing') : t('vetSubscription.actions.payNow')}
                 onPress={handlePayment}
                 disabled={purchase.isPending}
                 style={styles.modalBtn}

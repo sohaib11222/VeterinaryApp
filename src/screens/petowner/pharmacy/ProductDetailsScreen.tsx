@@ -13,6 +13,7 @@ import { useProduct } from '../../../queries/productQueries';
 import { usePetStore } from '../../../queries/petStoreQueries';
 import { useCart } from '../../../contexts/CartContext';
 import { getImageUrl } from '../../../config/api';
+import { useTranslation } from 'react-i18next';
 
 type Route = RouteProp<PetOwnerPharmacyStackParamList, 'ProductDetails'>;
 type Nav = NativeStackNavigationProp<PetOwnerPharmacyStackParamList>;
@@ -22,6 +23,7 @@ export function ProductDetailsScreen() {
   const route = useRoute<Route>();
   const productId = route.params?.productId;
   const [quantity, setQuantity] = useState(1);
+  const { t } = useTranslation();
 
   const { data: productRes, isLoading, isError } = useProduct(productId ?? null);
   const product = (productRes?.data ?? (productRes as { data?: Record<string, unknown> } | undefined)?.data) as Record<string, unknown> | undefined;
@@ -31,7 +33,7 @@ export function ProductDetailsScreen() {
     : typeof petStoreId === 'string' ? petStoreId : undefined;
   const { data: storeRes } = usePetStore(petStoreIdStr ?? undefined);
   const store = (storeRes?.data ?? (storeRes as { data?: Record<string, unknown> } | undefined)?.data) as Record<string, unknown> | undefined;
-  const soldByName = (store?.name as string) ?? 'Pharmacy';
+  const soldByName = (store?.name as string) ?? t('petOwnerProductDetails.defaults.pharmacy');
 
   const { addToCart } = useCart();
 
@@ -42,10 +44,10 @@ export function ProductDetailsScreen() {
     : 0;
   const stock = typeof product?.stock === 'number' ? product.stock : undefined;
   const isInStock = stock === undefined ? true : stock > 0;
-  const sku = (product?.sku as string) ?? '—';
-  const category = (product?.category as string) ?? '—';
+  const sku = (product?.sku as string) ?? t('common.na');
+  const category = (product?.category as string) ?? t('common.na');
   const description = (product?.description as string) ?? '';
-  const name = (product?.name as string) ?? 'Product';
+  const name = (product?.name as string) ?? t('petOwnerProductDetails.defaults.product');
   const images = product?.images as string[] | undefined;
   const imageUri = getImageUrl(Array.isArray(images) && images[0] ? images[0] : undefined);
 
@@ -77,7 +79,7 @@ export function ProductDetailsScreen() {
   if (isError || !product) {
     return (
       <ScreenContainer padded>
-        <Text style={styles.errorText}>Product not found.</Text>
+        <Text style={styles.errorText}>{t('petOwnerProductDetails.errors.notFound')}</Text>
       </ScreenContainer>
     );
   }
@@ -93,16 +95,16 @@ export function ProductDetailsScreen() {
 
         <View style={styles.productHeader}>
           <Text style={styles.productName}>{name}</Text>
-          <Text style={styles.soldBy}>Sold by {soldByName}</Text>
+          <Text style={styles.soldBy}>{t('petOwnerProductDetails.soldBy', { soldByName })}</Text>
           {description ? <Text style={styles.description}>{description}</Text> : null}
         </View>
 
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>Product details</Text>
+          <Text style={styles.sectionTitle}>{t('petOwnerProductDetails.sections.productDetails')}</Text>
           <View style={styles.divider} />
-          <Text style={styles.detailLabel}>Description</Text>
-          <Text style={styles.detailText}>{description || 'No description.'}</Text>
-          <Text style={styles.detailLabel}>Category</Text>
+          <Text style={styles.detailLabel}>{t('petOwnerProductDetails.labels.description')}</Text>
+          <Text style={styles.detailText}>{description || t('petOwnerProductDetails.defaults.noDescription')}</Text>
+          <Text style={styles.detailLabel}>{t('petOwnerProductDetails.labels.category')}</Text>
           <Text style={styles.detailText}>{category}</Text>
         </Card>
 
@@ -114,17 +116,23 @@ export function ProductDetailsScreen() {
                 <Text style={styles.originalPrice}>€{originalPrice.toFixed(2)}</Text>
                 {discountPercent > 0 && (
                   <View style={styles.discountBadge}>
-                    <Text style={styles.discountText}>{discountPercent}% off</Text>
+                    <Text style={styles.discountText}>{t('petOwnerProductDetails.discountOff', { percent: discountPercent })}</Text>
                   </View>
                 )}
               </>
             )}
           </View>
           <View style={[styles.stockBadge, !isInStock && styles.stockBadgeInactive]}>
-            <Text style={styles.stockText}>{isInStock ? (stock != null ? `In stock (${stock})` : 'In stock') : 'Out of stock'}</Text>
+            <Text style={styles.stockText}>
+              {isInStock
+                ? stock != null
+                  ? t('petOwnerProductDetails.stock.inStockWithCount', { count: stock })
+                  : t('petOwnerProductDetails.stock.inStock')
+                : t('petOwnerProductDetails.stock.outOfStock')}
+            </Text>
           </View>
 
-          <Text style={styles.quantityLabel}>Quantity</Text>
+          <Text style={styles.quantityLabel}>{t('petOwnerProductDetails.labels.quantity')}</Text>
           <View style={styles.stepper}>
             <TouchableOpacity
               style={[styles.stepperBtn, quantity <= 1 && styles.stepperBtnDisabled]}
@@ -143,19 +151,19 @@ export function ProductDetailsScreen() {
             </TouchableOpacity>
           </View>
 
-          <Button title="Add to cart" onPress={handleAddToCart} disabled={!isInStock} style={styles.addToCartBtn} />
+          <Button title={t('petOwnerProductDetails.actions.addToCart')} onPress={handleAddToCart} disabled={!isInStock} style={styles.addToCartBtn} />
           <TouchableOpacity
             style={[styles.buyNowBtn, !isInStock && styles.buyNowBtnDisabled]}
             onPress={handleBuyNow}
             disabled={!isInStock}
           >
-            <Text style={styles.buyNowBtnText}>Buy now</Text>
+            <Text style={styles.buyNowBtnText}>{t('petOwnerProductDetails.actions.buyNow')}</Text>
           </TouchableOpacity>
 
           <View style={styles.specs}>
-            <View style={styles.specRow}><Text style={styles.specLabel}>SKU</Text><Text style={styles.specValue}>{sku}</Text></View>
-            <View style={styles.specRow}><Text style={styles.specLabel}>Stock</Text><Text style={styles.specValue}>{stock != null ? `${stock} units` : '—'}</Text></View>
-            <View style={styles.specRow}><Text style={styles.specLabel}>Category</Text><Text style={styles.specValue}>{category}</Text></View>
+            <View style={styles.specRow}><Text style={styles.specLabel}>{t('petOwnerProductDetails.specs.sku')}</Text><Text style={styles.specValue}>{sku}</Text></View>
+            <View style={styles.specRow}><Text style={styles.specLabel}>{t('petOwnerProductDetails.specs.stock')}</Text><Text style={styles.specValue}>{stock != null ? t('petOwnerProductDetails.specs.stockUnits', { count: stock }) : t('common.na')}</Text></View>
+            <View style={styles.specRow}><Text style={styles.specLabel}>{t('petOwnerProductDetails.specs.category')}</Text><Text style={styles.specValue}>{category}</Text></View>
           </View>
         </Card>
 

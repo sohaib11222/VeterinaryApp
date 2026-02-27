@@ -13,6 +13,7 @@ import { getImageUrl } from '../../config/api';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { useTranslation } from 'react-i18next';
 
 const PET_SPECIES = ['DOG', 'CAT', 'BIRD', 'RABBIT', 'REPTILE', 'FISH', 'HAMSTER', 'GUINEA_PIG', 'FERRET', 'HORSE', 'OTHER'];
 const PET_GENDER = ['MALE', 'FEMALE', 'NEUTERED', 'SPAYED', 'UNKNOWN'];
@@ -23,6 +24,7 @@ export function PetOwnerEditPetScreen() {
   const route = useRoute<Route>();
   const navigation = useNavigation<any>();
   const petId = route.params?.petId;
+  const { t } = useTranslation();
 
   const { data: petResponse, isLoading } = usePet(petId);
   const pet = useMemo(() => {
@@ -64,7 +66,7 @@ export function PetOwnerEditPetScreen() {
     const nm = name.trim();
     if (!petId) return;
     if (!nm) {
-      Alert.alert('Validation', 'Name is required');
+      Alert.alert(t('common.validation'), t('petOwnerEditPet.validation.nameRequired'));
       return;
     }
 
@@ -89,27 +91,27 @@ export function PetOwnerEditPetScreen() {
           ? ({ uri: photo.uri, name: photo.name, mimeType: photo.mimeType } as any)
           : null,
       });
-      Alert.alert('Success', 'Pet updated');
+      Alert.alert(t('common.success'), t('petOwnerEditPet.toasts.updated'));
       navigation.goBack();
     } catch (err: unknown) {
-      Alert.alert('Error', (err as { message?: string })?.message ?? 'Failed to update pet');
+      Alert.alert(t('common.error'), (err as { message?: string })?.message ?? t('petOwnerEditPet.errors.updateFailed'));
     }
   };
 
   const onDelete = () => {
     if (!petId) return;
-    Alert.alert('Delete pet', 'Are you sure you want to delete this pet?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('petOwnerEditPet.deleteConfirm.title'), t('petOwnerEditPet.deleteConfirm.message'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           try {
             await deletePet.mutateAsync(petId);
-            Alert.alert('Success', 'Pet deleted');
+            Alert.alert(t('common.success'), t('petOwnerEditPet.toasts.deleted'));
             navigation.goBack();
           } catch (err: unknown) {
-            Alert.alert('Error', (err as { message?: string })?.message ?? 'Failed to delete pet');
+            Alert.alert(t('common.error'), (err as { message?: string })?.message ?? t('petOwnerEditPet.errors.deleteFailed'));
           }
         },
       },
@@ -130,40 +132,40 @@ export function PetOwnerEditPetScreen() {
     <ScreenContainer scroll padded>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <Card style={styles.card}>
-          <Text style={styles.sectionTitle}>Edit Pet</Text>
-          <Input label="Name *" placeholder="Enter pet name" value={name} onChangeText={setName} />
-          <Text style={styles.fieldLabel}>Species *</Text>
+          <Text style={styles.sectionTitle}>{t('petOwnerEditPet.title')}</Text>
+          <Input label={t('petOwnerAddPet.fields.name.label')} placeholder={t('petOwnerAddPet.fields.name.placeholder')} value={name} onChangeText={setName} />
+          <Text style={styles.fieldLabel}>{t('petOwnerAddPet.fields.species.label')}</Text>
           <View style={styles.chipRow}>
             {PET_SPECIES.map((s) => (
               <TouchableOpacity key={s} style={[styles.chip, species === s && styles.chipActive]} onPress={() => setSpecies(s)}>
-                <Text style={[styles.chipText, species === s && styles.chipTextActive]}>{s}</Text>
+                <Text style={[styles.chipText, species === s && styles.chipTextActive]}>{t(`petOwnerPets.species.${s}`)}</Text>
               </TouchableOpacity>
             ))}
           </View>
-          <Input label="Breed" placeholder="Enter breed" value={breed} onChangeText={setBreed} />
-          <Text style={styles.fieldLabel}>Gender</Text>
+          <Input label={t('petOwnerAddPet.fields.breed.label')} placeholder={t('petOwnerAddPet.fields.breed.placeholder')} value={breed} onChangeText={setBreed} />
+          <Text style={styles.fieldLabel}>{t('petOwnerAddPet.fields.gender.label')}</Text>
           <View style={styles.chipRow}>
             {PET_GENDER.map((g) => (
               <TouchableOpacity key={g} style={[styles.chip, gender === g && styles.chipActive]} onPress={() => setGender(g)}>
-                <Text style={[styles.chipText, gender === g && styles.chipTextActive]}>{g}</Text>
+                <Text style={[styles.chipText, gender === g && styles.chipTextActive]}>{t(`petOwnerPets.gender.${g}`)}</Text>
               </TouchableOpacity>
             ))}
           </View>
-          <Input label="Age (months)" placeholder="e.g. 24" value={ageMonths} onChangeText={setAgeMonths} keyboardType="numeric" />
-          <Input label="Weight (kg)" placeholder="Optional" value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" />
-          <Input label="Microchip number" placeholder="Optional" value={microchipNumber} onChangeText={setMicrochipNumber} />
-          <Text style={styles.fieldLabel}>Photo</Text>
+          <Input label={t('petOwnerAddPet.fields.ageMonths.label')} placeholder={t('petOwnerAddPet.fields.ageMonths.placeholder')} value={ageMonths} onChangeText={setAgeMonths} keyboardType="numeric" />
+          <Input label={t('petOwnerAddPet.fields.weightKg.label')} placeholder={t('petOwnerAddPet.fields.weightKg.placeholder')} value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" />
+          <Input label={t('petOwnerAddPet.fields.microchipNumber.label')} placeholder={t('petOwnerAddPet.fields.microchipNumber.placeholder')} value={microchipNumber} onChangeText={setMicrochipNumber} />
+          <Text style={styles.fieldLabel}>{t('petOwnerAddPet.fields.photo.label')}</Text>
           <TouchableOpacity style={styles.photoPlaceholder} onPress={pickPhoto}>
             {photo?.uri ? (
               <Image source={{ uri: photo.uri }} style={styles.photoPreview} />
             ) : pet?.photo ? (
               <Image source={{ uri: getImageUrl(String(pet.photo)) ?? String(pet.photo) }} style={styles.photoPreview} />
             ) : (
-              <Text style={styles.photoText}>📷 Change photo</Text>
+              <Text style={styles.photoText}>{t('petOwnerEditPet.photo.changePhoto')}</Text>
             )}
           </TouchableOpacity>
-          <Button title={updatePet.isPending ? 'Saving...' : 'Save Changes'} onPress={onSave} style={styles.saveBtn} disabled={updatePet.isPending} />
-          <Button title="Delete Pet" variant="outline" onPress={onDelete} style={styles.deleteBtn} textStyle={styles.deleteBtnText} disabled={deletePet.isPending} />
+          <Button title={updatePet.isPending ? t('petOwnerEditPet.actions.saving') : t('common.saveChanges')} onPress={onSave} style={styles.saveBtn} disabled={updatePet.isPending} />
+          <Button title={t('petOwnerEditPet.actions.deletePet')} variant="outline" onPress={onDelete} style={styles.deleteBtn} textStyle={styles.deleteBtnText} disabled={deletePet.isPending} />
         </Card>
       </ScrollView>
     </ScreenContainer>

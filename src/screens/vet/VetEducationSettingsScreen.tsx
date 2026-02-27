@@ -9,8 +9,10 @@ import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useVeterinarianProfile } from '../../queries/veterinarianQueries';
 import { useUpdateVeterinarianProfile } from '../../mutations/veterinarianMutations';
+import { useTranslation } from 'react-i18next';
 
 export function VetEducationSettingsScreen() {
+  const { t } = useTranslation();
   const { data: profileResponse, isLoading: profileLoading } = useVeterinarianProfile();
   const updateProfile = useUpdateVeterinarianProfile();
   const profile = profileResponse?.data;
@@ -51,10 +53,12 @@ export function VetEducationSettingsScreen() {
       .filter((e) => e.degree || e.college || e.year);
     try {
       await updateProfile.mutateAsync({ education: cleaned });
-      Alert.alert('Success', 'Education updated successfully.');
+      Alert.alert(t('common.success'), t('vetEducationSettings.alerts.updated'));
     } catch (err: unknown) {
-      const message = (err as { response?: { data?: { message?: string }; message?: string }; message?: string })?.response?.data?.message ?? (err as { message?: string })?.message ?? 'Failed to update education.';
-      Alert.alert('Error', message);
+      const message = (err as { response?: { data?: { message?: string }; message?: string }; message?: string })?.response?.data?.message
+        ?? (err as { message?: string })?.message
+        ?? t('vetEducationSettings.errors.updateFailed');
+      Alert.alert(t('common.error'), message);
     }
   };
 
@@ -71,30 +75,30 @@ export function VetEducationSettingsScreen() {
   return (
     <ScreenContainer scroll padded>
       <Card>
-        <Text style={styles.sectionTitle}>Education</Text>
+        <Text style={styles.sectionTitle}>{t('vetEducationSettings.title')}</Text>
         {educations.map((edu, index) => (
           <View key={index} style={styles.block}>
             <View style={styles.row}>
               <View style={styles.flex1}>
                 <Input
-                  label="Degree"
-                  placeholder="e.g. DVM"
+                  label={t('vetEducationSettings.fields.degree')}
+                  placeholder={t('vetEducationSettings.placeholders.degreeExample', { value: 'DVM' })}
                   value={edu.degree}
                   onChangeText={(v) => handleChange(index, 'degree', v)}
                 />
               </View>
               <View style={styles.flex1}>
                 <Input
-                  label="College / University"
-                  placeholder="Name"
+                  label={t('vetEducationSettings.fields.collegeUniversity')}
+                  placeholder={t('vetEducationSettings.placeholders.name')}
                   value={edu.college}
                   onChangeText={(v) => handleChange(index, 'college', v)}
                 />
               </View>
               <View style={styles.flexSmall}>
                 <Input
-                  label="Year"
-                  placeholder="YYYY"
+                  label={t('vetEducationSettings.fields.year')}
+                  placeholder={t('vetEducationSettings.placeholders.year')}
                   value={edu.year}
                   onChangeText={(v) => handleChange(index, 'year', v)}
                   keyboardType="numeric"
@@ -102,12 +106,12 @@ export function VetEducationSettingsScreen() {
               </View>
             </View>
             <TouchableOpacity onPress={() => removeEducation(index)}>
-              <Text style={styles.removeText}>Remove</Text>
+              <Text style={styles.removeText}>{t('common.remove')}</Text>
             </TouchableOpacity>
           </View>
         ))}
-        <Button title="+ Add Education" onPress={addEducation} />
-        <Button title="Save Changes" onPress={handleSave} style={{ marginTop: spacing.md }} disabled={updateProfile.isPending} />
+        <Button title={t('vetEducationSettings.actions.addEducation')} onPress={addEducation} />
+        <Button title={t('common.saveChanges')} onPress={handleSave} style={{ marginTop: spacing.md }} disabled={updateProfile.isPending} />
       </Card>
     </ScreenContainer>
   );

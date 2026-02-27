@@ -4,6 +4,8 @@ import Toast from 'react-native-toast-message';
 import { loginApi, registerApi, AuthResponseData } from '../mutations/authMutations';
 import { AUTH_TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from '../api/client';
 
+const VET_ONBOARDING_REQUIRED_KEY = 'vet_onboarding_required';
+
 export type UserRole = 'PET_OWNER' | 'VETERINARIAN' | 'PET_STORE' | 'PARAPHARMACY' | 'ADMIN';
 
 export type UserStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'BLOCKED';
@@ -112,6 +114,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (userFromApi) {
         setUserState(userFromApi);
         const status = (userFromApi.status ?? '').toUpperCase();
+        if (userFromApi.role === 'VETERINARIAN' && status === 'APPROVED') {
+          try {
+            const existing = await SecureStore.getItemAsync(VET_ONBOARDING_REQUIRED_KEY);
+            if (!existing) {
+              await SecureStore.setItemAsync(VET_ONBOARDING_REQUIRED_KEY, '1');
+            }
+          } catch {
+            // ignore
+          }
+        }
         if (status === 'PENDING') {
           Toast.show({ type: 'info', text1: 'Pending Approval', text2: 'Your account is under review.' });
         } else if (status === 'REJECTED' || status === 'BLOCKED') {
@@ -132,7 +144,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = useCallback(
     async (payload: { name: string; email: string; phone?: string; password: string }, role?: string): Promise<AuthResult | undefined> => {
       try {
-        const backendRole = (role as User['role']) || 'PET_OWNER';
+        const roleRaw = String(role || '').toUpperCase();
+        const backendRole = (
+          ['PET_OWNER', 'VETERINARIAN', 'PET_STORE', 'PARAPHARMACY'].includes(roleRaw)
+            ? (roleRaw as 'PET_OWNER' | 'VETERINARIAN' | 'PET_STORE' | 'PARAPHARMACY')
+            : 'PET_OWNER'
+        );
         const data = await registerApi({
           ...payload,
           role: backendRole,
@@ -140,6 +157,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userFromApi = await persistAuth(data);
         if (userFromApi) {
           setUserState(userFromApi);
+          const status = (userFromApi.status ?? '').toUpperCase();
+          if (userFromApi.role === 'VETERINARIAN' && status === 'APPROVED') {
+            try {
+              const existing = await SecureStore.getItemAsync(VET_ONBOARDING_REQUIRED_KEY);
+              if (!existing) {
+                await SecureStore.setItemAsync(VET_ONBOARDING_REQUIRED_KEY, '1');
+              }
+            } catch {
+              // ignore
+            }
+          }
           Toast.show({ type: 'success', text1: 'Registration Successful', text2: 'Account created successfully!' });
           return { user: userFromApi };
         }

@@ -7,6 +7,7 @@ import { Card } from '../../components/common/Card';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { useTranslation } from 'react-i18next';
 
 type Route = RouteProp<PetOwnerStackParamList, 'PetOwnerMedicalDetails'>;
 
@@ -21,35 +22,36 @@ const MOCK_RECORD = {
   fileName: 'vaccine-cert.pdf',
 };
 
-const MOCK_VITALS = [
-  { label: 'Weight', value: '28 kg', icon: '⚖️' },
-  { label: 'Temperature', value: '38.2 °C', icon: '🌡️' },
-  { label: 'Heart Rate', value: '90 Bpm', icon: '❤️' },
-];
-
 export function PetOwnerMedicalDetailsScreen() {
   const route = useRoute<Route>();
   const recordId = route.params?.recordId;
   const record = MOCK_RECORD;
+  const { t } = useTranslation();
+
+  const vitals = [
+    { label: t('petOwnerMedicalDetails.vitals.weight'), value: '28 kg', icon: '⚖️' },
+    { label: t('petOwnerMedicalDetails.vitals.temperature'), value: '38.2 °C', icon: '🌡️' },
+    { label: t('petOwnerMedicalDetails.vitals.heartRate'), value: '90 Bpm', icon: '❤️' },
+  ];
 
   return (
     <ScreenContainer scroll padded>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <Card style={styles.card}>
-          <Text style={styles.recordType}>{record.recordType}</Text>
-          <Text style={styles.title}>{record.title}</Text>
-          {record.description ? <Text style={styles.description}>{record.description}</Text> : null}
+          <Text style={styles.recordType}>{t('petOwnerMedicalDetails.mock.recordType')}</Text>
+          <Text style={styles.title}>{t('petOwnerMedicalDetails.mock.title')}</Text>
+          <Text style={styles.description}>{t('petOwnerMedicalDetails.mock.description')}</Text>
         </Card>
         <Card style={styles.card}>
-          <Text style={styles.sectionTitle}>Details</Text>
-          <View style={styles.row}><Text style={styles.label}>Pet</Text><Text style={styles.value}>{record.petName}</Text></View>
-          <View style={styles.row}><Text style={styles.label}>Date</Text><Text style={styles.value}>{record.date}</Text></View>
-          <View style={styles.row}><Text style={styles.label}>Veterinarian</Text><Text style={styles.value}>{record.vetName}</Text></View>
-          {record.fileName ? <View style={styles.row}><Text style={styles.label}>Attachment</Text><Text style={styles.fileLink}>{record.fileName}</Text></View> : null}
+          <Text style={styles.sectionTitle}>{t('petOwnerMedicalDetails.sections.details')}</Text>
+          <View style={styles.row}><Text style={styles.label}>{t('petOwnerMedicalDetails.labels.pet')}</Text><Text style={styles.value}>{record.petName}</Text></View>
+          <View style={styles.row}><Text style={styles.label}>{t('petOwnerMedicalDetails.labels.date')}</Text><Text style={styles.value}>{record.date}</Text></View>
+          <View style={styles.row}><Text style={styles.label}>{t('petOwnerMedicalDetails.labels.veterinarian')}</Text><Text style={styles.value}>{record.vetName}</Text></View>
+          {record.fileName ? <View style={styles.row}><Text style={styles.label}>{t('petOwnerMedicalDetails.labels.attachment')}</Text><Text style={styles.fileLink}>{record.fileName}</Text></View> : null}
         </Card>
-        <Text style={styles.sectionTitle}>Latest vitals (as in VeterinaryFrontend)</Text>
+        <Text style={styles.sectionTitle}>{t('petOwnerMedicalDetails.sections.latestVitals')}</Text>
         <View style={styles.vitalsGrid}>
-          {MOCK_VITALS.map((v, i) => (
+          {vitals.map((v, i) => (
             <View key={i} style={styles.vitalCard}>
               <Text style={styles.vitalIcon}>{v.icon}</Text>
               <Text style={styles.vitalLabel}>{v.label}</Text>

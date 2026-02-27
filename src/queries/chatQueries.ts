@@ -18,6 +18,7 @@ function stableParamsKey(params: Record<string, unknown> = {}): string {
 export interface ConversationsParams {
   page?: number;
   limit?: number;
+  [key: string]: unknown;
 }
 
 export function useConversations(params: ConversationsParams = {}, queryOptions: Record<string, unknown> = {}) {

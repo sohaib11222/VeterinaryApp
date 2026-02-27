@@ -28,6 +28,14 @@ export const API_ROUTES = {
     GET: (id: string) => `/users/${id}`,
   },
 
+  MAPPING: {
+    BASE: '/mapping',
+    ROUTE: '/mapping/route',
+    NEARBY: '/mapping/nearby',
+    CLINICS: '/mapping/clinics',
+    CLINIC: (id: string) => `/mapping/clinic/${id}`,
+  },
+
   PET_OWNER: {
     DASHBOARD: '/pet-owners/dashboard',
     APPOINTMENTS: '/pet-owners/appointments',
@@ -132,6 +140,7 @@ export const API_ROUTES = {
 
   VETERINARIANS: {
     LIST: '/veterinarians',
+    DASHBOARD: '/veterinarians/dashboard',
     PROFILE: '/veterinarians/profile',
     PUBLIC_PROFILE: (id: string) => `/veterinarians/${id}`,
     REVIEWS: '/veterinarians/reviews',
@@ -177,6 +186,19 @@ export const API_ROUTES = {
     SEND: '/chat/send',
     MARK_READ: (conversationId: string) => `/chat/conversations/${conversationId}/read`,
     UNREAD_COUNT: '/chat/unread-count',
+  },
+
+  VIDEO: {
+    CREATE: '/video/create',
+    END: '/video/end',
+    BY_APPOINTMENT: (appointmentId: string) => `/video/appointment/${appointmentId}`,
+  },
+
+  NOTIFICATIONS: {
+    LIST: '/notifications',
+    UNREAD_COUNT: '/notifications/unread-count',
+    MARK_READ: (id: string) => `/notifications/${id}/read`,
+    READ_ALL: '/notifications/read-all',
   },
 
   SUBSCRIPTION_PLANS: {

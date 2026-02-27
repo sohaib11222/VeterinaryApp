@@ -15,6 +15,7 @@ import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useVetInvoices } from '../../queries/vetQueries';
+import { useTranslation } from 'react-i18next';
 
 type TransactionItem = {
   _id: string;
@@ -43,6 +44,7 @@ function normalizeInvoices(response: unknown): TransactionItem[] {
 }
 
 export function VetInvoicesScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'PAID' | 'PENDING' | 'COMPLETED'>('all');
@@ -81,7 +83,7 @@ export function VetInvoicesScreen() {
     return (
       <ScreenContainer padded>
         <Text style={styles.errorText}>
-          {(error as { message?: string })?.message ?? 'Failed to load invoices'}
+          {(error as { message?: string })?.message ?? t('vetInvoices.errors.loadFailed')}
         </Text>
       </ScreenContainer>
     );
@@ -93,7 +95,7 @@ export function VetInvoicesScreen() {
         <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search by invoice #, pet or owner..."
+          placeholder={t('vetInvoices.searchPlaceholder')}
           placeholderTextColor={colors.textLight}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -107,7 +109,7 @@ export function VetInvoicesScreen() {
             onPress={() => setFilterStatus(f)}
           >
             <Text style={[styles.filterChipText, filterStatus === f && styles.filterChipTextActive]}>
-              {f === 'all' ? 'All' : f}
+              {f === 'all' ? t('vetInvoices.filters.all') : f}
             </Text>
           </TouchableOpacity>
         ))}
@@ -140,10 +142,10 @@ export function VetInvoicesScreen() {
                   </View>
                 </View>
                 <Text style={styles.desc}>
-                  Consultation {petName ? `- ${petName}` : ''}
+                  {t('vetInvoices.labels.consultation')} {petName ? `- ${petName}` : ''}
                 </Text>
                 <Text style={styles.meta}>
-                  Pet: {petName} · Owner: {ownerName}
+                  {t('vetInvoices.labels.pet')}: {petName} · {t('vetInvoices.labels.owner')}: {ownerName}
                 </Text>
                 <Text style={styles.date}>{formatDate(item.createdAt)}</Text>
                 <View style={styles.amountRow}>
@@ -153,7 +155,7 @@ export function VetInvoicesScreen() {
                       style={styles.viewBtn}
                       onPress={() => navigation.navigate('VetInvoiceView', { transactionId: item._id })}
                     >
-                      <Text style={styles.viewBtnText}>View</Text>
+                      <Text style={styles.viewBtnText}>{t('common.view')}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -163,7 +165,7 @@ export function VetInvoicesScreen() {
         }}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>No invoices match</Text>
+            <Text style={styles.emptyText}>{t('vetInvoices.empty')}</Text>
           </View>
         }
       />

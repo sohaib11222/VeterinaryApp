@@ -19,6 +19,7 @@ import { typography } from '../../theme/typography';
 import { useOrders } from '../../queries/orderQueries';
 import { usePayForOrder, useCancelOrder } from '../../mutations/orderMutations';
 import { getImageUrl } from '../../config/api';
+import { useTranslation } from 'react-i18next';
 
 type StatusType = '' | 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
 
@@ -31,24 +32,15 @@ const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
   CANCELLED: { bg: colors.errorLight, text: colors.error },
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  '': 'All',
-  PENDING: 'Pending',
-  CONFIRMED: 'Confirmed',
-  PROCESSING: 'Processing',
-  SHIPPED: 'Shipped',
-  DELIVERED: 'Delivered',
-  CANCELLED: 'Cancelled',
-};
-
-function formatDate(dateString: string | undefined): string {
-  if (!dateString) return '—';
+function formatDate(dateString: string | undefined, naLabel: string): string {
+  if (!dateString) return naLabel;
   const d = new Date(dateString);
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 export function PetOwnerOrderHistoryScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [statusFilter, setStatusFilter] = useState<StatusType>('');
 
   const statusParam = statusFilter ? statusFilter.toUpperCase() : undefined;
@@ -57,11 +49,11 @@ export function PetOwnerOrderHistoryScreen() {
   const payMutation = usePayForOrder();
   const cancelMutation = useCancelOrder();
 
-  const payload = ordersRes?.data ?? (ordersRes as { data?: { orders?: unknown[] } } | undefined);
+  const payload: any = ordersRes?.data ?? (ordersRes as any)?.data ?? ordersRes ?? {};
   const orders = Array.isArray(payload?.orders) ? payload.orders : [];
 
   const statusCounts = useMemo(() => {
-    const all = allOrdersRes?.data ?? (allOrdersRes as { data?: { orders?: unknown[] } } | undefined);
+    const all: any = allOrdersRes?.data ?? (allOrdersRes as any)?.data ?? allOrdersRes ?? {};
     const allOrders = Array.isArray(all?.orders) ? all.orders : [];
     return {
       '': allOrders.length,
@@ -76,28 +68,46 @@ export function PetOwnerOrderHistoryScreen() {
   const getStatusStyle = (status: string) =>
     STATUS_STYLES[String(status).toUpperCase()] || STATUS_STYLES.PENDING;
 
+  const getStatusLabel = (status: string) => {
+    const s = String(status || '').toUpperCase();
+    const map: Record<string, string> = {
+      '': t('common.all'),
+      PENDING: t('petOwnerOrders.status.pending'),
+      CONFIRMED: t('petOwnerOrders.status.confirmed'),
+      PROCESSING: t('petOwnerOrders.status.processing'),
+      SHIPPED: t('petOwnerOrders.status.shipped'),
+      DELIVERED: t('petOwnerOrders.status.delivered'),
+      CANCELLED: t('petOwnerOrders.status.cancelled'),
+    };
+    return map[s] ?? s;
+  };
+
   const handlePay = async (orderId: string) => {
     try {
       await payMutation.mutateAsync({ orderId, data: { paymentMethod: 'STRIPE' } });
-      Toast.show({ type: 'success', text1: 'Payment successful' });
+      Toast.show({ type: 'success', text1: t('petOwnerOrders.toasts.paymentSuccessful') });
     } catch (err: unknown) {
-      const msg = err && typeof err === 'object' && 'message' in err ? String((err as { message: unknown }).message) : 'Payment failed';
+      const msg = err && typeof err === 'object' && 'message' in err
+        ? String((err as { message: unknown }).message)
+        : t('petOwnerOrders.errors.paymentFailed');
       Toast.show({ type: 'error', text1: msg });
     }
   };
 
   const handleCancel = (orderId: string) => {
-    Alert.alert('Cancel order', 'Are you sure you want to cancel this order?', [
-      { text: 'No', style: 'cancel' },
+    Alert.alert(t('petOwnerOrders.cancelConfirm.title'), t('petOwnerOrders.cancelConfirm.message'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Yes',
+        text: t('petOwnerOrders.cancelConfirm.confirm'),
         style: 'destructive',
         onPress: async () => {
           try {
             await cancelMutation.mutateAsync(orderId);
-            Toast.show({ type: 'success', text1: 'Order cancelled' });
+            Toast.show({ type: 'success', text1: t('petOwnerOrders.toasts.orderCancelled') });
           } catch (err: unknown) {
-            const msg = err && typeof err === 'object' && 'message' in err ? String((err as { message: unknown }).message) : 'Cancel failed';
+            const msg = err && typeof err === 'object' && 'message' in err
+              ? String((err as { message: unknown }).message)
+              : t('petOwnerOrders.errors.cancelFailed');
             Toast.show({ type: 'error', text1: msg });
           }
         },
@@ -109,7 +119,7 @@ export function PetOwnerOrderHistoryScreen() {
     const id = String(order._id ?? order.id ?? '');
     const orderNumber = (order.orderNumber as string) ?? id;
     const store = order.petStoreId as { name?: string } | null | undefined;
-    const pharmacyName = store?.name ?? 'Pharmacy';
+    const pharmacyName = store?.name ?? t('petOwnerOrders.defaults.pharmacy');
     const status = String(order.status ?? 'PENDING').toUpperCase();
     const paymentStatus = String(order.paymentStatus ?? 'UNPAID').toUpperCase();
     const finalShipping = order.finalShipping;
@@ -119,7 +129,7 @@ export function PetOwnerOrderHistoryScreen() {
     const itemCount = items.reduce((s, i) => s + (i.quantity ?? 0), 0);
     const firstImage = items[0]?.productId?.images?.[0];
     const imageUri = getImageUrl(firstImage ?? undefined);
-    const createdAt = formatDate(order.createdAt as string);
+    const createdAt = formatDate(order.createdAt as string, t('common.na'));
 
     const statusStyle = getStatusStyle(status);
     const canPay = paymentStatus === 'UNPAID' && shippingSet && (status === 'PENDING' || status === 'CONFIRMED');
@@ -134,7 +144,7 @@ export function PetOwnerOrderHistoryScreen() {
           </View>
           <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg + 'CC' }]}>
             <Text style={[styles.statusText, { color: statusStyle.text }]}>
-              {STATUS_LABELS[status] || status}
+              {getStatusLabel(status)}
             </Text>
           </View>
         </View>
@@ -146,10 +156,10 @@ export function PetOwnerOrderHistoryScreen() {
           )}
           <View style={styles.orderDetails}>
             <Text style={styles.itemsCount}>
-              {itemCount} {itemCount === 1 ? 'item' : 'items'}
+              {t('petOwnerOrders.itemsCount', { count: itemCount })}
             </Text>
-            <Text style={styles.orderDate}>Ordered on {createdAt}</Text>
-            <Text style={styles.paymentStatusText}>Payment: {paymentStatus}</Text>
+            <Text style={styles.orderDate}>{t('petOwnerOrders.labels.orderedOn', { date: createdAt })}</Text>
+            <Text style={styles.paymentStatusText}>{t('petOwnerOrders.labels.payment', { status: paymentStatus })}</Text>
           </View>
           <Text style={styles.orderTotal}>€{total.toFixed(2)}</Text>
         </View>
@@ -158,7 +168,7 @@ export function PetOwnerOrderHistoryScreen() {
             style={styles.actionButton}
             onPress={() => navigation.navigate('PetOwnerOrderDetails', { orderId: id })}
           >
-            <Text style={styles.actionButtonText}>View details</Text>
+            <Text style={styles.actionButtonText}>{t('petOwnerOrders.actions.viewDetails')}</Text>
           </TouchableOpacity>
           {canPay && (
             <TouchableOpacity
@@ -166,7 +176,7 @@ export function PetOwnerOrderHistoryScreen() {
               onPress={() => handlePay(id)}
               disabled={payMutation.isPending}
             >
-              <Text style={[styles.actionButtonText, styles.payButtonText]}>Pay now</Text>
+              <Text style={[styles.actionButtonText, styles.payButtonText]}>{t('petOwnerOrders.actions.payNow')}</Text>
             </TouchableOpacity>
           )}
           {canCancel && (
@@ -175,12 +185,12 @@ export function PetOwnerOrderHistoryScreen() {
               onPress={() => handleCancel(id)}
               disabled={cancelMutation.isPending}
             >
-              <Text style={[styles.actionButtonText, styles.cancelButtonText]}>Cancel</Text>
+              <Text style={[styles.actionButtonText, styles.cancelButtonText]}>{t('petOwnerOrders.actions.cancel')}</Text>
             </TouchableOpacity>
           )}
           {paymentStatus === 'PAID' && (
             <View style={[styles.actionButton, styles.paidButton]}>
-              <Text style={styles.paidButtonText}>✓ Paid</Text>
+              <Text style={styles.paidButtonText}>{t('petOwnerOrders.labels.paid')}</Text>
             </View>
           )}
         </View>
@@ -192,7 +202,7 @@ export function PetOwnerOrderHistoryScreen() {
     <ScreenContainer padded>
       {/* Status filter – mydoctor-app style */}
       <View style={styles.filterContainer}>
-        <Text style={styles.filterLabel}>Status</Text>
+        <Text style={styles.filterLabel}>{t('petOwnerOrders.labels.status')}</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -211,7 +221,7 @@ export function PetOwnerOrderHistoryScreen() {
                 statusFilter === '' && styles.filterOptionTextActive,
               ]}
             >
-              All
+              {t('common.all')}
             </Text>
             {statusCounts[''] > 0 && (
               <View style={styles.countBadge}>
@@ -235,7 +245,7 @@ export function PetOwnerOrderHistoryScreen() {
                     statusFilter === status && styles.filterOptionTextActive,
                   ]}
                 >
-                  {STATUS_LABELS[status]}
+                  {getStatusLabel(status)}
                 </Text>
                 {statusCounts[status] > 0 && (
                   <View style={styles.countBadge}>
@@ -255,7 +265,7 @@ export function PetOwnerOrderHistoryScreen() {
       ) : orders.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyIcon}>🧾</Text>
-          <Text style={styles.emptyText}>No orders found</Text>
+          <Text style={styles.emptyText}>{t('petOwnerOrders.empty')}</Text>
           <TouchableOpacity
             style={styles.shopButton}
             onPress={() =>
@@ -264,7 +274,7 @@ export function PetOwnerOrderHistoryScreen() {
               })
             }
           >
-            <Text style={styles.shopButtonText}>Start shopping</Text>
+            <Text style={styles.shopButtonText}>{t('petOwnerOrders.actions.startShopping')}</Text>
           </TouchableOpacity>
         </View>
       ) : (

@@ -12,14 +12,15 @@ import { VetMessagesScreen } from '../screens/vet/VetMessagesScreen';
 import { VetMoreScreen } from '../screens/vet/VetMoreScreen';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
+import { useTranslation } from 'react-i18next';
 
 const Tab = createBottomTabNavigator<VetTabParamList>();
 
-const TAB_HEADERS: Record<string, { title: string; subtitle?: string }> = {
-  VetDashboard: { title: 'Dashboard', subtitle: 'Pet care at a glance' },
-  VetAppointments: { title: 'Pet Appointments', subtitle: 'Schedule & manage' },
-  VetMessages: { title: 'Messages', subtitle: 'Chat with pet owners' },
-  VetMore: { title: 'More', subtitle: 'Account & settings' },
+const TAB_HEADERS: Record<string, { titleKey: string; subtitle?: string }> = {
+  VetDashboard: { titleKey: 'tabs.home', subtitle: 'Pet care at a glance' },
+  VetAppointments: { titleKey: 'tabs.appointments', subtitle: 'Schedule & manage' },
+  VetMessages: { titleKey: 'tabs.messages', subtitle: 'Chat with pet owners' },
+  VetMore: { titleKey: 'tabs.more', subtitle: 'Account & settings' },
 };
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
@@ -39,9 +40,10 @@ function TabIcon({ name, focused }: { name: string; focused: boolean }) {
 function VetTabHeader({ route }: { route: { name: string } }) {
   const rightActionCtx = useVetHeaderRightAction();
   const { user } = useAuth();
-  const h = TAB_HEADERS[route.name] || { title: route.name, subtitle: '' };
+  const { t } = useTranslation();
+  const h = TAB_HEADERS[route.name] || { titleKey: route.name, subtitle: '' };
   // More screen: header like mydoctor-app – title "More", subtitle = user name
-  const title = route.name === 'VetMore' ? 'More' : h.title;
+  const title = route.name === 'VetMore' ? t('tabs.more') : t(h.titleKey);
   const subtitle = route.name === 'VetMore' ? (user?.name ?? h.subtitle) : h.subtitle;
   return (
     <VetHeader
@@ -53,6 +55,7 @@ function VetTabHeader({ route }: { route: { name: string } }) {
 }
 
 export function VetTabNavigator() {
+  const { t } = useTranslation();
   return (
     <VetHeaderSearchProvider>
     <VetHeaderRightActionProvider>
@@ -71,22 +74,22 @@ export function VetTabNavigator() {
       <Tab.Screen
         name="VetDashboard"
         component={VetDashboardScreen}
-        options={{ tabBarLabel: 'Home' }}
+        options={{ tabBarLabel: t('tabs.home') }}
       />
       <Tab.Screen
         name="VetAppointments"
         component={VetAppointmentsScreen}
-        options={{ tabBarLabel: 'Appointments' }}
+        options={{ tabBarLabel: t('tabs.appointments') }}
       />
       <Tab.Screen
         name="VetMessages"
         component={VetMessagesScreen}
-        options={{ tabBarLabel: 'Messages' }}
+        options={{ tabBarLabel: t('tabs.messages') }}
       />
       <Tab.Screen
         name="VetMore"
         component={VetMoreScreen}
-        options={{ tabBarLabel: 'More' }}
+        options={{ tabBarLabel: t('tabs.more') }}
       />
     </Tab.Navigator>
     </VetHeaderRightActionProvider>

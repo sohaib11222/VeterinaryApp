@@ -8,50 +8,50 @@ import { useVetHeaderSearch } from '../../contexts/VetHeaderSearchContext';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-
-const MENU_SECTIONS: { title: string; items: { label: string; icon: string; screen: string }[] }[] = [
-  {
-    title: 'My Pets & Health',
-    items: [
-      { label: 'My Pets', icon: '🐾', screen: 'PetOwnerMyPets' },
-      { label: 'Pet Medical Records', icon: '📋', screen: 'PetOwnerMedicalRecords' },
-      // { label: 'Pet Vitals', icon: '❤️', screen: 'PetOwnerMedicalDetails' },
-      { label: 'Weight Records', icon: '⚖️', screen: 'PetOwnerWeightRecords' },
-    ],
-  },
-  {
-    title: 'Appointments & Favourites',
-    items: [
-      { label: 'Favorite Veterinarians', icon: '⭐', screen: 'PetOwnerFavourites' },
-      { label: 'Request Reschedule', icon: '📅', screen: 'PetOwnerRequestReschedule' },
-      { label: 'Reschedule Requests', icon: '🔄', screen: 'PetOwnerRescheduleRequests' },
-    ],
-  },
-  {
-    title: 'Finance & Orders',
-    items: [
-      // { label: 'Wallet', icon: '💳', screen: 'PetOwnerWallet' },
-      { label: 'Veterinary Invoices', icon: '📄', screen: 'PetOwnerInvoices' },
-      { label: 'Pet Supply Orders', icon: '🛒', screen: 'PetOwnerOrderHistory' },
-      // { label: 'Pet Documents', icon: '📥', screen: 'PetOwnerDocuments' },
-    ],
-  },
-  {
-    title: 'Settings & More',
-    items: [
-      { label: 'Nearby Clinics', icon: '📍', screen: 'PetOwnerClinicMap' },
-      { label: 'Notifications', icon: '🔔', screen: 'PetOwnerNotifications' },
-      { label: 'Account Settings', icon: '👤', screen: 'PetOwnerProfileSettings' },
-      { label: 'Change Password', icon: '🔒', screen: 'PetOwnerChangePassword' },
-    ],
-  },
-];
+import { useTranslation } from 'react-i18next';
 
 export function PetOwnerMoreScreen() {
   const navigation = useNavigation<any>();
   const { user, logout } = useAuth();
   const stackNav = navigation.getParent();
   const headerSearch = useVetHeaderSearch();
+  const { t } = useTranslation();
+
+  const menuSections: { title: string; items: { label: string; icon: string; screen: string }[] }[] = [
+    {
+      title: t('more.petOwner.myPetsHealth'),
+      items: [
+        { label: t('menu.myPets'), icon: '🐾', screen: 'PetOwnerMyPets' },
+        { label: t('menu.petMedicalRecords'), icon: '📋', screen: 'PetOwnerMedicalRecords' },
+        { label: t('menu.weightRecords'), icon: '⚖️', screen: 'PetOwnerWeightRecords' },
+      ],
+    },
+    {
+      title: t('more.petOwner.appointmentsFavourites'),
+      items: [
+        { label: t('menu.favoriteVets'), icon: '⭐', screen: 'PetOwnerFavourites' },
+        { label: t('menu.requestReschedule'), icon: '📅', screen: 'PetOwnerRequestReschedule' },
+        { label: t('menu.rescheduleRequests'), icon: '🔄', screen: 'PetOwnerRescheduleRequests' },
+      ],
+    },
+    {
+      title: t('more.petOwner.financeOrders'),
+      items: [
+        { label: t('menu.veterinaryInvoices'), icon: '📄', screen: 'PetOwnerInvoices' },
+        { label: t('menu.petSupplyOrders'), icon: '🛒', screen: 'PetOwnerOrderHistory' },
+      ],
+    },
+    {
+      title: t('more.petOwner.settingsMore'),
+      items: [
+        { label: t('menu.nearbyClinics'), icon: '📍', screen: 'PetOwnerClinicMap' },
+        { label: t('menu.notifications'), icon: '🔔', screen: 'PetOwnerNotifications' },
+        { label: t('menu.accountSettings'), icon: '👤', screen: 'PetOwnerProfileSettings' },
+        { label: t('menu.language'), icon: '🌐', screen: 'Language' },
+        { label: t('menu.changePassword'), icon: '🔒', screen: 'PetOwnerChangePassword' },
+      ],
+    },
+  ];
   useFocusEffect(React.useCallback(() => {
     headerSearch?.setConfig(null);
     return () => {};
@@ -71,17 +71,17 @@ export function PetOwnerMoreScreen() {
         <Card style={styles.profileCard}>
           <View style={styles.profileRow}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{user?.name?.charAt(0) || 'P'}</Text>
+              <Text style={styles.avatarText}>{user?.name?.charAt(0) || t('petOwnerMore.defaults.avatarLetter')}</Text>
             </View>
             <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>{user?.name || 'Pet Owner'}</Text>
-              <Text style={styles.profileRole}>Pet Owner</Text>
+              <Text style={styles.profileName}>{user?.name || t('petOwnerMore.defaults.petOwnerName')}</Text>
+              <Text style={styles.profileRole}>{t('petOwnerMore.role')}</Text>
               <Text style={styles.profileEmail}>{user?.email}</Text>
             </View>
           </View>
         </Card>
 
-        {MENU_SECTIONS.map((section, si) => (
+        {menuSections.map((section, si) => (
           <View key={si} style={styles.section}>
             <Text style={styles.sectionTitle}>{section.title}</Text>
             <Card>
@@ -103,7 +103,7 @@ export function PetOwnerMoreScreen() {
 
         <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.8}>
           <Text style={styles.logoutIcon}>🚪</Text>
-          <Text style={styles.logoutText}>Logout</Text>
+          <Text style={styles.logoutText}>{t('common.logout')}</Text>
         </TouchableOpacity>
 
         <View style={styles.bottomSpacer} />

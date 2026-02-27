@@ -9,8 +9,10 @@ import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useVeterinarianProfile } from '../../queries/veterinarianQueries';
 import { useUpdateVeterinarianProfile } from '../../mutations/veterinarianMutations';
+import { useTranslation } from 'react-i18next';
 
 export function VetAwardsSettingsScreen() {
+  const { t } = useTranslation();
   const { data: profileResponse, isLoading: profileLoading } = useVeterinarianProfile();
   const updateProfile = useUpdateVeterinarianProfile();
   const profile = profileResponse?.data;
@@ -48,10 +50,12 @@ export function VetAwardsSettingsScreen() {
       .filter((a) => a.title || a.year);
     try {
       await updateProfile.mutateAsync({ awards: cleaned });
-      Alert.alert('Success', 'Awards updated successfully.');
+      Alert.alert(t('common.success'), t('vetAwardsSettings.alerts.updated'));
     } catch (err: unknown) {
-      const message = (err as { response?: { data?: { message?: string }; message?: string }; message?: string })?.response?.data?.message ?? (err as { message?: string })?.message ?? 'Failed to update awards.';
-      Alert.alert('Error', message);
+      const message = (err as { response?: { data?: { message?: string }; message?: string }; message?: string })?.response?.data?.message
+        ?? (err as { message?: string })?.message
+        ?? t('vetAwardsSettings.errors.updateFailed');
+      Alert.alert(t('common.error'), message);
     }
   };
 
@@ -68,22 +72,22 @@ export function VetAwardsSettingsScreen() {
   return (
     <ScreenContainer scroll padded>
       <Card>
-        <Text style={styles.sectionTitle}>Awards</Text>
+        <Text style={styles.sectionTitle}>{t('vetAwardsSettings.title')}</Text>
         {awards.map((a, index) => (
           <View key={index} style={styles.block}>
             <View style={styles.row}>
               <View style={styles.flex1}>
                 <Input
-                  label="Award Title"
-                  placeholder="e.g. Best Vet 2020"
+                  label={t('vetAwardsSettings.fields.awardTitle')}
+                  placeholder={t('vetAwardsSettings.placeholders.awardTitleExample', { value: 'Best Vet 2020' })}
                   value={a.title}
                   onChangeText={(v) => handleChange(index, 'title', v)}
                 />
               </View>
               <View style={styles.flexSmall}>
                 <Input
-                  label="Year"
-                  placeholder="YYYY"
+                  label={t('vetAwardsSettings.fields.year')}
+                  placeholder={t('vetAwardsSettings.placeholders.year')}
                   value={a.year}
                   onChangeText={(v) => handleChange(index, 'year', v)}
                   keyboardType="numeric"
@@ -91,12 +95,12 @@ export function VetAwardsSettingsScreen() {
               </View>
             </View>
             <TouchableOpacity onPress={() => removeAward(index)}>
-              <Text style={styles.removeText}>Remove</Text>
+              <Text style={styles.removeText}>{t('common.remove')}</Text>
             </TouchableOpacity>
           </View>
         ))}
-        <Button title="+ Add Award" onPress={addAward} />
-        <Button title="Save Changes" onPress={handleSave} style={{ marginTop: spacing.md }} disabled={updateProfile.isPending} />
+        <Button title={t('vetAwardsSettings.actions.addAward')} onPress={addAward} />
+        <Button title={t('common.saveChanges')} onPress={handleSave} style={{ marginTop: spacing.md }} disabled={updateProfile.isPending} />
       </Card>
     </ScreenContainer>
   );

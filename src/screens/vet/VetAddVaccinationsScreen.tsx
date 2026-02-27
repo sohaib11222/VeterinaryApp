@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
+import { useTranslation } from 'react-i18next';
 import { VetStackParamList } from '../../navigation/types';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
@@ -35,6 +36,7 @@ interface VaccinationRow {
 }
 
 export function VetAddVaccinationsScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<Route>();
   const appointmentId = route.params?.appointmentId ?? null;
@@ -48,7 +50,11 @@ export function VetAddVaccinationsScreen() {
   const { data: vaccinesResponse } = useVaccines();
   const vaccines = useMemo(() => {
     const d = (vaccinesResponse as { data?: unknown[] })?.data ?? vaccinesResponse;
-    return Array.isArray(d) ? d : [];
+    if (!Array.isArray(d)) return [] as { _id: string; name?: string }[];
+    return d
+      .map((v) => v as { _id?: string; name?: string })
+      .filter((v) => typeof v?._id === 'string' && v._id.length > 0)
+      .map((v) => ({ _id: v._id as string, name: v.name }));
   }, [vaccinesResponse]);
 
   const appointment = (appointmentResponse as { data?: unknown })?.data ?? appointmentResponse;
@@ -86,7 +92,7 @@ export function VetAddVaccinationsScreen() {
       }));
 
     if (filtered.length === 0 && !weightRecordParam) {
-      Toast.show({ type: 'error', text1: 'Add at least one vaccination or go back to add weight only' });
+      Toast.show({ type: 'error', text1: t('vetAddVaccinations.toasts.addAtLeastOneOrGoBack') });
       return;
     }
 
@@ -111,7 +117,7 @@ export function VetAddVaccinationsScreen() {
             : {}),
         },
       });
-      Toast.show({ type: 'success', text1: 'Appointment completed' });
+      Toast.show({ type: 'success', text1: t('vetAddVaccinations.toasts.completed') });
       navigation.goBack();
     } catch (err) {
       Toast.show({ type: 'error', text1: getErrorMessage(err) });
@@ -123,7 +129,7 @@ export function VetAddVaccinationsScreen() {
       <ScreenContainer padded>
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>{t('vetAddVaccinations.loading')}</Text>
         </View>
       </ScreenContainer>
     );
@@ -132,7 +138,7 @@ export function VetAddVaccinationsScreen() {
   if (!appointment) {
     return (
       <ScreenContainer padded>
-        <Text style={styles.error}>Appointment not found.</Text>
+        <Text style={styles.error}>{t('vetAddVaccinations.errors.appointmentNotFound')}</Text>
       </ScreenContainer>
     );
   }
@@ -141,22 +147,22 @@ export function VetAddVaccinationsScreen() {
     <ScreenContainer scroll padded>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Card>
-          <Text style={styles.title}>Add vaccinations</Text>
+          <Text style={styles.title}>{t('vetAddVaccinations.title')}</Text>
           <Text style={styles.subtitle}>
-            Pet: {(pet as { name?: string })?.name ?? '—'}
+            {t('common.pet')}: {(pet as { name?: string })?.name ?? t('common.na')}
             {(pet as { breed?: string })?.breed ? ` (${(pet as { breed: string }).breed})` : ''}
           </Text>
           {weightRecordParam != null && (
             <View style={styles.weightNote}>
               <Text style={styles.weightNoteText}>
-                Weight record will be included: {weightRecordParam.value} {weightRecordParam.unit}
+                {t('vetAddVaccinations.weightIncluded', { value: weightRecordParam.value, unit: weightRecordParam.unit })}
               </Text>
             </View>
           )}
 
           {rows.map((row, idx) => (
             <View key={idx} style={styles.row}>
-              <Text style={styles.rowLabel}>Vaccine *</Text>
+              <Text style={styles.rowLabel}>{t('vetAddVaccinations.fields.vaccine')}</Text>
               <View style={styles.pickerRow}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   {vaccines.length === 0 ? (
@@ -164,7 +170,7 @@ export function VetAddVaccinationsScreen() {
                       style={[styles.input, { flex: 1 }]}
                       value={row.vaccineId}
                       onChangeText={(t) => updateRow(idx, 'vaccineId', t)}
-                      placeholder="Vaccine ID or name"
+                      placeholder={t('vetAddVaccinations.placeholders.vaccineIdOrName')}
                       placeholderTextColor={colors.textLight}
                     />
                   ) : (
@@ -197,51 +203,51 @@ export function VetAddVaccinationsScreen() {
                   style={styles.removeBtn}
                   disabled={rows.length <= 1}
                 >
-                  <Text style={styles.removeText}>Remove</Text>
+                  <Text style={styles.removeText}>{t('common.remove')}</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={styles.rowLabel}>Date</Text>
+              <Text style={styles.rowLabel}>{t('vetAddVaccinations.fields.date')}</Text>
               <TextInput
                 style={styles.input}
                 value={row.vaccinationDate}
                 onChangeText={(t) => updateRow(idx, 'vaccinationDate', t)}
-                placeholder="YYYY-MM-DD"
+                placeholder={t('vetAddVaccinations.placeholders.date')}
                 placeholderTextColor={colors.textLight}
               />
-              <Text style={styles.rowLabel}>Next due (optional)</Text>
+              <Text style={styles.rowLabel}>{t('vetAddVaccinations.fields.nextDueOptional')}</Text>
               <TextInput
                 style={styles.input}
                 value={row.nextDueDate}
                 onChangeText={(t) => updateRow(idx, 'nextDueDate', t)}
-                placeholder="YYYY-MM-DD"
+                placeholder={t('vetAddVaccinations.placeholders.date')}
                 placeholderTextColor={colors.textLight}
               />
-              <Text style={styles.rowLabel}>Batch / Notes (optional)</Text>
+              <Text style={styles.rowLabel}>{t('vetAddVaccinations.fields.batchNotesOptional')}</Text>
               <TextInput
                 style={styles.input}
                 value={row.batchNumber}
                 onChangeText={(t) => updateRow(idx, 'batchNumber', t)}
-                placeholder="Batch number"
+                placeholder={t('vetAddVaccinations.placeholders.batchNumber')}
                 placeholderTextColor={colors.textLight}
               />
               <TextInput
                 style={[styles.input, styles.notesInput]}
                 value={row.notes}
                 onChangeText={(t) => updateRow(idx, 'notes', t)}
-                placeholder="Notes"
+                placeholder={t('vetAddVaccinations.placeholders.notes')}
                 placeholderTextColor={colors.textLight}
               />
             </View>
           ))}
 
-          <Button title="+ Add another vaccination" variant="outline" onPress={addRow} style={styles.addBtn} />
+          <Button title={t('vetAddVaccinations.actions.addAnother')} variant="outline" onPress={addRow} style={styles.addBtn} />
           <Button
-            title={completeAppointment.isPending ? 'Completing...' : 'Complete appointment'}
+            title={completeAppointment.isPending ? t('vetAddVaccinations.actions.completing') : t('vetAddVaccinations.actions.completeAppointment')}
             onPress={handleComplete}
             style={styles.primaryBtn}
             disabled={completeAppointment.isPending}
           />
-          <Button title="Cancel" variant="outline" onPress={() => navigation.goBack()} style={styles.cancelBtn} />
+          <Button title={t('common.cancel')} variant="outline" onPress={() => navigation.goBack()} style={styles.cancelBtn} />
         </Card>
       </ScrollView>
     </ScreenContainer>

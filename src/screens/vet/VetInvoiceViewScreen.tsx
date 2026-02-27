@@ -8,6 +8,7 @@ import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useVetInvoice } from '../../queries/vetQueries';
+import { useTranslation } from 'react-i18next';
 
 type Route = RouteProp<VetStackParamList, 'VetInvoiceView'>;
 
@@ -24,6 +25,7 @@ function formatTime(timeStr?: string): string {
 }
 
 export function VetInvoiceViewScreen() {
+  const { t } = useTranslation();
   const route = useRoute<Route>();
   const transactionId = route.params?.transactionId;
   const { data: response, isLoading, error } = useVetInvoice(transactionId);
@@ -47,7 +49,7 @@ export function VetInvoiceViewScreen() {
     return (
       <ScreenContainer padded>
         <Text style={styles.errorText}>
-          {(error as { message?: string })?.message ?? 'Invoice not found'}
+          {(error as { message?: string })?.message ?? t('vetInvoiceView.notFound')}
         </Text>
       </ScreenContainer>
     );
@@ -72,30 +74,30 @@ export function VetInvoiceViewScreen() {
     <ScreenContainer scroll padded>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Card style={styles.card}>
-          <Text style={styles.label}>Invoice / Transaction</Text>
+          <Text style={styles.label}>{t('vetInvoiceView.labels.invoiceTransaction')}</Text>
           <Text style={styles.value}>{appointmentNumber}</Text>
 
-          <Text style={[styles.label, { marginTop: spacing.md }]}>Amount</Text>
+          <Text style={[styles.label, { marginTop: spacing.md }]}>{t('vetInvoiceView.labels.amount')}</Text>
           <Text style={styles.amount}>€{amount.toFixed(2)}</Text>
 
-          <Text style={[styles.label, { marginTop: spacing.md }]}>Status</Text>
+          <Text style={[styles.label, { marginTop: spacing.md }]}>{t('vetInvoiceView.labels.status')}</Text>
           <View style={[styles.statusBadge, (status === 'PAID' || status === 'COMPLETED') ? styles.statusPaid : styles.statusPending]}>
             <Text style={styles.statusText}>{status || '—'}</Text>
           </View>
 
-          <Text style={[styles.label, { marginTop: spacing.md }]}>Date</Text>
+          <Text style={[styles.label, { marginTop: spacing.md }]}>{t('vetInvoiceView.labels.date')}</Text>
           <Text style={styles.value}>{formatDate(createdAt)}</Text>
 
-          <Text style={[styles.label, { marginTop: spacing.md }]}>Appointment</Text>
+          <Text style={[styles.label, { marginTop: spacing.md }]}>{t('vetInvoiceView.labels.appointment')}</Text>
           <Text style={styles.value}>
             {formatDate(appointmentDate)}
             {appointmentTime ? ` · ${formatTime(appointmentTime)}` : ''}
           </Text>
 
-          <Text style={[styles.label, { marginTop: spacing.md }]}>Pet</Text>
+          <Text style={[styles.label, { marginTop: spacing.md }]}>{t('vetInvoiceView.labels.pet')}</Text>
           <Text style={styles.value}>{petName}{petSpecies || petBreed ? ` · ${[petSpecies, petBreed].filter(Boolean).join(', ')}` : ''}</Text>
 
-          <Text style={[styles.label, { marginTop: spacing.md }]}>Owner</Text>
+          <Text style={[styles.label, { marginTop: spacing.md }]}>{t('vetInvoiceView.labels.owner')}</Text>
           <Text style={styles.value}>{ownerName}</Text>
           {ownerEmail ? <Text style={styles.valueSecondary}>{ownerEmail}</Text> : null}
         </Card>

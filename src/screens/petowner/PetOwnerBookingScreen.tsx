@@ -24,18 +24,20 @@ import { useVeterinarianPublicProfile } from '../../queries/veterinarianQueries'
 import { usePets } from '../../queries/petsQueries';
 import { useWeeklyScheduleSlots } from '../../queries/scheduleQueries';
 import Toast from 'react-native-toast-message';
+import { useTranslation } from 'react-i18next';
 
 type Route = RouteProp<PetOwnerStackParamList, 'PetOwnerBooking'>;
 
 const BOOKING_TYPES = [
-  { value: 'VISIT' as const, label: 'Clinic Visit' },
-  { value: 'ONLINE' as const, label: 'Online Consultation' },
+  { value: 'VISIT' as const, labelKey: 'petOwnerAppointmentDetail.bookingTypes.clinicVisit' },
+  { value: 'ONLINE' as const, labelKey: 'petOwnerAppointmentDetail.bookingTypes.videoCall' },
 ];
 
 export function PetOwnerBookingScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<any>();
   const route = useRoute<Route>();
+  const { t } = useTranslation();
   const vetId = route.params?.vetId ?? '';
 
   const [bookingType, setBookingType] = useState<'VISIT' | 'ONLINE'>('VISIT');
@@ -57,8 +59,8 @@ export function PetOwnerBookingScreen() {
   const { data: vetProfileRes, isLoading: vetLoading } = useVeterinarianPublicProfile(vetId);
   const vetName = useMemo(() => {
     const p = (vetProfileRes as { data?: { userId?: { name?: string; fullName?: string } } })?.data;
-    return p?.userId?.fullName ?? p?.userId?.name ?? 'Veterinarian';
-  }, [vetProfileRes]);
+    return p?.userId?.fullName ?? p?.userId?.name ?? t('common.veterinarian');
+  }, [vetProfileRes, t]);
 
   const { data: slotsRes, isLoading: slotsLoading } = useWeeklyScheduleSlots(
     vetId || null,
@@ -96,27 +98,27 @@ export function PetOwnerBookingScreen() {
 
   const handleProceed = () => {
     if (!vetId) {
-      Toast.show({ type: 'error', text1: 'Please select a veterinarian first' });
+      Toast.show({ type: 'error', text1: t('petOwnerBooking.validation.selectVeterinarian') });
       return;
     }
     if (!petOwnerId || !user) {
-      Toast.show({ type: 'error', text1: 'Please log in to book' });
+      Toast.show({ type: 'error', text1: t('petOwnerBooking.validation.loginRequired') });
       return;
     }
     if (!petId) {
-      Toast.show({ type: 'error', text1: 'Please select a pet' });
+      Toast.show({ type: 'error', text1: t('petOwnerBooking.validation.selectPet') });
       return;
     }
     if (!appointmentDate) {
-      Toast.show({ type: 'error', text1: 'Please select a date' });
+      Toast.show({ type: 'error', text1: t('petOwnerBooking.validation.selectDate') });
       return;
     }
     if (!appointmentTime) {
-      Toast.show({ type: 'error', text1: 'Please select a time slot' });
+      Toast.show({ type: 'error', text1: t('petOwnerBooking.validation.selectTimeSlot') });
       return;
     }
     if (!reason.trim()) {
-      Toast.show({ type: 'error', text1: 'Please enter a reason' });
+      Toast.show({ type: 'error', text1: t('petOwnerBooking.validation.enterReason') });
       return;
     }
     const tzOffset = -new Date().getTimezoneOffset();
@@ -136,8 +138,8 @@ export function PetOwnerBookingScreen() {
     return (
       <ScreenContainer padded>
         <Card>
-          <Text style={styles.errorText}>Please select a veterinarian from search to book.</Text>
-          <Button title="Find Veterinarians" onPress={() => navigation.navigate('PetOwnerSearch')} style={styles.mt} />
+          <Text style={styles.errorText}>{t('petOwnerBooking.empty.noVeterinarian')}</Text>
+          <Button title={t('petOwnerBooking.actions.findVeterinarians')} onPress={() => navigation.navigate('PetOwnerSearch')} style={styles.mt} />
         </Card>
       </ScreenContainer>
     );
@@ -147,24 +149,24 @@ export function PetOwnerBookingScreen() {
     <ScreenContainer scroll padded>
       <ScrollView showsVerticalScrollIndicator={false}>
         <Card>
-          <Text style={styles.vetName}>{vetLoading ? 'Loading...' : vetName}</Text>
-          <Text style={styles.subtitle}>Book a veterinary appointment</Text>
+          <Text style={styles.vetName}>{vetLoading ? t('petOwnerBooking.loading') : vetName}</Text>
+          <Text style={styles.subtitle}>{t('petOwnerBooking.subtitle')}</Text>
         </Card>
 
-        <Text style={styles.label}>Appointment Type</Text>
+        <Text style={styles.label}>{t('petOwnerBooking.labels.appointmentType')}</Text>
         <View style={styles.typeRow}>
-          {BOOKING_TYPES.map((t) => (
+          {BOOKING_TYPES.map((bt) => (
             <TouchableOpacity
-              key={t.value}
-              style={[styles.typeChip, bookingType === t.value && styles.typeChipActive]}
-              onPress={() => setBookingType(t.value)}
+              key={bt.value}
+              style={[styles.typeChip, bookingType === bt.value && styles.typeChipActive]}
+              onPress={() => setBookingType(bt.value)}
             >
-              <Text style={[styles.typeChipText, bookingType === t.value && styles.typeChipTextActive]}>{t.label}</Text>
+              <Text style={[styles.typeChipText, bookingType === bt.value && styles.typeChipTextActive]}>{t(bt.labelKey)}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <Text style={styles.label}>Pet</Text>
+        <Text style={styles.label}>{t('petOwnerBooking.labels.pet')}</Text>
         <View style={styles.pickerWrap}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {pets.map((p) => (
@@ -173,16 +175,16 @@ export function PetOwnerBookingScreen() {
                 style={[styles.petChip, petId === p._id && styles.petChipActive]}
                 onPress={() => setPetId(p._id)}
               >
-                <Text style={[styles.petChipText, petId === p._id && styles.petChipTextActive]}>{p.name ?? 'Pet'}</Text>
+                <Text style={[styles.petChipText, petId === p._id && styles.petChipTextActive]}>{p.name ?? t('common.pet')}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
         {pets.length === 0 && (
-          <Text style={styles.hint}>You have no pets. Add a pet first from My Pets.</Text>
+          <Text style={styles.hint}>{t('petOwnerBooking.hints.noPets')}</Text>
         )}
 
-        <Text style={styles.label}>Date</Text>
+        <Text style={styles.label}>{t('petOwnerBooking.labels.date')}</Text>
         <TouchableOpacity
           style={styles.input}
           onPress={() => setShowDatePicker(true)}
@@ -191,7 +193,7 @@ export function PetOwnerBookingScreen() {
           <Text style={[styles.dateButtonText, !appointmentDate && styles.dateButtonPlaceholder]}>
             {appointmentDate
               ? dateOptions.find((o) => o.date === appointmentDate)?.label ?? appointmentDate
-              : 'Select date'}
+              : t('petOwnerBooking.placeholders.selectDate')}
           </Text>
           <Text style={styles.calendarIcon}>📅</Text>
         </TouchableOpacity>
@@ -199,9 +201,9 @@ export function PetOwnerBookingScreen() {
           <Pressable style={styles.dateModalOverlay} onPress={() => setShowDatePicker(false)}>
             <View style={styles.dateModalContent}>
               <View style={styles.dateModalHeader}>
-                <Text style={styles.dateModalTitle}>Select date</Text>
+                <Text style={styles.dateModalTitle}>{t('petOwnerBooking.datePicker.title')}</Text>
                 <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                  <Text style={styles.dateModalClose}>Done</Text>
+                  <Text style={styles.dateModalClose}>{t('common.done')}</Text>
                 </TouchableOpacity>
               </View>
               <FlatList
@@ -227,16 +229,16 @@ export function PetOwnerBookingScreen() {
           </Pressable>
         </Modal>
 
-        <Text style={styles.label}>Time Slot</Text>
+        <Text style={styles.label}>{t('petOwnerBooking.labels.timeSlot')}</Text>
         <View style={styles.slotWrap}>
           {!appointmentDate && (
-            <Text style={styles.hint}>Select a date first</Text>
+            <Text style={styles.hint}>{t('petOwnerBooking.hints.selectDateFirst')}</Text>
           )}
           {appointmentDate && slotsLoading && (
             <ActivityIndicator size="small" color={colors.primary} />
           )}
           {appointmentDate && !slotsLoading && availableSlots.length === 0 && (
-            <Text style={styles.hint}>No slots available for this date</Text>
+            <Text style={styles.hint}>{t('petOwnerBooking.hints.noSlots')}</Text>
           )}
           {appointmentDate && !slotsLoading && availableSlots.length > 0 && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.slotScroll}>
@@ -259,19 +261,19 @@ export function PetOwnerBookingScreen() {
           )}
         </View>
 
-        <Text style={styles.label}>Reason</Text>
+        <Text style={styles.label}>{t('petOwnerBooking.labels.reason')}</Text>
         <TextInput
           style={styles.input}
-          placeholder="e.g. Vaccination, fever, checkup"
+          placeholder={t('petOwnerBooking.placeholders.reason')}
           placeholderTextColor={colors.textLight}
           value={reason}
           onChangeText={setReason}
         />
 
-        <Text style={styles.label}>Pet Symptoms (optional)</Text>
+        <Text style={styles.label}>{t('petOwnerBooking.labels.petSymptomsOptional')}</Text>
         <TextInput
           style={[styles.input, styles.textArea]}
-          placeholder="Describe symptoms..."
+          placeholder={t('petOwnerBooking.placeholders.petSymptoms')}
           placeholderTextColor={colors.textLight}
           value={petSymptoms}
           onChangeText={setPetSymptoms}
@@ -280,7 +282,7 @@ export function PetOwnerBookingScreen() {
         />
 
         <Button
-          title="Proceed to Checkout"
+          title={t('petOwnerBooking.actions.proceedToCheckout')}
           onPress={handleProceed}
           disabled={pets.length === 0}
           style={styles.submitBtn}
@@ -294,8 +296,8 @@ const styles = StyleSheet.create({
   errorText: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.md },
   mt: { marginTop: spacing.md },
   vetName: { ...typography.h3, marginBottom: 2 },
-  subtitle: { ...typography.small, color: colors.textSecondary },
-  label: { ...typography.small, fontWeight: '600', marginTop: spacing.md, marginBottom: spacing.xs },
+  subtitle: { ...typography.caption, color: colors.textSecondary },
+  label: { ...typography.caption, fontWeight: '600', marginTop: spacing.md, marginBottom: spacing.xs },
   typeRow: { flexDirection: 'row', gap: spacing.sm },
   typeChip: {
     paddingHorizontal: spacing.md,
@@ -344,7 +346,7 @@ const styles = StyleSheet.create({
   dateRowLabelActive: { fontWeight: '600', color: colors.primary },
   inputText: { ...typography.body },
   textArea: { minHeight: 72 },
-  hint: { ...typography.small, color: colors.textLight, marginTop: spacing.xs },
+  hint: { ...typography.caption, color: colors.textLight, marginTop: spacing.xs },
   slotWrap: { minHeight: 44, marginBottom: spacing.sm },
   slotScroll: { marginTop: spacing.xs },
   slotChip: {
@@ -356,7 +358,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   slotChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  slotChipText: { ...typography.small },
+  slotChipText: { ...typography.caption },
   slotChipTextActive: { color: colors.textInverse },
   submitBtn: { marginTop: spacing.xl, marginBottom: spacing.xl },
 });

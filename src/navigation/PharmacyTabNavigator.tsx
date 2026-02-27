@@ -8,15 +8,9 @@ import { PharmacyOrdersStack } from './PharmacyOrdersStack';
 import { PharmacyMoreStack } from './PharmacyMoreStack';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
+import { useTranslation } from 'react-i18next';
 
 const Tab = createBottomTabNavigator<PharmacyTabParamList>();
-
-const TAB_LABELS: Record<string, string> = {
-  PharmacyDashboard: 'Dashboard',
-  PharmacyProducts: 'Products',
-  PharmacyOrders: 'Orders',
-  PharmacyMore: 'More',
-};
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   const icons: Record<string, string> = {
@@ -29,6 +23,7 @@ function TabIcon({ name, focused }: { name: string; focused: boolean }) {
 }
 
 export function PharmacyTabNavigator() {
+  const { t } = useTranslation();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -43,22 +38,22 @@ export function PharmacyTabNavigator() {
       <Tab.Screen
         name="PharmacyDashboard"
         component={PharmacyDashboardScreen}
-        options={{ tabBarLabel: 'Dashboard' }}
+        options={{ tabBarLabel: t('screens.dashboard') }}
       />
       <Tab.Screen
         name="PharmacyProducts"
         component={PharmacyProductsStack}
-        options={{ tabBarLabel: 'Products' }}
+        options={{ tabBarLabel: t('screens.products') }}
       />
       <Tab.Screen
         name="PharmacyOrders"
         component={PharmacyOrdersStack}
-        options={{ tabBarLabel: 'Orders' }}
+        options={{ tabBarLabel: t('screens.orders') }}
       />
       <Tab.Screen
         name="PharmacyMore"
         component={PharmacyMoreStack}
-        options={{ tabBarLabel: 'More' }}
+        options={{ tabBarLabel: t('tabs.more') }}
       />
     </Tab.Navigator>
   );

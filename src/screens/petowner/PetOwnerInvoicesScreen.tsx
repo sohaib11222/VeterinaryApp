@@ -15,16 +15,9 @@ import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { usePetOwnerPayments } from '../../queries/petOwnerQueries';
-import { getImageUrl } from '../../config/api';
+import { useTranslation } from 'react-i18next';
 
 type TxStatus = 'SUCCESS' | 'PENDING' | 'FAILED' | 'REFUNDED';
-
-const STATUS_LABELS: Record<TxStatus, string> = {
-  SUCCESS: 'Paid',
-  PENDING: 'Pending',
-  FAILED: 'Failed',
-  REFUNDED: 'Refunded',
-};
 
 function getStatusColor(s: TxStatus): string {
   const map: Record<TxStatus, string> = {
@@ -36,15 +29,15 @@ function getStatusColor(s: TxStatus): string {
   return map[s] || colors.textSecondary;
 }
 
-function formatDate(dateString: string | undefined): string {
-  if (!dateString) return '—';
+function formatDate(dateString: string | undefined, naLabel: string): string {
+  if (!dateString) return naLabel;
   const d = new Date(dateString);
-  if (Number.isNaN(d.getTime())) return '—';
+  if (Number.isNaN(d.getTime())) return naLabel;
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function formatCurrency(amount: number | undefined | null, currency = 'EUR'): string {
-  if (amount === null || amount === undefined) return '—';
+function formatCurrency(amount: number | undefined | null, naLabel: string, currency = 'EUR'): string {
+  if (amount === null || amount === undefined) return naLabel;
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'EUR' }).format(amount);
 }
 
@@ -65,10 +58,21 @@ type TxnItem = {
 
 export function PetOwnerInvoicesScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [page, setPage] = useState(1);
   const limit = 10;
+
+  const getStatusLabel = (status: TxStatus): string => {
+    const map: Record<TxStatus, string> = {
+      SUCCESS: t('petOwnerInvoices.status.paid'),
+      PENDING: t('petOwnerInvoices.status.pending'),
+      FAILED: t('petOwnerInvoices.status.failed'),
+      REFUNDED: t('petOwnerInvoices.status.refunded'),
+    };
+    return map[status] ?? String(status);
+  };
 
   const { data, isLoading } = usePetOwnerPayments({
     status: statusFilter || undefined,
@@ -76,16 +80,28 @@ export function PetOwnerInvoicesScreen() {
     limit,
   });
 
-  const payload = (data as { data?: { transactions?: TxnItem[]; pagination?: { page?: number; pages?: number; total?: number } } })?.data ?? data;
-  const transactions = payload?.transactions ?? [];
-  const pagination = payload?.pagination ?? { page: 1, pages: 1, total: 0 };
+  const payload: any = useMemo(() => {
+    const root = (data as { data?: unknown } | undefined)?.data ?? data;
+    return (root as Record<string, unknown>) ?? {};
+  }, [data]);
+
+  const transactions = useMemo<TxnItem[]>(() => {
+    const list = payload?.transactions ?? payload?.data?.transactions ?? [];
+    return Array.isArray(list) ? (list as TxnItem[]) : [];
+  }, [payload]);
+
+  const pagination = useMemo(() => {
+    const p = payload?.pagination ?? payload?.data?.pagination ?? null;
+    const safe = (p && typeof p === 'object' ? (p as { page?: number; pages?: number; total?: number }) : null) ?? null;
+    return { page: safe?.page ?? 1, pages: safe?.pages ?? 1, total: safe?.total ?? 0 };
+  }, [payload]);
 
   const filtered = useMemo(() => {
     if (!searchQuery.trim()) return transactions;
     const q = searchQuery.toLowerCase();
-    return transactions.filter((t) => {
-      const apt = t.relatedAppointmentId;
-      const id = (t._id || '').toLowerCase();
+    return transactions.filter((tx: TxnItem) => {
+      const apt = tx.relatedAppointmentId;
+      const id = (tx._id || '').toLowerCase();
       const aptNum = (apt?.appointmentNumber || '').toLowerCase();
       const vetName = (apt?.veterinarianId?.name || '').toLowerCase();
       const petName = (apt?.petId?.name || '').toLowerCase();
@@ -101,7 +117,7 @@ export function PetOwnerInvoicesScreen() {
         <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search invoices..."
+          placeholder={t('petOwnerInvoices.searchPlaceholder')}
           placeholderTextColor={colors.textLight}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -111,11 +127,11 @@ export function PetOwnerInvoicesScreen() {
       <View style={styles.statusFilterContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statusFilterScroll}>
           <TouchableOpacity style={[styles.statusFilterButton, !statusFilter && styles.statusFilterButtonActive]} onPress={() => setStatusFilter('')}>
-            <Text style={[styles.statusFilterText, !statusFilter && styles.statusFilterTextActive]}>All</Text>
+            <Text style={[styles.statusFilterText, !statusFilter && styles.statusFilterTextActive]}>{t('common.all')}</Text>
           </TouchableOpacity>
           {(['SUCCESS', 'PENDING', 'FAILED', 'REFUNDED'] as const).map((status) => (
             <TouchableOpacity key={status} style={[styles.statusFilterButton, statusFilter === status && styles.statusFilterButtonActive]} onPress={() => { setStatusFilter(status); setPage(1); }}>
-              <Text style={[styles.statusFilterText, statusFilter === status && styles.statusFilterTextActive]}>{STATUS_LABELS[status]}</Text>
+              <Text style={[styles.statusFilterText, statusFilter === status && styles.statusFilterTextActive]}>{getStatusLabel(status)}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -128,7 +144,7 @@ export function PetOwnerInvoicesScreen() {
       ) : filtered.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyIcon}>🧾</Text>
-          <Text style={styles.emptyText}>No invoices found</Text>
+          <Text style={styles.emptyText}>{t('petOwnerInvoices.empty')}</Text>
         </View>
       ) : (
         <>
@@ -142,6 +158,7 @@ export function PetOwnerInvoicesScreen() {
               const vet = apt?.veterinarianId;
               const pet = apt?.petId;
               const status = (item.status || '') as TxStatus;
+              const naLabel = t('common.na');
               return (
                 <View style={styles.invoiceCard}>
                   <View style={styles.invoiceHeader}>
@@ -149,33 +166,33 @@ export function PetOwnerInvoicesScreen() {
                       <TouchableOpacity onPress={() => navigation.navigate('PetOwnerInvoiceView', { transactionId: item._id })}>
                         <Text style={styles.invoiceId}>#{item._id.slice(-8).toUpperCase()}</Text>
                       </TouchableOpacity>
-                      <Text style={styles.invoiceDescription}>{(apt?.reason || 'Appointment') + (pet?.name ? ` (${pet.name})` : '')}</Text>
+                      <Text style={styles.invoiceDescription}>{(apt?.reason || t('petOwnerInvoices.defaults.appointment')) + (pet?.name ? ` (${pet.name})` : '')}</Text>
                       <View style={[styles.statusBadge, { backgroundColor: getStatusColor(status) + '30' }]}>
-                        <Text style={[styles.statusBadgeText, { color: getStatusColor(status) }]}>{STATUS_LABELS[status] || item.status}</Text>
+                        <Text style={[styles.statusBadgeText, { color: getStatusColor(status) }]}>{getStatusLabel(status) || item.status}</Text>
                       </View>
                     </View>
-                    <Text style={styles.amount}>{formatCurrency(item.amount, item.currency)}</Text>
+                    <Text style={styles.amount}>{formatCurrency(item.amount, naLabel, item.currency)}</Text>
                   </View>
                   <View style={styles.invoiceDetails}>
                     <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Date</Text>
-                      <Text style={styles.detailValue}>{formatDate(item.createdAt)}</Text>
+                      <Text style={styles.detailLabel}>{t('petOwnerInvoices.labels.date')}</Text>
+                      <Text style={styles.detailValue}>{formatDate(item.createdAt, naLabel)}</Text>
                     </View>
                     {apt?.appointmentNumber ? (
                       <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>Appointment</Text>
+                        <Text style={styles.detailLabel}>{t('petOwnerInvoices.labels.appointment')}</Text>
                         <Text style={styles.detailValue}>#{apt.appointmentNumber}</Text>
                       </View>
                     ) : null}
                     <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Veterinarian</Text>
-                      <Text style={styles.detailValue}>{vet?.name || '—'}</Text>
+                      <Text style={styles.detailLabel}>{t('petOwnerInvoices.labels.veterinarian')}</Text>
+                      <Text style={styles.detailValue}>{vet?.name || naLabel}</Text>
                     </View>
                   </View>
                   <View style={styles.invoiceActions}>
                     <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('PetOwnerInvoiceView', { transactionId: item._id })}>
                       <Text style={styles.actionIcon}>👁</Text>
-                      <Text style={styles.actionButtonText}>View</Text>
+                      <Text style={styles.actionButtonText}>{t('common.view')}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -185,11 +202,11 @@ export function PetOwnerInvoicesScreen() {
           {totalPages > 1 && (
             <View style={styles.pagination}>
               <TouchableOpacity onPress={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
-                <Text style={[styles.pageBtn, page <= 1 && styles.pageBtnDisabled]}>Prev</Text>
+                <Text style={[styles.pageBtn, page <= 1 && styles.pageBtnDisabled]}>{t('petOwnerInvoices.pagination.prev')}</Text>
               </TouchableOpacity>
-              <Text style={styles.pageInfo}>Page {page} of {totalPages}</Text>
+              <Text style={styles.pageInfo}>{t('petOwnerInvoices.pagination.pageOf', { page, totalPages })}</Text>
               <TouchableOpacity onPress={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
-                <Text style={[styles.pageBtn, page >= totalPages && styles.pageBtnDisabled]}>Next</Text>
+                <Text style={[styles.pageBtn, page >= totalPages && styles.pageBtnDisabled]}>{t('petOwnerInvoices.pagination.next')}</Text>
               </TouchableOpacity>
             </View>
           )}

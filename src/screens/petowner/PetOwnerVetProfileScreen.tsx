@@ -24,6 +24,7 @@ import { useReviewsByVeterinarian } from '../../queries/reviewQueries';
 import { useFavorites } from '../../queries/favoriteQueries';
 import { useAddFavorite, useRemoveFavorite } from '../../mutations/favoriteMutations';
 import Toast from 'react-native-toast-message';
+import { useTranslation } from 'react-i18next';
 
 type Route = RouteProp<PetOwnerStackParamList, 'PetOwnerVetProfile'>;
 
@@ -44,6 +45,7 @@ export function PetOwnerVetProfileScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<any>();
   const route = useRoute<Route>();
+  const { t } = useTranslation();
   const vetId = route.params?.vetId ?? '';
 
   const { data: profileRes, isLoading } = useVeterinarianPublicProfile(vetId);
@@ -83,14 +85,16 @@ export function PetOwnerVetProfileScreen() {
   const isFavorited = vetUserId ? favoriteVetIds.has(String(vetUserId)) : false;
 
   const name = profile?.userId
-    ? (profile.userId as { fullName?: string; name?: string }).fullName ?? (profile.userId as { name?: string }).name ?? 'Veterinarian'
-    : 'Veterinarian';
+    ? (profile.userId as { fullName?: string; name?: string }).fullName ?? (profile.userId as { name?: string }).name ?? t('common.veterinarian')
+    : t('common.veterinarian');
   const image = getImageUrl((profile?.userId as { profileImage?: string })?.profileImage as string);
-  const title = (profile?.title as string) ?? 'Veterinary Professional';
+  const title = (profile?.title as string) ?? t('petOwnerVetProfile.defaults.title');
   const email = (profile?.userId as { email?: string })?.email;
   const phone = (profile?.userId as { phone?: string })?.phone;
   const specializations = (profile?.specializations ?? []) as { name?: string; type?: string }[];
-  const specialtyName = specializations[0] ? (typeof specializations[0] === 'object' ? specializations[0].name ?? specializations[0].type : specializations[0]) : 'Veterinary';
+  const specialtyName = specializations[0]
+    ? (typeof specializations[0] === 'object' ? specializations[0].name ?? specializations[0].type : specializations[0])
+    : t('petOwnerVetProfile.defaults.specialty');
   const rating = Number(profile?.ratingAvg ?? 0);
   const ratingCountNum = Number(profile?.ratingCount ?? 0);
   const fees = profile?.consultationFees as { online?: number; clinic?: number } | undefined;
@@ -100,7 +104,7 @@ export function PetOwnerVetProfileScreen() {
   const clinics = (profile?.clinics ?? []) as { name?: string; address?: string; city?: string; state?: string; country?: string; phone?: string }[];
   const firstClinic = clinics[0];
   const locationParts = firstClinic ? [firstClinic.address, firstClinic.city, firstClinic.state, firstClinic.country].filter(Boolean) : [];
-  const location = locationParts.length ? locationParts.join(', ') : '—';
+  const location = locationParts.length ? locationParts.join(', ') : t('common.na');
 
   const biography = (profile?.biography as string) ?? '';
   const experience = (profile?.experience ?? []) as { hospital?: string; designation?: string; fromYear?: string; toYear?: string }[];
@@ -123,7 +127,7 @@ export function PetOwnerVetProfileScreen() {
 
   const handleFavoriteToggle = () => {
     if (!user || (user as { role?: string }).role !== 'PET_OWNER') {
-      Toast.show({ type: 'info', text1: 'Please log in as a pet owner to add favorites' });
+      Toast.show({ type: 'info', text1: t('petOwnerVetProfile.toasts.loginRequired') });
       return;
     }
     const idStr = String(vetUserId);
@@ -131,14 +135,22 @@ export function PetOwnerVetProfileScreen() {
       const favId = favoriteIdByVetId[idStr];
       if (favId) {
         removeFavorite.mutate(favId, {
-          onSuccess: () => Toast.show({ type: 'success', text1: 'Removed from favorites' }),
-          onError: (err: unknown) => Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? 'Failed to remove' }),
+          onSuccess: () => Toast.show({ type: 'success', text1: t('petOwnerVetProfile.toasts.removedFromFavorites') }),
+          onError: (err: unknown) =>
+            Toast.show({
+              type: 'error',
+              text1: (err as { message?: string })?.message ?? t('petOwnerVetProfile.errors.removeFavoriteFailed'),
+            }),
         });
       }
     } else {
       addFavorite.mutate(vetUserId, {
-        onSuccess: () => Toast.show({ type: 'success', text1: 'Added to favorites' }),
-        onError: (err: unknown) => Toast.show({ type: 'error', text1: (err as { message?: string })?.message ?? 'Failed to add' }),
+        onSuccess: () => Toast.show({ type: 'success', text1: t('petOwnerVetProfile.toasts.addedToFavorites') }),
+        onError: (err: unknown) =>
+          Toast.show({
+            type: 'error',
+            text1: (err as { message?: string })?.message ?? t('petOwnerVetProfile.errors.addFavoriteFailed'),
+          }),
       });
     }
   };
@@ -169,47 +181,49 @@ export function PetOwnerVetProfileScreen() {
               <Text style={styles.specialty}>{specialtyName}</Text>
               <Text style={styles.title}>{title}</Text>
               <View style={styles.ratingRow}>{renderStars(rating)}<Text style={styles.ratingCount}>({ratingCountNum})</Text></View>
-              <Text style={[styles.avail, !available && styles.availNo]}>{available ? 'Available' : 'Unavailable'}</Text>
+              <Text style={[styles.avail, !available && styles.availNo]}>
+                {available ? t('petOwnerVetProfile.status.available') : t('petOwnerVetProfile.status.unavailable')}
+              </Text>
               <Text style={styles.location}>📍 {location}</Text>
               {email ? <Text style={styles.contact} onPress={() => Linking.openURL(`mailto:${email}`)}>✉ {email}</Text> : null}
               {phone ? <Text style={styles.contact} onPress={() => Linking.openURL(`tel:${phone}`)}>📞 {phone}</Text> : null}
             </View>
           </View>
           <View style={styles.feesRow}>
-            <Text style={styles.feeLabel}>Online: €{feeOnline}</Text>
-            <Text style={styles.feeLabel}>Clinic: €{feeClinic}</Text>
+            <Text style={styles.feeLabel}>{t('petOwnerVetProfile.fees.online', { amount: feeOnline })}</Text>
+            <Text style={styles.feeLabel}>{t('petOwnerVetProfile.fees.clinic', { amount: feeClinic })}</Text>
           </View>
         </Card>
 
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{reviewCount > 0 ? `${reviewCount}+` : '0'}</Text>
-            <Text style={styles.statLabel}>Reviews</Text>
+            <Text style={styles.statLabel}>{t('petOwnerVetProfile.stats.reviews')}</Text>
           </View>
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{experienceYears}</Text>
-            <Text style={styles.statLabel}>Years experience</Text>
+            <Text style={styles.statLabel}>{t('petOwnerVetProfile.stats.yearsExperience')}</Text>
           </View>
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{recommendPercent}%</Text>
-            <Text style={styles.statLabel}>Recommend</Text>
+            <Text style={styles.statLabel}>{t('petOwnerVetProfile.stats.recommend')}</Text>
           </View>
         </View>
 
         {biography ? (
           <Card>
-            <SectionTitle title="Short Bio" />
+            <SectionTitle title={t('petOwnerVetProfile.sections.bio')} />
             <Text style={styles.bodyText}>{biography}</Text>
           </Card>
         ) : null}
 
         {services.length > 0 && (
           <Card>
-            <SectionTitle title="Services & price list" />
+            <SectionTitle title={t('petOwnerVetProfile.sections.services')} />
             {services.slice(0, 5).map((s, idx) => (
               <View key={idx} style={styles.serviceRow}>
-                <Text style={styles.serviceName}>{s?.name ?? 'Service'}</Text>
-                <Text style={styles.servicePrice}>{s?.price != null ? `€${s.price}` : '—'}</Text>
+                <Text style={styles.serviceName}>{s?.name ?? t('petOwnerVetProfile.defaults.service')}</Text>
+                <Text style={styles.servicePrice}>{s?.price != null ? `€${s.price}` : t('common.na')}</Text>
               </View>
             ))}
           </Card>
@@ -217,13 +231,17 @@ export function PetOwnerVetProfileScreen() {
 
         {experience.length > 0 && (
           <Card>
-            <SectionTitle title="Experience" />
+            <SectionTitle title={t('petOwnerVetProfile.sections.experience')} />
             {experience.map((exp, idx) => (
               <View key={idx} style={styles.expItem}>
-                <Text style={styles.expTitle}>{exp?.hospital ?? 'Hospital'}</Text>
+                <Text style={styles.expTitle}>{exp?.hospital ?? t('petOwnerVetProfile.defaults.hospital')}</Text>
                 {exp?.designation ? <Text style={styles.expSub}>{exp.designation}</Text> : null}
                 <Text style={styles.expDates}>
-                  {exp?.fromYear && exp?.toYear ? `${exp.fromYear} - ${exp.toYear}` : exp?.fromYear ? `Since ${exp.fromYear}` : '—'}
+                  {exp?.fromYear && exp?.toYear
+                    ? `${exp.fromYear} - ${exp.toYear}`
+                    : exp?.fromYear
+                      ? t('petOwnerVetProfile.since', { year: exp.fromYear })
+                      : t('common.na')}
                 </Text>
               </View>
             ))}
@@ -232,10 +250,10 @@ export function PetOwnerVetProfileScreen() {
 
         {education.length > 0 && (
           <Card>
-            <SectionTitle title="Education" />
+            <SectionTitle title={t('petOwnerVetProfile.sections.education')} />
             {education.map((edu, idx) => (
               <View key={idx} style={styles.expItem}>
-                <Text style={styles.expTitle}>{edu?.degree ?? 'Degree'}</Text>
+                <Text style={styles.expTitle}>{edu?.degree ?? t('petOwnerVetProfile.defaults.degree')}</Text>
                 {edu?.college ? <Text style={styles.expSub}>{edu.college}</Text> : null}
                 {edu?.year ? <Text style={styles.expDates}>{edu.year}</Text> : null}
               </View>
@@ -245,10 +263,10 @@ export function PetOwnerVetProfileScreen() {
 
         {awards.length > 0 && (
           <Card>
-            <SectionTitle title="Awards" />
+            <SectionTitle title={t('petOwnerVetProfile.sections.awards')} />
             {awards.map((a, idx) => (
               <View key={idx} style={styles.expItem}>
-                <Text style={styles.expTitle}>{a?.title ?? 'Award'}</Text>
+                <Text style={styles.expTitle}>{a?.title ?? t('petOwnerVetProfile.defaults.award')}</Text>
                 {a?.year ? <Text style={styles.expDates}>{a.year}</Text> : null}
               </View>
             ))}
@@ -257,7 +275,7 @@ export function PetOwnerVetProfileScreen() {
 
         {specializations.length > 0 && (
           <Card>
-            <SectionTitle title="Speciality" />
+            <SectionTitle title={t('petOwnerVetProfile.sections.speciality')} />
             {specializations.map((s, idx) => (
               <Text key={idx} style={styles.bodyText}>{typeof s === 'object' ? (s?.name ?? s?.type) : s}</Text>
             ))}
@@ -266,11 +284,11 @@ export function PetOwnerVetProfileScreen() {
 
         {clinics.length > 0 && (
           <Card>
-            <SectionTitle title="Clinics" />
+            <SectionTitle title={t('petOwnerVetProfile.sections.clinics')} />
             {clinics.map((c, idx) => (
               <View key={idx} style={styles.clinicItem}>
-                <Text style={styles.expTitle}>{c?.name ?? 'Clinic'}</Text>
-                <Text style={styles.expSub}>{[c?.address, c?.city, c?.state, c?.country].filter(Boolean).join(', ') || '—'}</Text>
+                <Text style={styles.expTitle}>{c?.name ?? t('petOwnerVetProfile.defaults.clinic')}</Text>
+                <Text style={styles.expSub}>{[c?.address, c?.city, c?.state, c?.country].filter(Boolean).join(', ') || t('common.na')}</Text>
                 {c?.phone ? <Text style={styles.contact} onPress={() => Linking.openURL(`tel:${c.phone}`)}>📞 {c.phone}</Text> : null}
               </View>
             ))}
@@ -279,21 +297,21 @@ export function PetOwnerVetProfileScreen() {
 
         {memberships.length > 0 && (
           <Card>
-            <SectionTitle title="Memberships" />
+            <SectionTitle title={t('petOwnerVetProfile.sections.memberships')} />
             {memberships.map((m, idx) => (
-              <Text key={idx} style={styles.bodyText}>• {m?.name ?? '—'}</Text>
+              <Text key={idx} style={styles.bodyText}>• {m?.name ?? t('common.na')}</Text>
             ))}
           </Card>
         )}
 
         <Card>
-          <SectionTitle title="Reviews" />
+          <SectionTitle title={t('petOwnerVetProfile.sections.reviews')} />
           {reviews.length === 0 ? (
-            <Text style={styles.muted}>No reviews yet.</Text>
+            <Text style={styles.muted}>{t('petOwnerVetProfile.reviews.empty')}</Text>
           ) : (
             reviews.map((r) => {
               const reviewer = r?.petOwnerId as { fullName?: string; name?: string; profileImage?: string } | undefined;
-              const reviewerName = reviewer?.fullName ?? reviewer?.name ?? 'Pet Owner';
+              const reviewerName = reviewer?.fullName ?? reviewer?.name ?? t('common.petOwner');
               const reviewerImage = getImageUrl(reviewer?.profileImage as string);
               return (
                 <View key={String(r._id)} style={styles.reviewItem}>
@@ -311,7 +329,7 @@ export function PetOwnerVetProfileScreen() {
           )}
         </Card>
 
-        <Button title="Book Appointment" onPress={() => navigation.navigate('PetOwnerBooking', { vetId })} style={styles.bookBtn} />
+        <Button title={t('petOwnerVetProfile.actions.bookAppointment')} onPress={() => navigation.navigate('PetOwnerBooking', { vetId })} style={styles.bookBtn} />
         <View style={styles.bottomSpacer} />
       </ScrollView>
     </ScreenContainer>
@@ -332,14 +350,14 @@ const styles = StyleSheet.create({
   favBtnActive: { backgroundColor: colors.errorLight },
   favIcon: { fontSize: 20, color: colors.error },
   specialty: { ...typography.body, color: colors.textSecondary, marginBottom: 2 },
-  title: { ...typography.small, color: colors.textLight, marginBottom: 4 },
+  title: { ...typography.caption, color: colors.textLight, marginBottom: 4 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
   star: { fontSize: 16, color: colors.secondaryDark },
-  ratingCount: { ...typography.small, color: colors.textLight, marginLeft: 4 },
-  avail: { ...typography.small, color: colors.success, marginBottom: 2 },
+  ratingCount: { ...typography.caption, color: colors.textLight, marginLeft: 4 },
+  avail: { ...typography.caption, color: colors.success, marginBottom: 2 },
   availNo: { color: colors.textLight },
-  location: { ...typography.small, color: colors.textSecondary, marginBottom: 2 },
-  contact: { ...typography.small, color: colors.primary, marginBottom: 2 },
+  location: { ...typography.caption, color: colors.textSecondary, marginBottom: 2 },
+  contact: { ...typography.caption, color: colors.primary, marginBottom: 2 },
   feesRow: { flexDirection: 'row', gap: spacing.lg, marginTop: spacing.sm },
   feeLabel: { ...typography.body, fontWeight: '600' },
   bookBtn: { marginTop: spacing.lg },
@@ -356,15 +374,15 @@ const styles = StyleSheet.create({
   servicePrice: { ...typography.body, fontWeight: '600' },
   expItem: { marginBottom: spacing.sm },
   expTitle: { ...typography.body, fontWeight: '600' },
-  expSub: { ...typography.small, color: colors.textSecondary },
-  expDates: { ...typography.small, color: colors.textLight },
+  expSub: { ...typography.caption, color: colors.textSecondary },
+  expDates: { ...typography.caption, color: colors.textLight },
   clinicItem: { marginBottom: spacing.sm },
   reviewItem: { marginBottom: spacing.md, paddingBottom: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
   reviewHeader: { flexDirection: 'row', marginBottom: spacing.xs },
   reviewAvatar: { width: 40, height: 40, borderRadius: 20, marginRight: spacing.sm },
   reviewAvatarPlaceholder: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm },
-  reviewAvatarLetter: { ...typography.small, color: colors.primary },
+  reviewAvatarLetter: { ...typography.caption, color: colors.primary },
   reviewMeta: { flex: 1 },
   reviewerName: { ...typography.body, fontWeight: '600' },
-  reviewText: { ...typography.small, color: colors.textSecondary, marginTop: spacing.xs },
+  reviewText: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xs },
 });
