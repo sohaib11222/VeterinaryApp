@@ -9,6 +9,7 @@ import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { getImageUrl } from '../../config/api';
+import { useTranslation } from 'react-i18next';
 
 function extractProducts(payload: unknown): any[] {
   const outer = (payload as { data?: unknown })?.data ?? payload;
@@ -18,9 +19,19 @@ function extractProducts(payload: unknown): any[] {
 }
 
 export function PharmacyProductListScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [search, setSearch] = useState('');
+
+  const filterLabels: Record<'all' | 'active' | 'inactive', string> = useMemo(
+    () => ({
+      all: t('common.all'),
+      active: t('pharmacyProductList.tabs.active'),
+      inactive: t('pharmacyProductList.tabs.inactive'),
+    }),
+    [t]
+  );
 
   const queryParams = useMemo(() => ({
     page: 1,
@@ -44,7 +55,7 @@ export function PharmacyProductListScreen() {
   return (
     <ScreenContainer scroll padded>
       <View style={styles.filterRow}>
-        <Input placeholder="Search products..." value={search} onChangeText={setSearch} />
+        <Input placeholder={t('pharmacyProductList.searchPlaceholder')} value={search} onChangeText={setSearch} />
         <View style={styles.filterTabs}>
           {(['all', 'active', 'inactive'] as const).map((f) => (
             <TouchableOpacity
@@ -52,20 +63,20 @@ export function PharmacyProductListScreen() {
               style={[styles.filterTab, filter === f && styles.filterTabActive]}
               onPress={() => setFilter(f)}
             >
-              <Text style={[styles.filterTabText, filter === f && styles.filterTabTextActive]}>{f}</Text>
+              <Text style={[styles.filterTabText, filter === f && styles.filterTabTextActive]}>{filterLabels[f]}</Text>
             </TouchableOpacity>
           ))}
         </View>
       </View>
       <TouchableOpacity style={styles.addBtn} onPress={() => navigation.navigate('PharmacyAddProduct')}>
-        <Text style={styles.addBtnText}>+ Add Product</Text>
+        <Text style={styles.addBtnText}>{t('pharmacyProductList.actions.addProduct')}</Text>
       </TouchableOpacity>
       {isLoading ? (
         <View style={styles.loadingRow}><ActivityIndicator size="small" color={colors.primary} /></View>
       ) : isError ? (
-        <Text style={styles.errorText}>Failed to load products.</Text>
+        <Text style={styles.errorText}>{t('pharmacyProductList.errors.loadFailed')}</Text>
       ) : filtered.length === 0 ? (
-        <Text style={styles.emptyText}>No products yet.</Text>
+        <Text style={styles.emptyText}>{t('pharmacyProductList.empty.noProducts')}</Text>
       ) : (
         filtered.map((p: any) => {
           const id = p?._id ?? p?.id;
@@ -88,17 +99,21 @@ export function PharmacyProductListScreen() {
                   </View>
                   <View style={styles.productInfo}>
                     <Text style={styles.productName} numberOfLines={2}>{name}</Text>
-                    <Text style={styles.productMeta}>€{Number(price).toFixed(2)} · Stock: {stock}</Text>
+                    <Text style={styles.productMeta}>
+                      {t('pharmacyProductList.labels.priceAndStock', { price: Number(price).toFixed(2), stock })}
+                    </Text>
                     <View style={[styles.badge, !isActive && styles.badgeInactive]}>
-                      <Text style={[styles.badgeText, !isActive && styles.badgeTextInactive]}>{isActive ? 'Active' : 'Inactive'}</Text>
+                      <Text style={[styles.badgeText, !isActive && styles.badgeTextInactive]}>
+                        {isActive ? t('pharmacyProductList.status.active') : t('pharmacyProductList.status.inactive')}
+                      </Text>
                     </View>
                   </View>
                   <View style={styles.rowActions}>
                     <TouchableOpacity onPress={(e) => { e?.stopPropagation?.(); navigation.navigate('PharmacyProductDetails', { productId: String(id) }); }}>
-                      <Text style={styles.viewLink}>View</Text>
+                      <Text style={styles.viewLink}>{t('common.view')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={(e) => { e?.stopPropagation?.(); navigation.navigate('PharmacyEditProduct', { productId: String(id) }); }}>
-                      <Text style={styles.editLink}>Edit</Text>
+                      <Text style={styles.editLink}>{t('common.edit')}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>

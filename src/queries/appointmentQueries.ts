@@ -23,6 +23,10 @@ export function useAppointments(params: AppointmentListParams = {}) {
         API_ROUTES.APPOINTMENTS.LIST,
         { params: { limit: params.limit ?? 50, ...params } }
       ),
+    retry: 1,
+    retryDelay: 800,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
   });
 }
 
@@ -34,5 +38,9 @@ export function useAppointment(appointmentId: string | null | undefined) {
         API_ROUTES.APPOINTMENTS.GET(appointmentId!)
       ),
     enabled: !!appointmentId,
+    retry: 1,
+    retryDelay: 800,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
   });
 }

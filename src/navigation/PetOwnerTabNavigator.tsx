@@ -31,7 +31,11 @@ function TabIcon({ name, focused }: { name: string; focused: boolean }) {
     PetOwnerMessages: '💬',
     PetOwnerMore: '⋯',
   };
-  return <Text style={[styles.tabIcon, focused && styles.tabIconActive]}>{icons[name] || '•'}</Text>;
+  return (
+    <Text style={[styles.tabIcon, { color: focused ? colors.tabActive : colors.tabInactive }, focused && styles.tabIconActive]}>
+      {icons[name] || '•'}
+    </Text>
+  );
 }
 
 function PetOwnerTabHeader({ route }: { route: { name: string } }) {

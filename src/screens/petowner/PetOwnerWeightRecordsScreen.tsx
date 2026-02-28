@@ -112,7 +112,7 @@ export function PetOwnerWeightRecordsScreen() {
             )}
           />
         )}
-        {pagination.pages && pagination.pages > 1 && (
+        {Number(pagination.pages ?? 0) > 1 && (
           <View style={styles.pagination}>
             <Text style={styles.pageInfo}>{t('petOwnerWeightRecords.pagination.pageOf', { page: pagination.page, pages: pagination.pages })}</Text>
           </View>

@@ -19,6 +19,9 @@ export function VetMoreScreen() {
   const headerRight = useVetHeaderRightAction();
   const { t } = useTranslation();
 
+  const setHeaderSearchConfig = headerSearch?.setConfig;
+  const setHeaderRightAction = headerRight?.setRightAction;
+
   const menuSections: { title: string; items: { label: string; icon: string; screen: string }[] }[] = [
     {
       title: t('more.vet.practice'),
@@ -44,7 +47,7 @@ export function VetMoreScreen() {
         { label: t('menu.clinicAnnouncements'), icon: '📢', screen: 'VetAnnouncements' },
         { label: t('menu.subscription'), icon: '👑', screen: 'VetSubscription' },
         { label: t('menu.profileSettings'), icon: '👤', screen: 'VetProfileSettings' },
-        { label: t('menu.notifications'), icon: '�', screen: 'VetNotifications' },
+        { label: t('menu.notifications'), icon: '🔔', screen: 'VetNotifications' },
         { label: t('menu.language'), icon: '🌐', screen: 'Language' },
         { label: t('menu.changePassword'), icon: '🔒', screen: 'VetChangePassword' },
       ],
@@ -54,10 +57,10 @@ export function VetMoreScreen() {
   // More tab: no header search, no right icons
   useFocusEffect(
     React.useCallback(() => {
-      headerSearch?.setConfig(null);
-      headerRight?.setRightAction(null);
+      setHeaderSearchConfig?.(null);
+      setHeaderRightAction?.(null);
       return () => {};
-    }, [])
+    }, [setHeaderSearchConfig, setHeaderRightAction])
   );
 
   const onMenuPress = (screen: string) => {

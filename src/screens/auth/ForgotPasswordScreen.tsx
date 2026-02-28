@@ -10,10 +10,12 @@ import { getErrorMessage } from '../../utils/errorUtils';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { useTranslation } from 'react-i18next';
 
 type Nav = AuthStackScreenProps<'ForgotPassword'>['navigation'];
 
 export function ForgotPasswordScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
@@ -22,11 +24,11 @@ export function ForgotPasswordScreen() {
 
   const validate = () => {
     if (!email.trim()) {
-      setError('Email is required');
+      setError(t('auth.validation.emailRequired'));
       return false;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError('Invalid email');
+      setError(t('auth.validation.invalidEmail'));
       return false;
     }
     setError('');
@@ -41,7 +43,7 @@ export function ForgotPasswordScreen() {
       await forgotPasswordApi(email);
       setSent(true);
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Failed to send reset link. Try again.'));
+      setError(getErrorMessage(err, t('authForgotPassword.errors.failedToSendResetLinkTryAgain')));
     } finally {
       setLoading(false);
     }
@@ -54,12 +56,10 @@ export function ForgotPasswordScreen() {
           <View style={styles.iconWrap}>
             <Text style={styles.icon}>✉️</Text>
           </View>
-          <Text style={styles.title}>Check your email</Text>
-          <Text style={styles.subtitle}>
-            If an account exists for {email}, we sent a link to reset your password.
-          </Text>
+          <Text style={styles.title}>{t('authForgotPassword.sent.title')}</Text>
+          <Text style={styles.subtitle}>{t('authForgotPassword.sent.subtitle', { email })}</Text>
           <Button
-            title="Back to Login"
+            title={t('authForgotPassword.actions.backToLogin')}
             onPress={() => navigation.navigate('Login')}
             style={styles.backBtn}
           />
@@ -74,19 +74,17 @@ export function ForgotPasswordScreen() {
         <View style={styles.logoWrap}>
           <Text style={styles.logoIcon}>🐾</Text>
         </View>
-        <Text style={styles.title}>Forgot Password</Text>
-        <Text style={styles.subtitle}>
-          Enter your email and we'll send you a link to reset your password.
-        </Text>
+        <Text style={styles.title}>{t('authForgotPassword.title')}</Text>
+        <Text style={styles.subtitle}>{t('authForgotPassword.subtitle')}</Text>
       </View>
 
       <View style={styles.form}>
         <Input
-          label="Email"
-          placeholder="Enter your email address"
+          label={t('authForgotPassword.fields.email.label')}
+          placeholder={t('authForgotPassword.fields.email.placeholder')}
           value={email}
-          onChangeText={(t) => {
-            setEmail(t);
+          onChangeText={(val) => {
+            setEmail(val);
             if (error) setError('');
           }}
           keyboardType="email-address"
@@ -94,13 +92,13 @@ export function ForgotPasswordScreen() {
           error={error}
         />
         <Button
-          title={loading ? 'Sending...' : 'Submit'}
+          title={loading ? t('authForgotPassword.actions.sending') : t('authForgotPassword.actions.submit')}
           onPress={onSubmit}
           loading={loading}
           style={styles.submitBtn}
         />
         <Button
-          title="Back to Login"
+          title={t('common.back')}
           onPress={() => navigation.navigate('Login')}
           variant="outline"
         />

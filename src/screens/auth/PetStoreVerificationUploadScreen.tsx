@@ -12,19 +12,21 @@ import Toast from 'react-native-toast-message';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { useTranslation } from 'react-i18next';
 
 type Nav = AuthStackScreenProps<'PetStoreVerificationUpload'>['navigation'];
 
 const DOCS = [
-  { key: 'petStoreLicense', docType: 'PET_STORE_LICENSE', label: 'Pet Store License', required: true },
-  { key: 'pharmacistDegree', docType: 'PET_STORE_DEGREE', label: 'Pharmacist Degree / Qualification', required: true },
-  { key: 'ownerId', docType: 'PET_STORE_OWNER_ID', label: 'Owner Photo ID', required: true },
-  { key: 'addressProof', docType: 'PET_STORE_ADDRESS_PROOF', label: 'Address Proof', required: true },
+  { key: 'petStoreLicense', docType: 'PET_STORE_LICENSE', labelKey: 'authPetStoreVerificationUpload.docs.petStoreLicense', required: true },
+  { key: 'pharmacistDegree', docType: 'PET_STORE_DEGREE', labelKey: 'authPetStoreVerificationUpload.docs.pharmacistDegree', required: true },
+  { key: 'ownerId', docType: 'PET_STORE_OWNER_ID', labelKey: 'authPetStoreVerificationUpload.docs.ownerId', required: true },
+  { key: 'addressProof', docType: 'PET_STORE_ADDRESS_PROOF', labelKey: 'authPetStoreVerificationUpload.docs.addressProof', required: true },
 ] as const;
 
 const ACCEPT = 'application/pdf,image/*';
 
 export function PetStoreVerificationUploadScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const [loading, setLoading] = useState(false);
   const [files, setFiles] = useState<Partial<Record<string, DocumentPicker.DocumentPickerAsset>>>({});
@@ -38,7 +40,7 @@ export function PetStoreVerificationUploadScreen() {
       if (result.canceled) return;
       setFiles((prev) => ({ ...prev, [key]: result.assets[0] }));
     } catch (e) {
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Could not pick file' });
+      Toast.show({ type: 'error', text1: t('common.error'), text2: t('authVerification.common.couldNotPickFile') });
     }
   };
 
@@ -47,8 +49,8 @@ export function PetStoreVerificationUploadScreen() {
     if (missing.length > 0) {
       Toast.show({
         type: 'error',
-        text1: 'Required documents',
-        text2: `Please upload: ${missing.map((d) => d.label).join(', ')}`,
+        text1: t('authVerification.common.requiredDocuments'),
+        text2: t('authVerification.common.pleaseUpload', { items: missing.map((d) => t(d.labelKey)).join(', ') }),
       });
       return;
     }
@@ -67,10 +69,10 @@ export function PetStoreVerificationUploadScreen() {
         tempUris.push(uri);
         await uploadPetStoreDoc({ uri, name, type: mime }, doc.docType);
       }
-      Toast.show({ type: 'success', text1: 'Documents uploaded', text2: 'Verification documents submitted successfully!' });
+      Toast.show({ type: 'success', text1: t('authVerification.common.documentsUploaded'), text2: t('authVerification.common.documentsSubmittedSuccessfully') });
       navigation.replace('PendingApproval');
     } catch (err: unknown) {
-      Toast.show({ type: 'error', text1: 'Upload failed', text2: getErrorMessage(err, 'Failed to upload documents.') });
+      Toast.show({ type: 'error', text1: t('authVerification.common.uploadFailedTitle'), text2: getErrorMessage(err, t('authVerification.common.failedToUploadDocuments')) });
     } finally {
       if (tempUris.length > 0) await deleteCacheFiles(tempUris).catch(() => {});
       setLoading(false);
@@ -80,43 +82,43 @@ export function PetStoreVerificationUploadScreen() {
   return (
     <ScreenContainer scroll padded style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Pharmacy / Parapharmacy Verification</Text>
-        <Text style={styles.subtitle}>Upload the required documents. Your account will remain pending until admin approval.</Text>
+        <Text style={styles.title}>{t('authPetStoreVerificationUpload.title')}</Text>
+        <Text style={styles.subtitle}>{t('authPetStoreVerificationUpload.subtitle')}</Text>
       </View>
 
       <View style={styles.listBox}>
-        <Text style={styles.listTitle}>Required documents</Text>
-        <Text style={styles.listItem}>• Pet Store License</Text>
-        <Text style={styles.listItem}>• Pharmacist Degree / Qualification</Text>
-        <Text style={styles.listItem}>• Owner Photo ID</Text>
-        <Text style={styles.listItem}>• Address Proof (utility bill / lease)</Text>
+        <Text style={styles.listTitle}>{t('authPetStoreVerificationUpload.requiredDocs.title')}</Text>
+        <Text style={styles.listItem}>{t('authPetStoreVerificationUpload.requiredDocs.items.petStoreLicense')}</Text>
+        <Text style={styles.listItem}>{t('authPetStoreVerificationUpload.requiredDocs.items.pharmacistDegree')}</Text>
+        <Text style={styles.listItem}>{t('authPetStoreVerificationUpload.requiredDocs.items.ownerId')}</Text>
+        <Text style={styles.listItem}>{t('authPetStoreVerificationUpload.requiredDocs.items.addressProof')}</Text>
       </View>
 
       {DOCS.map((doc) => (
         <View key={doc.key} style={styles.field}>
           <Text style={styles.label}>
-            {doc.label} {doc.required ? '*' : ''}
+            {t(doc.labelKey)} {doc.required ? '*' : ''}
           </Text>
           <TouchableOpacity style={styles.pickBtn} onPress={() => pickDocument(doc.key)}>
             <Text style={styles.pickBtnText} numberOfLines={1}>
-              {files[doc.key]?.name ?? `Upload ${doc.label}`}
+              {files[doc.key]?.name ?? t('authVerification.common.uploadDoc', { doc: t(doc.labelKey) })}
             </Text>
           </TouchableOpacity>
         </View>
       ))}
 
       <Button
-        title={loading ? 'Uploading...' : 'Submit for Verification'}
+        title={loading ? t('authVerification.common.uploading') : t('authVerification.common.submitForVerification')}
         onPress={onSubmit}
         loading={loading}
         style={styles.submitBtn}
       />
 
       <TouchableOpacity style={styles.backLink} onPress={() => navigation.goBack()}>
-        <Text style={styles.backLinkText}>← Back</Text>
+        <Text style={styles.backLinkText}>{t('common.back')}</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.statusLink} onPress={() => navigation.navigate('PendingApproval')}>
-        <Text style={styles.backLinkText}>Already submitted? View status</Text>
+        <Text style={styles.backLinkText}>{t('authVerification.common.alreadySubmittedViewStatus')}</Text>
       </TouchableOpacity>
     </ScreenContainer>
   );

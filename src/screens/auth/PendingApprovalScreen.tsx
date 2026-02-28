@@ -6,8 +6,10 @@ import { getMeApi } from '../../queries/authQueries';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { useTranslation } from 'react-i18next';
 
 export function PendingApprovalScreen() {
+  const { t } = useTranslation();
   const { user, logout, updateUser } = useAuth();
   const [checkingStatus, setCheckingStatus] = useState(true);
 
@@ -40,16 +42,14 @@ export function PendingApprovalScreen() {
 
   const status = (user?.status ?? '').toUpperCase();
   const isRejectedOrBlocked = status === 'REJECTED' || status === 'BLOCKED';
-  const title = isRejectedOrBlocked ? 'Account Not Approved' : 'Pending Admin Approval';
-  const subtitle = isRejectedOrBlocked
-    ? 'Your account was rejected or blocked. Please update your documents or contact support.'
-    : 'Your verification documents have been submitted successfully. Our team is reviewing them.';
+  const title = isRejectedOrBlocked ? t('authPendingApproval.rejected.title') : t('authPendingApproval.pending.title');
+  const subtitle = isRejectedOrBlocked ? t('authPendingApproval.rejected.subtitle') : t('authPendingApproval.pending.subtitle');
 
   if (checkingStatus) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.checkingText}>Checking your status...</Text>
+        <Text style={styles.checkingText}>{t('authPendingApproval.loading.checkingStatus')}</Text>
       </View>
     );
   }
@@ -69,41 +69,39 @@ export function PendingApprovalScreen() {
           <View style={styles.cardRow}>
             <Text style={styles.cardIcon}>✓</Text>
             <View>
-              <Text style={styles.cardTitle}>Documents Submitted</Text>
-              <Text style={styles.cardDesc}>Your verification documents are under review</Text>
+              <Text style={styles.cardTitle}>{t('authPendingApproval.steps.documentsSubmitted.title')}</Text>
+              <Text style={styles.cardDesc}>{t('authPendingApproval.steps.documentsSubmitted.desc')}</Text>
             </View>
           </View>
           <View style={styles.cardRow}>
             <Text style={styles.cardIcon}>🕐</Text>
             <View>
-              <Text style={styles.cardTitle}>Review in Progress</Text>
-              <Text style={styles.cardDesc}>Our admin team is reviewing your documents</Text>
+              <Text style={styles.cardTitle}>{t('authPendingApproval.steps.reviewInProgress.title')}</Text>
+              <Text style={styles.cardDesc}>{t('authPendingApproval.steps.reviewInProgress.desc')}</Text>
             </View>
           </View>
           <View style={styles.cardRow}>
             <Text style={styles.cardIcon}>✉️</Text>
             <View>
-              <Text style={styles.cardTitle}>Notification</Text>
-              <Text style={styles.cardDesc}>You will receive an email once your account is approved</Text>
+              <Text style={styles.cardTitle}>{t('authPendingApproval.steps.notification.title')}</Text>
+              <Text style={styles.cardDesc}>{t('authPendingApproval.steps.notification.desc')}</Text>
             </View>
           </View>
         </View>
       )}
 
       <View style={styles.infoBox}>
-        <Text style={styles.infoTitle}>What happens next?</Text>
+        <Text style={styles.infoTitle}>{t('authPendingApproval.whatNext.title')}</Text>
         <Text style={styles.infoText}>
-          {isRejectedOrBlocked
-            ? 'Contact support to resolve the issue or submit updated documents if you have a way to do so.'
-            : "Our admin team typically reviews verification documents within 24-48 hours. Once approved, you'll be able to access your dashboard."}
+          {isRejectedOrBlocked ? t('authPendingApproval.whatNext.rejected') : t('authPendingApproval.whatNext.pending')}
         </Text>
       </View>
 
       <View style={styles.actions}>
         {!isRejectedOrBlocked && (
-          <Button title="Check Status Again" onPress={checkApprovalStatus} style={styles.btn} />
+          <Button title={t('authPendingApproval.actions.checkStatusAgain')} onPress={checkApprovalStatus} style={styles.btn} />
         )}
-        <Button title="Logout" onPress={handleLogout} variant="outline" style={styles.btn} />
+        <Button title={t('common.logout')} onPress={handleLogout} variant="outline" style={styles.btn} />
       </View>
     </ScrollView>
   );

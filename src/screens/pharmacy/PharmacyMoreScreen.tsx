@@ -28,9 +28,9 @@ export function PharmacyMoreScreen() {
     <ScreenContainer scroll padded>
       <Card style={styles.profileCard}>
         <View style={styles.avatarWrap}>
-          <Text style={styles.avatarText}>{user?.name?.charAt(0) || 'P'}</Text>
+          <Text style={styles.avatarText}>{user?.name?.charAt(0) || t('pharmacyMore.avatarFallback')}</Text>
         </View>
-        <Text style={styles.userName}>{user?.name || 'Pharmacy'}</Text>
+        <Text style={styles.userName}>{user?.name || t('more.pharmacy.pharmacy')}</Text>
         <Text style={styles.userRole}>{isParapharmacy ? t('more.pharmacy.parapharmacy') : t('more.pharmacy.pharmacy')}</Text>
         <Text style={styles.userEmail}>{user?.email}</Text>
       </Card>

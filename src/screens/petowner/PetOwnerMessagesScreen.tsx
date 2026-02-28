@@ -57,6 +57,8 @@ export function PetOwnerMessagesScreen() {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
 
+  const setHeaderSearchConfig = headerSearch?.setConfig;
+
   const { data: conversationsResponse, isLoading, error } = useConversations({ limit: 50 });
 
   const conversations = useMemo(() => {
@@ -67,13 +69,13 @@ export function PetOwnerMessagesScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
-      headerSearch?.setConfig({
+      setHeaderSearchConfig?.({
         placeholder: t('messages.searchPlaceholder'),
         value: searchQuery,
         onChangeText: setSearchQuery,
       });
-      return () => headerSearch?.setConfig(null);
-    }, [headerSearch, searchQuery, t])
+      return () => setHeaderSearchConfig?.(null);
+    }, [searchQuery, t, setHeaderSearchConfig])
   );
 
   const filtered = useMemo(() => {

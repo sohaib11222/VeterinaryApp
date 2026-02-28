@@ -17,6 +17,8 @@ const resources = {
         validation: 'Validation',
         success: 'Success',
         error: 'Error',
+        failed: 'Failed',
+        loading: 'Loading...',
         logout: 'Logout',
         language: 'Language',
         view: 'View',
@@ -31,6 +33,216 @@ const resources = {
         back: 'Back',
         send: 'Send',
         file: 'File',
+      },
+      auth: {
+        validation: {
+          emailRequired: 'Email is required',
+          invalidEmail: 'Invalid email',
+          passwordRequired: 'Password is required',
+          passwordMinLength: 'Password must be at least {{count}} characters',
+          nameRequired: 'Name is required',
+          nameMinLength: 'Name must be at least {{count}} characters',
+          nameMaxLength: 'Name must be less than {{count}} characters',
+          phoneRequired: 'Phone is required',
+          passwordsMustMatch: 'Passwords must match',
+        },
+      },
+      authLogin: {
+        title: 'PetCare Login',
+        subtitle: 'Access your pet health dashboard',
+        fields: {
+          email: { label: 'Email Address', placeholder: 'Enter your email' },
+          password: { label: 'Password', placeholder: 'Enter your password' },
+        },
+        actions: {
+          forgotPassword: 'Forgot password?',
+          loggingIn: 'Logging in...',
+          login: 'Login to PetCare',
+        },
+        features: {
+          secure: 'Secure',
+          petCare: 'Pet Care',
+          alwaysAvailable: '24/7',
+        },
+        footer: {
+          newToPetCare: 'New to PetCare?',
+          createAccount: 'Create Account',
+        },
+        errors: {
+          loginFailedTryAgain: 'Login failed. Try again.',
+        },
+      },
+      authRegister: {
+        title: 'Join PetCare',
+        subtitle: 'Create your pet health account',
+        fields: {
+          fullName: { label: 'Full Name', placeholder: 'Enter your full name' },
+          email: { label: 'Email Address', placeholder: 'Enter your email' },
+          phone: { label: 'Phone Number', placeholder: 'Enter your phone' },
+          password: { label: 'Password', placeholder: 'Min 6 characters' },
+          confirmPassword: { label: 'Confirm Password', placeholder: 'Confirm your password' },
+        },
+        actions: {
+          creatingAccount: 'Creating Account...',
+          createPetCareAccount: 'Create PetCare Account',
+          registerAsVeterinarian: 'Register as Veterinarian',
+          registerAsPharmacy: 'Register as Pharmacy',
+          registerAsParapharmacy: 'Register as Parapharmacy',
+        },
+        divider: {
+          or: 'or',
+        },
+        footer: {
+          alreadyHaveAccount: 'Already have an account?',
+          loginToPetCare: 'Login to PetCare',
+        },
+        errors: {
+          registrationFailedTryAgain: 'Registration failed. Try again.',
+        },
+      },
+      authForgotPassword: {
+        title: 'Forgot Password',
+        subtitle: "Enter your email and we'll send you a link to reset your password.",
+        fields: {
+          email: { label: 'Email', placeholder: 'Enter your email address' },
+        },
+        actions: {
+          sending: 'Sending...',
+          submit: 'Submit',
+          backToLogin: 'Back to Login',
+        },
+        sent: {
+          title: 'Check your email',
+          subtitle: 'If an account exists for {{email}}, we sent a link to reset your password.',
+        },
+        errors: {
+          failedToSendResetLinkTryAgain: 'Failed to send reset link. Try again.',
+        },
+      },
+      authPendingApproval: {
+        pending: {
+          title: 'Pending Admin Approval',
+          subtitle: 'Your verification documents have been submitted successfully. Our team is reviewing them.',
+        },
+        rejected: {
+          title: 'Account Not Approved',
+          subtitle: 'Your account was rejected or blocked. Please update your documents or contact support.',
+        },
+        loading: {
+          checkingStatus: 'Checking your status...',
+        },
+        steps: {
+          documentsSubmitted: {
+            title: 'Documents Submitted',
+            desc: 'Your verification documents are under review',
+          },
+          reviewInProgress: {
+            title: 'Review in Progress',
+            desc: 'Our admin team is reviewing your documents',
+          },
+          notification: {
+            title: 'Notification',
+            desc: 'You will receive an email once your account is approved',
+          },
+        },
+        whatNext: {
+          title: 'What happens next?',
+          pending: "Our admin team typically reviews verification documents within 24-48 hours. Once approved, you'll be able to access your dashboard.",
+          rejected: 'Contact support to resolve the issue or submit updated documents if you have a way to do so.',
+        },
+        actions: {
+          checkStatusAgain: 'Check Status Again',
+        },
+      },
+      authVerification: {
+        common: {
+          couldNotPickFile: 'Could not pick file',
+          requiredDocuments: 'Required documents',
+          pleaseUpload: 'Please upload: {{items}}',
+          documentsUploaded: 'Documents uploaded',
+          documentsSubmittedSuccessfully: 'Verification documents submitted successfully!',
+          uploadFailedTitle: 'Upload failed',
+          failedToUploadDocuments: 'Failed to upload documents.',
+          uploadDoc: 'Upload {{doc}}',
+          uploading: 'Uploading...',
+          submitForVerification: 'Submit for Verification',
+          alreadySubmittedViewStatus: 'Already submitted? View status',
+        },
+      },
+      authDoctorVerificationUpload: {
+        title: 'Doctor Verification',
+        subtitle: 'Upload your verification documents. All fields marked with * are required.',
+        docs: {
+          registrationCertificate: 'Certificate of Registration',
+          goodStandingCertificate: 'Certificate of Good Standing',
+          cv: 'Curriculum Vitae (CV)',
+          specialistRegistration: 'Specialist Registration (Optional)',
+          digitalSignature: 'Digital Signature (Optional)',
+        },
+        requiredDocs: {
+          title: 'Required documents',
+          items: {
+            registrationCertificate: '• Certificate of Registration with the Medical Council',
+            goodStandingCertificate: '• Certificate of Good Standing (valid 3 months)',
+            cv: '• Curriculum Vitae',
+            specialistRegistration: '• Specialist Registration (if applicable)',
+            digitalSignature: '• Digital signature (if applicable)',
+          },
+        },
+      },
+      authPetStoreVerificationUpload: {
+        title: 'Pharmacy / Parapharmacy Verification',
+        subtitle: 'Upload the required documents. Your account will remain pending until admin approval.',
+        docs: {
+          petStoreLicense: 'Pet Store License',
+          pharmacistDegree: 'Pharmacist Degree / Qualification',
+          ownerId: 'Owner Photo ID',
+          addressProof: 'Address Proof',
+        },
+        requiredDocs: {
+          title: 'Required documents',
+          items: {
+            petStoreLicense: '• Pet Store License',
+            pharmacistDegree: '• Pharmacist Degree / Qualification',
+            ownerId: '• Owner Photo ID',
+            addressProof: '• Address Proof (utility bill / lease)',
+          },
+        },
+      },
+      authPhoneVerification: {
+        title: 'Verify Phone Number',
+        subtitle: 'Enter the code we sent to your phone to continue.',
+        fields: {
+          phone: {
+            label: 'Phone (E.164)',
+            placeholder: '+1234567890',
+            hint: 'Example: +393331234567',
+          },
+          code: {
+            label: 'Verification Code',
+            placeholder: 'Enter code',
+          },
+        },
+        actions: {
+          verifying: 'Verifying...',
+          verifyContinue: 'Verify & Continue',
+          resendCode: 'Resend code',
+        },
+        validation: {
+          codeRequiredTitle: 'Code required',
+          codeRequiredBody: 'Please enter the verification code.',
+        },
+        toasts: {
+          codeSentTitle: 'Code sent',
+          codeSentBody: 'Verification code sent to your phone.',
+          verifiedTitle: 'Verified',
+          verifiedBody: 'Phone verified successfully.',
+        },
+        errors: {
+          failedToSendCode: 'Failed to send verification code.',
+          verificationFailedTitle: 'Verification failed',
+          invalidVerificationCode: 'Invalid verification code.',
+        },
       },
       vetClinicHours: {
         loading: 'Loading clinic hours...',
@@ -2213,6 +2425,467 @@ const resources = {
           notFound: 'Product not found.',
         },
       },
+      pharmacyProducts: {
+        categories: {
+          foodTreats: 'Food & Treats',
+          medications: 'Medications',
+          grooming: 'Grooming',
+          toys: 'Toys',
+          supplements: 'Supplements',
+          accessories: 'Accessories',
+          other: 'Other',
+        },
+      },
+      pharmacyChangePassword: {
+        fields: {
+          currentPassword: 'Current password',
+          newPassword: 'New password',
+          confirmNewPassword: 'Confirm new password',
+          passwordPlaceholder: '••••••••',
+        },
+        actions: {
+          updatePassword: 'Update password',
+        },
+        validation: {
+          currentPasswordRequired: 'Current password required',
+          newPasswordMinLength: 'New password must be at least 6 characters',
+          passwordsDoNotMatch: 'New password and confirm do not match',
+        },
+        toasts: {
+          passwordUpdated: 'Password updated',
+        },
+        errors: {
+          couldNotUpdatePassword: 'Could not update password',
+        },
+      },
+      pharmacyAddProduct: {
+        title: 'New product',
+        fields: {
+          name: { label: 'Product name', placeholder: 'Name' },
+          description: { label: 'Description', placeholder: 'Description' },
+          sku: { label: 'SKU', placeholder: 'e.g. SKU-001' },
+          category: { label: 'Category' },
+          price: { label: 'Price (€)', placeholder: '0.00' },
+          discountPrice: { label: 'Discount price (€)', placeholder: 'Optional' },
+          stock: { label: 'Stock', placeholder: '0' },
+          tags: { label: 'Tags (comma-separated)', placeholder: 'e.g. dog, food' },
+          images: { label: 'Images' },
+          requiresPrescription: 'Requires prescription',
+          isActive: 'Active (visible in catalog)',
+        },
+        actions: {
+          addImage: '+ Image',
+          addProduct: 'Add product',
+        },
+        validation: {
+          nameRequiredTitle: 'Name required',
+          nameRequiredBody: 'Enter product name.',
+          invalidPriceTitle: 'Invalid price',
+          invalidPriceBody: 'Price must be a positive number.',
+          invalidDiscountTitle: 'Invalid discount',
+          invalidDiscountBody: 'Discount price must be less than price.',
+        },
+        toasts: {
+          imageAdded: 'Image added',
+          productCreated: 'Product created',
+        },
+        errors: {
+          uploadFailedTitle: 'Upload failed',
+          couldNotUploadImage: 'Could not upload image',
+          couldNotCreateProduct: 'Could not create product',
+        },
+      },
+      pharmacyProductList: {
+        searchPlaceholder: 'Search products...',
+        tabs: {
+          active: 'Active',
+          inactive: 'Inactive',
+        },
+        actions: {
+          addProduct: '+ Add product',
+        },
+        labels: {
+          priceAndStock: '€{{price}} · Stock: {{stock}}',
+        },
+        status: {
+          active: 'Active',
+          inactive: 'Inactive',
+        },
+        empty: {
+          noProducts: 'No products yet.',
+        },
+        errors: {
+          loadFailed: 'Failed to load products.',
+        },
+      },
+      pharmacyProductDetails: {
+        sections: {
+          details: 'Details',
+          description: 'Description',
+        },
+        labels: {
+          sku: 'SKU',
+          category: 'Category',
+          stock: 'Stock',
+          added: 'Added',
+          stockUnits: '{{count}} units',
+        },
+        actions: {
+          editProduct: 'Edit product',
+          deleteProduct: 'Delete product',
+        },
+        status: {
+          active: 'Active',
+          inactive: 'Inactive',
+        },
+        discountOff: '{{percent}}% off',
+        defaults: {
+          product: 'Product',
+        },
+        deleteModal: {
+          title: 'Delete product',
+          body: 'Remove "{{name}}"? This cannot be undone.',
+        },
+        toasts: {
+          productDeleted: 'Product deleted',
+        },
+        errors: {
+          notFound: 'Product not found.',
+          couldNotDelete: 'Could not delete',
+        },
+      },
+      pharmacyEditProduct: {
+        title: 'Edit product',
+        actions: {
+          deleteProduct: 'Delete product',
+        },
+        validation: {
+          nameRequired: 'Name required',
+          invalidPrice: 'Invalid price',
+          invalidDiscount: 'Invalid discount',
+        },
+        deleteModal: {
+          title: 'Delete product',
+          body: 'Are you sure?',
+        },
+        toasts: {
+          productUpdated: 'Product updated',
+        },
+        errors: {
+          couldNotUpdateProduct: 'Could not update product',
+          couldNotDelete: 'Could not delete',
+        },
+      },
+      pharmacyOrders: {
+        statusLabels: {
+          PENDING: 'Pending',
+          CONFIRMED: 'Confirmed',
+          PROCESSING: 'Processing',
+          SHIPPED: 'Shipped',
+          DELIVERED: 'Delivered',
+          CANCELLED: 'Cancelled',
+          REFUNDED: 'Refunded',
+        },
+        paymentLabels: {
+          PAID: 'Paid',
+          PENDING: 'Pending',
+          REFUNDED: 'Refunded',
+        },
+      },
+      pharmacyOrdersList: {
+        searchPlaceholder: 'Search by order number or customer...',
+        filters: {
+          status: 'Status',
+          payment: 'Payment',
+        },
+        labels: {
+          shipping: 'Shipping',
+          payment: 'Payment',
+          status: 'Status',
+        },
+        actions: {
+          setShipping: 'Set shipping',
+        },
+        empty: {
+          noOrders: 'No orders found.',
+        },
+        shipping: {
+          waiting: 'Waiting',
+          amount: '€{{amount}}',
+        },
+        modal: {
+          title: 'Set shipping fee',
+          orderNumber: 'Order {{orderNumber}}',
+          shippingFeeLabel: 'Shipping fee (€)',
+          shippingFeePlaceholder: '0.00',
+        },
+        validation: {
+          invalidShippingFee: 'Enter a valid shipping fee (≥ 0)',
+        },
+        toasts: {
+          shippingFeeUpdated: 'Shipping fee updated',
+        },
+        errors: {
+          couldNotUpdateShippingFee: 'Could not update shipping fee',
+        },
+      },
+      pharmacyOrderDetails: {
+        labels: {
+          orderNumber: 'Order number',
+          orderDate: 'Order date: {{createdAt}}',
+          payment: 'Payment',
+          status: 'Status',
+          customerInformation: 'Customer information',
+          shippingAddress: 'Shipping address',
+          orderItems: 'Order items ({{count}})',
+        },
+        item: {
+          quantity: 'Quantity: {{count}}',
+          eachPrice: '€{{price}} each',
+        },
+        summary: {
+          title: 'Order summary',
+          subtotal: 'Subtotal',
+          shipping: 'Shipping',
+          total: 'Total',
+          updatedOn: 'Updated on {{date}}',
+          updatedFrom: 'Updated from €{{amount}}',
+        },
+        actions: {
+          setShippingFee: 'Set shipping fee',
+          updateShippingFee: 'Update shipping fee',
+        },
+        modal: {
+          orderNumber: 'Order #{{orderNumber}}',
+          currentShipping: 'Current shipping',
+          newShippingFee: 'New shipping fee (€)',
+          shippingFeePlaceholder: '0.00',
+          newTotal: 'New total: €{{amount}}',
+        },
+        validation: {
+          invalidShippingFee: 'Enter a valid shipping fee (≥ 0)',
+        },
+        toasts: {
+          statusUpdated: 'Status updated',
+          shippingFeeUpdated: 'Shipping fee updated',
+        },
+        errors: {
+          notFound: 'Order not found.',
+          couldNotUpdateStatus: 'Could not update status',
+          couldNotUpdateShippingFee: 'Could not update shipping fee',
+        },
+      },
+      pharmacyDashboard: {
+        header: {
+          welcome: 'Welcome, {{storeName}}',
+          title: 'Pharmacy Dashboard',
+        },
+        stats: {
+          revenueToday: 'Revenue today',
+          totalOrders: 'Total orders',
+          pendingOrders: 'Pending orders',
+          products: 'Products',
+        },
+        banners: {
+          completeProfile: 'Complete your store profile',
+          subscriptionRequired: 'Subscription required to manage products.',
+        },
+        actions: {
+          viewPlans: 'View plans',
+        },
+        loading: {
+          subscription: 'Loading subscription…',
+          dashboard: 'Loading dashboard…',
+        },
+        charts: {
+          revenueLast7Days: 'Revenue (last 7 days)',
+          last7Days: 'Last 7 days',
+          noPaidOrdersLast7Days: 'No paid orders in the last 7 days',
+          ordersByStatus: 'Orders by status',
+          noOrdersYet: 'No orders yet',
+          totalOrders: 'Total orders',
+        },
+        latestCustomers: {
+          title: 'Latest customers',
+          viewAll: 'View all',
+          table: {
+            name: 'Name',
+            email: 'Email',
+            date: 'Date',
+          },
+          empty: 'No orders yet.',
+        },
+        quickActions: {
+          title: 'Quick actions',
+          orders: 'Orders',
+          products: 'Products',
+          payouts: 'Payouts',
+          profile: 'Profile',
+        },
+        alerts: {
+          attentionNeeded: 'Attention needed',
+          unpaidOrdersInRecent: 'Unpaid orders in recent list: {{count}}',
+        },
+      },
+      pharmacyProfile: {
+        title: 'Store Profile',
+        sections: {
+          address: 'Address',
+        },
+        fields: {
+          storeName: 'Store Name',
+          phone: 'Phone',
+          addressLine1: 'Address Line 1',
+          addressLine2: 'Address Line 2',
+          city: 'City',
+          state: 'State',
+          country: 'Country',
+          zip: 'ZIP',
+        },
+        actions: {
+          uploadLogo: 'Upload logo',
+          uploading: 'Uploading…',
+        },
+        toasts: {
+          logoUploaded: 'Logo uploaded',
+          profileSaved: 'Profile saved',
+        },
+        errors: {
+          uploadFailedTitle: 'Upload failed',
+          couldNotUploadLogo: 'Could not upload logo',
+          couldNotSaveProfile: 'Could not save profile',
+        },
+      },
+      pharmacyPayouts: {
+        preferredMethod: {
+          title: 'Preferred payout method',
+          subtitle: 'Your earnings will be paid out using the method you provide when requesting a withdrawal.',
+        },
+        balance: {
+          available: 'Available Balance',
+        },
+        paymentMethods: {
+          stripe: 'Stripe',
+          bank_transfer: 'Bank Transfer',
+          paypal: 'PayPal',
+        },
+        status: {
+          approved: 'Approved',
+          pending: 'Pending',
+          rejected: 'Rejected',
+        },
+        labels: {
+          paymentMethod: 'Payment Method',
+          amount: 'Amount',
+          youReceive: 'You receive',
+          fee: 'Fee',
+          totalDeducted: 'Total Deducted',
+        },
+        fee: {
+          noFee: 'No fee',
+        },
+        actions: {
+          configure: 'Configure',
+          requestWithdrawal: 'Request Withdrawal',
+        },
+        withdrawalRequests: {
+          title: 'Withdrawal Requests',
+          empty: 'No withdrawal requests found',
+        },
+        pagination: {
+          pageOf: '{{page}} / {{pages}}',
+        },
+        modal: {
+          title: 'Request Withdrawal',
+          amountToWithdraw: 'Amount to Withdraw',
+          amountPlaceholder: 'Enter amount',
+          paymentMethod: 'Payment Method',
+          payoutDetails: 'Payout Details',
+          payoutDetailsHint: 'IBAN / account no / PayPal email / Stripe email',
+          payoutDetailsPlaceholder: 'Enter IBAN, account number, or email',
+          submitRequest: 'Submit Request',
+        },
+        validation: {
+          enterValidAmount: 'Enter a valid amount',
+          amountExceedsBalance: 'Amount exceeds balance',
+          payoutDetailsRequired: 'Payout details required',
+        },
+        toasts: {
+          withdrawalRequested: 'Withdrawal requested',
+        },
+        errors: {
+          couldNotSubmitRequest: 'Could not submit request',
+        },
+      },
+      pharmacySubscription: {
+        title: 'Subscription',
+        parapharmacy: {
+          noSubscriptionRequired: 'Parapharmacy accounts do not require a subscription.',
+        },
+        current: {
+          title: 'Current Subscription',
+          status: 'Status',
+          active: 'Active',
+          inactive: 'Inactive',
+          ends: 'Ends {{date}}',
+          planLine: 'Plan: {{planName}}. {{endDate}}',
+          subscribeHint: 'Subscribe to manage products and receive orders.',
+        },
+        plans: {
+          planFallback: 'Plan',
+          pricePerMonth: '{{price}}/month',
+          selected: 'Selected',
+          select: 'Select',
+        },
+        actions: {
+          confirmSubscription: 'Confirm subscription',
+        },
+        toasts: {
+          subscriptionUpdated: 'Subscription updated',
+        },
+        errors: {
+          couldNotPurchase: 'Could not purchase subscription',
+          failedToLoadPlans: 'Failed to load plans',
+        },
+      },
+      pharmacyNotifications: {
+        title: 'Notifications',
+        subtitle: 'Alerts & updates',
+        actions: {
+          marking: 'Marking...',
+          markAll: 'Mark all',
+        },
+        tabs: {
+          unread: 'Unread',
+          unreadWithCount: 'Unread ({{count}})',
+          read: 'Read',
+        },
+        empty: 'No notifications found.',
+        fallbackTitle: 'Notification',
+        time: {
+          justNow: 'Just now',
+          minutesAgo_one: '{{count}} minute ago',
+          minutesAgo_other: '{{count}} minutes ago',
+          hoursAgo_one: '{{count}} hour ago',
+          hoursAgo_other: '{{count}} hours ago',
+          daysAgo_one: '{{count}} day ago',
+          daysAgo_other: '{{count}} days ago',
+        },
+        toasts: {
+          allMarkedRead: 'All notifications marked as read',
+        },
+        errors: {
+          failedToMarkAllRead: 'Failed to mark all as read',
+          failedToMarkRead: 'Failed to mark as read',
+        },
+      },
+      pharmacyOrderStatus: {
+        title: 'Update Order Status',
+        orderId: 'Order #{{orderId}}',
+      },
+      pharmacyMore: {
+        avatarFallback: 'P',
+      },
       petOwnerPrescription: {
         title: 'Prescription',
         loadingPrescription: 'Loading prescription...',
@@ -2370,6 +3043,8 @@ const resources = {
         validation: 'Validazione',
         success: 'Successo',
         error: 'Errore',
+        failed: 'Operazione non riuscita',
+        loading: 'Caricamento...',
         logout: 'Disconnetti',
         language: 'Lingua',
         view: 'Vedi',
@@ -2384,6 +3059,216 @@ const resources = {
         back: 'Indietro',
         send: 'Invia',
         file: 'File',
+      },
+      auth: {
+        validation: {
+          emailRequired: 'Email richiesta',
+          invalidEmail: 'Email non valida',
+          passwordRequired: 'Password richiesta',
+          passwordMinLength: 'La password deve contenere almeno {{count}} caratteri',
+          nameRequired: 'Nome richiesto',
+          nameMinLength: 'Il nome deve contenere almeno {{count}} caratteri',
+          nameMaxLength: 'Il nome deve essere inferiore a {{count}} caratteri',
+          phoneRequired: 'Telefono richiesto',
+          passwordsMustMatch: 'Le password devono coincidere',
+        },
+      },
+      authLogin: {
+        title: 'Accesso PetCare',
+        subtitle: 'Accedi alla dashboard per la salute del tuo pet',
+        fields: {
+          email: { label: 'Indirizzo email', placeholder: 'Inserisci la tua email' },
+          password: { label: 'Password', placeholder: 'Inserisci la tua password' },
+        },
+        actions: {
+          forgotPassword: 'Password dimenticata?',
+          loggingIn: 'Accesso...',
+          login: 'Accedi a PetCare',
+        },
+        features: {
+          secure: 'Sicuro',
+          petCare: 'Cura del pet',
+          alwaysAvailable: '24/7',
+        },
+        footer: {
+          newToPetCare: 'Nuovo su PetCare?',
+          createAccount: 'Crea account',
+        },
+        errors: {
+          loginFailedTryAgain: 'Accesso non riuscito. Riprova.',
+        },
+      },
+      authRegister: {
+        title: 'Unisciti a PetCare',
+        subtitle: 'Crea il tuo account per la salute del pet',
+        fields: {
+          fullName: { label: 'Nome e cognome', placeholder: 'Inserisci nome e cognome' },
+          email: { label: 'Indirizzo email', placeholder: 'Inserisci la tua email' },
+          phone: { label: 'Numero di telefono', placeholder: 'Inserisci il tuo telefono' },
+          password: { label: 'Password', placeholder: 'Minimo 6 caratteri' },
+          confirmPassword: { label: 'Conferma password', placeholder: 'Conferma la tua password' },
+        },
+        actions: {
+          creatingAccount: 'Creazione account...',
+          createPetCareAccount: 'Crea account PetCare',
+          registerAsVeterinarian: 'Registrati come veterinario',
+          registerAsPharmacy: 'Registrati come farmacia',
+          registerAsParapharmacy: 'Registrati come parafarmacia',
+        },
+        divider: {
+          or: 'oppure',
+        },
+        footer: {
+          alreadyHaveAccount: 'Hai già un account?',
+          loginToPetCare: 'Accedi a PetCare',
+        },
+        errors: {
+          registrationFailedTryAgain: 'Registrazione non riuscita. Riprova.',
+        },
+      },
+      authForgotPassword: {
+        title: 'Password dimenticata',
+        subtitle: 'Inserisci la tua email e ti invieremo un link per reimpostare la password.',
+        fields: {
+          email: { label: 'Email', placeholder: 'Inserisci il tuo indirizzo email' },
+        },
+        actions: {
+          sending: 'Invio...',
+          submit: 'Invia',
+          backToLogin: 'Torna al login',
+        },
+        sent: {
+          title: 'Controlla la tua email',
+          subtitle: 'Se esiste un account per {{email}}, abbiamo inviato un link per reimpostare la password.',
+        },
+        errors: {
+          failedToSendResetLinkTryAgain: 'Impossibile inviare il link di reset. Riprova.',
+        },
+      },
+      authPendingApproval: {
+        pending: {
+          title: 'In attesa di approvazione admin',
+          subtitle: 'I tuoi documenti di verifica sono stati inviati correttamente. Il nostro team li sta esaminando.',
+        },
+        rejected: {
+          title: 'Account non approvato',
+          subtitle: 'Il tuo account è stato rifiutato o bloccato. Aggiorna i documenti o contatta l’assistenza.',
+        },
+        loading: {
+          checkingStatus: 'Controllo stato...',
+        },
+        steps: {
+          documentsSubmitted: {
+            title: 'Documenti inviati',
+            desc: 'I tuoi documenti di verifica sono in revisione',
+          },
+          reviewInProgress: {
+            title: 'Revisione in corso',
+            desc: 'Il team admin sta esaminando i tuoi documenti',
+          },
+          notification: {
+            title: 'Notifica',
+            desc: 'Riceverai un’email quando il tuo account sarà approvato',
+          },
+        },
+        whatNext: {
+          title: 'Cosa succede ora?',
+          pending: 'Il team admin di solito esamina i documenti di verifica entro 24-48 ore. Dopo l’approvazione potrai accedere alla tua dashboard.',
+          rejected: 'Contatta l’assistenza per risolvere il problema oppure invia documenti aggiornati se possibile.',
+        },
+        actions: {
+          checkStatusAgain: 'Controlla di nuovo',
+        },
+      },
+      authVerification: {
+        common: {
+          couldNotPickFile: 'Impossibile selezionare il file',
+          requiredDocuments: 'Documenti richiesti',
+          pleaseUpload: 'Carica: {{items}}',
+          documentsUploaded: 'Documenti caricati',
+          documentsSubmittedSuccessfully: 'Documenti di verifica inviati con successo!',
+          uploadFailedTitle: 'Caricamento non riuscito',
+          failedToUploadDocuments: 'Impossibile caricare i documenti.',
+          uploadDoc: 'Carica {{doc}}',
+          uploading: 'Caricamento...',
+          submitForVerification: 'Invia per verifica',
+          alreadySubmittedViewStatus: 'Già inviato? Vedi stato',
+        },
+      },
+      authDoctorVerificationUpload: {
+        title: 'Verifica medico',
+        subtitle: 'Carica i documenti di verifica. Tutti i campi contrassegnati con * sono obbligatori.',
+        docs: {
+          registrationCertificate: 'Certificato di registrazione',
+          goodStandingCertificate: 'Certificato di buona condotta',
+          cv: 'Curriculum Vitae (CV)',
+          specialistRegistration: 'Registrazione specialista (opzionale)',
+          digitalSignature: 'Firma digitale (opzionale)',
+        },
+        requiredDocs: {
+          title: 'Documenti richiesti',
+          items: {
+            registrationCertificate: '• Certificato di registrazione presso l’Ordine',
+            goodStandingCertificate: '• Certificato di buona condotta (valido 3 mesi)',
+            cv: '• Curriculum Vitae',
+            specialistRegistration: '• Registrazione specialista (se applicabile)',
+            digitalSignature: '• Firma digitale (se applicabile)',
+          },
+        },
+      },
+      authPetStoreVerificationUpload: {
+        title: 'Verifica farmacia / parafarmacia',
+        subtitle: 'Carica i documenti richiesti. Il tuo account rimarrà in attesa fino all’approvazione admin.',
+        docs: {
+          petStoreLicense: 'Licenza farmacia',
+          pharmacistDegree: 'Laurea / qualifica farmacista',
+          ownerId: 'Documento d’identità del titolare',
+          addressProof: 'Prova indirizzo',
+        },
+        requiredDocs: {
+          title: 'Documenti richiesti',
+          items: {
+            petStoreLicense: '• Licenza farmacia',
+            pharmacistDegree: '• Laurea / qualifica farmacista',
+            ownerId: '• Documento d’identità del titolare',
+            addressProof: '• Prova indirizzo (bolletta / contratto)',
+          },
+        },
+      },
+      authPhoneVerification: {
+        title: 'Verifica numero di telefono',
+        subtitle: 'Inserisci il codice che abbiamo inviato al tuo telefono per continuare.',
+        fields: {
+          phone: {
+            label: 'Telefono (E.164)',
+            placeholder: '+1234567890',
+            hint: 'Esempio: +393331234567',
+          },
+          code: {
+            label: 'Codice di verifica',
+            placeholder: 'Inserisci codice',
+          },
+        },
+        actions: {
+          verifying: 'Verifica...',
+          verifyContinue: 'Verifica e continua',
+          resendCode: 'Invia di nuovo il codice',
+        },
+        validation: {
+          codeRequiredTitle: 'Codice richiesto',
+          codeRequiredBody: 'Inserisci il codice di verifica.',
+        },
+        toasts: {
+          codeSentTitle: 'Codice inviato',
+          codeSentBody: 'Codice di verifica inviato al tuo telefono.',
+          verifiedTitle: 'Verificato',
+          verifiedBody: 'Telefono verificato con successo.',
+        },
+        errors: {
+          failedToSendCode: 'Impossibile inviare il codice di verifica.',
+          verificationFailedTitle: 'Verifica non riuscita',
+          invalidVerificationCode: 'Codice di verifica non valido.',
+        },
       },
       vetClinicHours: {
         loading: 'Caricamento orari clinica...',
@@ -4565,6 +5450,467 @@ const resources = {
         errors: {
           notFound: 'Prodotto non trovato.',
         },
+      },
+      pharmacyProducts: {
+        categories: {
+          foodTreats: 'Cibo e snack',
+          medications: 'Farmaci',
+          grooming: 'Toelettatura',
+          toys: 'Giochi',
+          supplements: 'Integratori',
+          accessories: 'Accessori',
+          other: 'Altro',
+        },
+      },
+      pharmacyChangePassword: {
+        fields: {
+          currentPassword: 'Password attuale',
+          newPassword: 'Nuova password',
+          confirmNewPassword: 'Conferma nuova password',
+          passwordPlaceholder: '••••••••',
+        },
+        actions: {
+          updatePassword: 'Aggiorna password',
+        },
+        validation: {
+          currentPasswordRequired: 'Password attuale richiesta',
+          newPasswordMinLength: 'La nuova password deve contenere almeno 6 caratteri',
+          passwordsDoNotMatch: 'Nuova password e conferma non coincidono',
+        },
+        toasts: {
+          passwordUpdated: 'Password aggiornata',
+        },
+        errors: {
+          couldNotUpdatePassword: 'Impossibile aggiornare la password',
+        },
+      },
+      pharmacyAddProduct: {
+        title: 'Nuovo prodotto',
+        fields: {
+          name: { label: 'Nome prodotto', placeholder: 'Nome' },
+          description: { label: 'Descrizione', placeholder: 'Descrizione' },
+          sku: { label: 'SKU', placeholder: 'es. SKU-001' },
+          category: { label: 'Categoria' },
+          price: { label: 'Prezzo (€)', placeholder: '0.00' },
+          discountPrice: { label: 'Prezzo scontato (€)', placeholder: 'Opzionale' },
+          stock: { label: 'Giacenza', placeholder: '0' },
+          tags: { label: 'Tag (separati da virgola)', placeholder: 'es. cane, cibo' },
+          images: { label: 'Immagini' },
+          requiresPrescription: 'Richiede prescrizione',
+          isActive: 'Attivo (visibile nel catalogo)',
+        },
+        actions: {
+          addImage: '+ Immagine',
+          addProduct: 'Aggiungi prodotto',
+        },
+        validation: {
+          nameRequiredTitle: 'Nome richiesto',
+          nameRequiredBody: 'Inserisci il nome del prodotto.',
+          invalidPriceTitle: 'Prezzo non valido',
+          invalidPriceBody: 'Il prezzo deve essere un numero positivo.',
+          invalidDiscountTitle: 'Sconto non valido',
+          invalidDiscountBody: 'Il prezzo scontato deve essere inferiore al prezzo.',
+        },
+        toasts: {
+          imageAdded: 'Immagine aggiunta',
+          productCreated: 'Prodotto creato',
+        },
+        errors: {
+          uploadFailedTitle: 'Caricamento non riuscito',
+          couldNotUploadImage: 'Impossibile caricare l’immagine',
+          couldNotCreateProduct: 'Impossibile creare il prodotto',
+        },
+      },
+      pharmacyProductList: {
+        searchPlaceholder: 'Cerca prodotti...',
+        tabs: {
+          active: 'Attivi',
+          inactive: 'Inattivi',
+        },
+        actions: {
+          addProduct: '+ Aggiungi prodotto',
+        },
+        labels: {
+          priceAndStock: '€{{price}} · Giacenza: {{stock}}',
+        },
+        status: {
+          active: 'Attivo',
+          inactive: 'Inattivo',
+        },
+        empty: {
+          noProducts: 'Ancora nessun prodotto.',
+        },
+        errors: {
+          loadFailed: 'Impossibile caricare i prodotti.',
+        },
+      },
+      pharmacyProductDetails: {
+        sections: {
+          details: 'Dettagli',
+          description: 'Descrizione',
+        },
+        labels: {
+          sku: 'SKU',
+          category: 'Categoria',
+          stock: 'Giacenza',
+          added: 'Aggiunto',
+          stockUnits: '{{count}} unità',
+        },
+        actions: {
+          editProduct: 'Modifica prodotto',
+          deleteProduct: 'Elimina prodotto',
+        },
+        status: {
+          active: 'Attivo',
+          inactive: 'Inattivo',
+        },
+        discountOff: '{{percent}}% di sconto',
+        defaults: {
+          product: 'Prodotto',
+        },
+        deleteModal: {
+          title: 'Elimina prodotto',
+          body: 'Rimuovere "{{name}}"? Questa azione non può essere annullata.',
+        },
+        toasts: {
+          productDeleted: 'Prodotto eliminato',
+        },
+        errors: {
+          notFound: 'Prodotto non trovato.',
+          couldNotDelete: 'Impossibile eliminare',
+        },
+      },
+      pharmacyEditProduct: {
+        title: 'Modifica prodotto',
+        actions: {
+          deleteProduct: 'Elimina prodotto',
+        },
+        validation: {
+          nameRequired: 'Nome richiesto',
+          invalidPrice: 'Prezzo non valido',
+          invalidDiscount: 'Sconto non valido',
+        },
+        deleteModal: {
+          title: 'Elimina prodotto',
+          body: 'Sei sicuro?',
+        },
+        toasts: {
+          productUpdated: 'Prodotto aggiornato',
+        },
+        errors: {
+          couldNotUpdateProduct: 'Impossibile aggiornare il prodotto',
+          couldNotDelete: 'Impossibile eliminare',
+        },
+      },
+      pharmacyOrders: {
+        statusLabels: {
+          PENDING: 'In attesa',
+          CONFIRMED: 'Confermato',
+          PROCESSING: 'In lavorazione',
+          SHIPPED: 'Spedito',
+          DELIVERED: 'Consegnato',
+          CANCELLED: 'Annullato',
+          REFUNDED: 'Rimborsato',
+        },
+        paymentLabels: {
+          PAID: 'Pagato',
+          PENDING: 'In attesa',
+          REFUNDED: 'Rimborsato',
+        },
+      },
+      pharmacyOrdersList: {
+        searchPlaceholder: 'Cerca per numero ordine o cliente...',
+        filters: {
+          status: 'Stato',
+          payment: 'Pagamento',
+        },
+        labels: {
+          shipping: 'Spedizione',
+          payment: 'Pagamento',
+          status: 'Stato',
+        },
+        actions: {
+          setShipping: 'Imposta spedizione',
+        },
+        empty: {
+          noOrders: 'Nessun ordine trovato.',
+        },
+        shipping: {
+          waiting: 'In attesa',
+          amount: '€{{amount}}',
+        },
+        modal: {
+          title: 'Imposta costo di spedizione',
+          orderNumber: 'Ordine {{orderNumber}}',
+          shippingFeeLabel: 'Costo spedizione (€)',
+          shippingFeePlaceholder: '0.00',
+        },
+        validation: {
+          invalidShippingFee: 'Inserisci un costo di spedizione valido (≥ 0)',
+        },
+        toasts: {
+          shippingFeeUpdated: 'Costo di spedizione aggiornato',
+        },
+        errors: {
+          couldNotUpdateShippingFee: 'Impossibile aggiornare il costo di spedizione',
+        },
+      },
+      pharmacyOrderDetails: {
+        labels: {
+          orderNumber: 'Numero ordine',
+          orderDate: 'Data ordine: {{createdAt}}',
+          payment: 'Pagamento',
+          status: 'Stato',
+          customerInformation: 'Informazioni cliente',
+          shippingAddress: 'Indirizzo di spedizione',
+          orderItems: 'Articoli ordine ({{count}})',
+        },
+        item: {
+          quantity: 'Quantità: {{count}}',
+          eachPrice: '€{{price}} ciascuno',
+        },
+        summary: {
+          title: 'Riepilogo ordine',
+          subtotal: 'Subtotale',
+          shipping: 'Spedizione',
+          total: 'Totale',
+          updatedOn: 'Aggiornato il {{date}}',
+          updatedFrom: 'Aggiornato da €{{amount}}',
+        },
+        actions: {
+          setShippingFee: 'Imposta costo spedizione',
+          updateShippingFee: 'Aggiorna costo spedizione',
+        },
+        modal: {
+          orderNumber: 'Ordine #{{orderNumber}}',
+          currentShipping: 'Spedizione attuale',
+          newShippingFee: 'Nuovo costo spedizione (€)',
+          shippingFeePlaceholder: '0.00',
+          newTotal: 'Nuovo totale: €{{amount}}',
+        },
+        validation: {
+          invalidShippingFee: 'Inserisci un costo di spedizione valido (≥ 0)',
+        },
+        toasts: {
+          statusUpdated: 'Stato aggiornato',
+          shippingFeeUpdated: 'Costo di spedizione aggiornato',
+        },
+        errors: {
+          notFound: 'Ordine non trovato.',
+          couldNotUpdateStatus: 'Impossibile aggiornare lo stato',
+          couldNotUpdateShippingFee: 'Impossibile aggiornare il costo di spedizione',
+        },
+      },
+      pharmacyDashboard: {
+        header: {
+          welcome: 'Benvenuto, {{storeName}}',
+          title: 'Dashboard farmacia',
+        },
+        stats: {
+          revenueToday: 'Entrate oggi',
+          totalOrders: 'Ordini totali',
+          pendingOrders: 'Ordini in attesa',
+          products: 'Prodotti',
+        },
+        banners: {
+          completeProfile: 'Completa il profilo del tuo negozio',
+          subscriptionRequired: 'È necessario un abbonamento per gestire i prodotti.',
+        },
+        actions: {
+          viewPlans: 'Vedi piani',
+        },
+        loading: {
+          subscription: 'Caricamento abbonamento…',
+          dashboard: 'Caricamento dashboard…',
+        },
+        charts: {
+          revenueLast7Days: 'Entrate (ultimi 7 giorni)',
+          last7Days: 'Ultimi 7 giorni',
+          noPaidOrdersLast7Days: 'Nessun ordine pagato negli ultimi 7 giorni',
+          ordersByStatus: 'Ordini per stato',
+          noOrdersYet: 'Ancora nessun ordine',
+          totalOrders: 'Ordini totali',
+        },
+        latestCustomers: {
+          title: 'Clienti recenti',
+          viewAll: 'Vedi tutti',
+          table: {
+            name: 'Nome',
+            email: 'Email',
+            date: 'Data',
+          },
+          empty: 'Ancora nessun ordine.',
+        },
+        quickActions: {
+          title: 'Azioni rapide',
+          orders: 'Ordini',
+          products: 'Prodotti',
+          payouts: 'Pagamenti',
+          profile: 'Profilo',
+        },
+        alerts: {
+          attentionNeeded: 'Attenzione richiesta',
+          unpaidOrdersInRecent: 'Ordini non pagati nella lista recente: {{count}}',
+        },
+      },
+      pharmacyProfile: {
+        title: 'Profilo negozio',
+        sections: {
+          address: 'Indirizzo',
+        },
+        fields: {
+          storeName: 'Nome negozio',
+          phone: 'Telefono',
+          addressLine1: 'Indirizzo riga 1',
+          addressLine2: 'Indirizzo riga 2',
+          city: 'Città',
+          state: 'Provincia',
+          country: 'Paese',
+          zip: 'CAP',
+        },
+        actions: {
+          uploadLogo: 'Carica logo',
+          uploading: 'Caricamento…',
+        },
+        toasts: {
+          logoUploaded: 'Logo caricato',
+          profileSaved: 'Profilo salvato',
+        },
+        errors: {
+          uploadFailedTitle: 'Caricamento non riuscito',
+          couldNotUploadLogo: 'Impossibile caricare il logo',
+          couldNotSaveProfile: 'Impossibile salvare il profilo',
+        },
+      },
+      pharmacyPayouts: {
+        preferredMethod: {
+          title: 'Metodo di pagamento preferito',
+          subtitle: 'I tuoi guadagni verranno pagati usando il metodo che inserisci quando richiedi un prelievo.',
+        },
+        balance: {
+          available: 'Saldo disponibile',
+        },
+        paymentMethods: {
+          stripe: 'Stripe',
+          bank_transfer: 'Bonifico bancario',
+          paypal: 'PayPal',
+        },
+        status: {
+          approved: 'Approvato',
+          pending: 'In attesa',
+          rejected: 'Rifiutato',
+        },
+        labels: {
+          paymentMethod: 'Metodo di pagamento',
+          amount: 'Importo',
+          youReceive: 'Ricevi',
+          fee: 'Commissione',
+          totalDeducted: 'Totale trattenuto',
+        },
+        fee: {
+          noFee: 'Nessuna commissione',
+        },
+        actions: {
+          configure: 'Configura',
+          requestWithdrawal: 'Richiedi prelievo',
+        },
+        withdrawalRequests: {
+          title: 'Richieste di prelievo',
+          empty: 'Nessuna richiesta di prelievo trovata',
+        },
+        pagination: {
+          pageOf: '{{page}} / {{pages}}',
+        },
+        modal: {
+          title: 'Richiedi prelievo',
+          amountToWithdraw: 'Importo da prelevare',
+          amountPlaceholder: 'Inserisci importo',
+          paymentMethod: 'Metodo di pagamento',
+          payoutDetails: 'Dettagli pagamento',
+          payoutDetailsHint: 'IBAN / numero conto / email PayPal / email Stripe',
+          payoutDetailsPlaceholder: 'Inserisci IBAN, numero conto o email',
+          submitRequest: 'Invia richiesta',
+        },
+        validation: {
+          enterValidAmount: 'Inserisci un importo valido',
+          amountExceedsBalance: 'L’importo supera il saldo',
+          payoutDetailsRequired: 'Dettagli pagamento richiesti',
+        },
+        toasts: {
+          withdrawalRequested: 'Prelievo richiesto',
+        },
+        errors: {
+          couldNotSubmitRequest: 'Impossibile inviare la richiesta',
+        },
+      },
+      pharmacySubscription: {
+        title: 'Abbonamento',
+        parapharmacy: {
+          noSubscriptionRequired: 'Gli account parafarmacia non richiedono un abbonamento.',
+        },
+        current: {
+          title: 'Abbonamento attuale',
+          status: 'Stato',
+          active: 'Attivo',
+          inactive: 'Non attivo',
+          ends: 'Scade il {{date}}',
+          planLine: 'Piano: {{planName}}. {{endDate}}',
+          subscribeHint: 'Abbonati per gestire i prodotti e ricevere ordini.',
+        },
+        plans: {
+          planFallback: 'Piano',
+          pricePerMonth: '{{price}}/mese',
+          selected: 'Selezionato',
+          select: 'Seleziona',
+        },
+        actions: {
+          confirmSubscription: 'Conferma abbonamento',
+        },
+        toasts: {
+          subscriptionUpdated: 'Abbonamento aggiornato',
+        },
+        errors: {
+          couldNotPurchase: 'Impossibile acquistare l’abbonamento',
+          failedToLoadPlans: 'Impossibile caricare i piani',
+        },
+      },
+      pharmacyNotifications: {
+        title: 'Notifiche',
+        subtitle: 'Avvisi e aggiornamenti',
+        actions: {
+          marking: 'Impostazione...',
+          markAll: 'Segna tutto',
+        },
+        tabs: {
+          unread: 'Non lette',
+          unreadWithCount: 'Non lette ({{count}})',
+          read: 'Lette',
+        },
+        empty: 'Nessuna notifica trovata.',
+        fallbackTitle: 'Notifica',
+        time: {
+          justNow: 'Proprio ora',
+          minutesAgo_one: '{{count}} minuto fa',
+          minutesAgo_other: '{{count}} minuti fa',
+          hoursAgo_one: '{{count}} ora fa',
+          hoursAgo_other: '{{count}} ore fa',
+          daysAgo_one: '{{count}} giorno fa',
+          daysAgo_other: '{{count}} giorni fa',
+        },
+        toasts: {
+          allMarkedRead: 'Tutte le notifiche sono state segnate come lette',
+        },
+        errors: {
+          failedToMarkAllRead: 'Impossibile segnare tutto come letto',
+          failedToMarkRead: 'Impossibile segnare come letto',
+        },
+      },
+      pharmacyOrderStatus: {
+        title: 'Aggiorna stato ordine',
+        orderId: 'Ordine #{{orderId}}',
+      },
+      pharmacyMore: {
+        avatarFallback: 'P',
       },
       petOwnerPrescription: {
         title: 'Prescrizione',

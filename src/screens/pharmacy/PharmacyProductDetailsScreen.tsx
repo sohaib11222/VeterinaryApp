@@ -13,6 +13,8 @@ import Toast from 'react-native-toast-message';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n/appI18n';
 
 type Route = RouteProp<PharmacyProductsStackParamList, 'PharmacyProductDetails'>;
 
@@ -25,12 +27,13 @@ function extractProduct(payload: unknown): any {
 }
 
 function formatDate(val: string | Date | null | undefined): string {
-  if (!val) return '—';
+  if (!val) return i18n.t('common.na');
   const d = typeof val === 'string' ? new Date(val) : val;
   return isNaN(d.getTime()) ? String(val) : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export function PharmacyProductDetailsScreen() {
+  const { t } = useTranslation();
   const route = useRoute<Route>();
   const navigation = useNavigation<any>();
   const productId = route.params?.productId ?? '';
@@ -45,19 +48,19 @@ export function PharmacyProductDetailsScreen() {
 
   const handleDelete = () => {
     if (!product) return;
-    const name = product?.name ?? 'this product';
-    Alert.alert('Delete product', `Remove "${name}"? This cannot be undone.`, [
-      { text: 'Cancel', style: 'cancel' },
+    const name = product?.name ?? t('pharmacyProductDetails.defaults.product');
+    Alert.alert(t('pharmacyProductDetails.deleteModal.title'), t('pharmacyProductDetails.deleteModal.body', { name }), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           try {
             await deleteMutation.mutateAsync(productId);
-            Toast.show({ type: 'success', text1: 'Product deleted' });
+            Toast.show({ type: 'success', text1: t('pharmacyProductDetails.toasts.productDeleted') });
             navigation.goBack();
           } catch (err) {
-            Toast.show({ type: 'error', text1: 'Failed', text2: getErrorMessage(err, 'Could not delete') });
+            Toast.show({ type: 'error', text1: t('common.failed'), text2: getErrorMessage(err, t('pharmacyProductDetails.errors.couldNotDelete')) });
           }
         },
       },
@@ -74,8 +77,8 @@ export function PharmacyProductDetailsScreen() {
   if (isError || !product) {
     return (
       <ScreenContainer padded>
-        <Text style={styles.errorText}>Product not found.</Text>
-        <Button title="Back" onPress={() => navigation.goBack()} />
+        <Text style={styles.errorText}>{t('pharmacyProductDetails.errors.notFound')}</Text>
+        <Button title={t('common.back')} onPress={() => navigation.goBack()} />
       </ScreenContainer>
     );
   }
@@ -83,7 +86,7 @@ export function PharmacyProductDetailsScreen() {
   const imgUrl = Array.isArray(product?.images) && product.images[0] ? getImageUrl(product.images[0]) : null;
   const displayPrice = Number(product?.discountPrice ?? product?.price ?? 0);
   const originalPrice = product?.discountPrice != null && Number(product?.price) > Number(product?.discountPrice) ? Number(product.price) : null;
-  const createdAt = product?.createdAt ? formatDate(product.createdAt) : '—';
+  const createdAt = product?.createdAt ? formatDate(product.createdAt) : t('common.na');
 
   return (
     <ScreenContainer scroll padded>
@@ -95,13 +98,13 @@ export function PharmacyProductDetailsScreen() {
         )}
         {discountPercent > 0 && (
           <View style={styles.discountBadge}>
-            <Text style={styles.discountText}>{discountPercent}% off</Text>
+            <Text style={styles.discountText}>{t('pharmacyProductDetails.discountOff', { percent: discountPercent })}</Text>
           </View>
         )}
       </View>
 
       <View style={styles.header}>
-        <Text style={styles.productName}>{product?.name ?? '—'}</Text>
+        <Text style={styles.productName}>{product?.name ?? t('common.na')}</Text>
         <View style={styles.priceRow}>
           <Text style={styles.price}>€{displayPrice.toFixed(2)}</Text>
           {originalPrice != null && (
@@ -109,46 +112,48 @@ export function PharmacyProductDetailsScreen() {
           )}
         </View>
         <View style={[styles.activeBadge, product?.isActive === false && styles.activeBadgeInactive]}>
-          <Text style={styles.activeBadgeText}>{product?.isActive !== false ? 'Active' : 'Inactive'}</Text>
+          <Text style={styles.activeBadgeText}>
+            {product?.isActive !== false ? t('pharmacyProductDetails.status.active') : t('pharmacyProductDetails.status.inactive')}
+          </Text>
         </View>
       </View>
 
       <Card style={styles.section}>
-        <Text style={styles.sectionTitle}>Details</Text>
+        <Text style={styles.sectionTitle}>{t('pharmacyProductDetails.sections.details')}</Text>
         <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>SKU</Text>
-          <Text style={styles.detailValue}>{product?.sku ?? '—'}</Text>
+          <Text style={styles.detailLabel}>{t('pharmacyProductDetails.labels.sku')}</Text>
+          <Text style={styles.detailValue}>{product?.sku ?? t('common.na')}</Text>
         </View>
         <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Category</Text>
-          <Text style={styles.detailValue}>{product?.category ?? '—'}</Text>
+          <Text style={styles.detailLabel}>{t('pharmacyProductDetails.labels.category')}</Text>
+          <Text style={styles.detailValue}>{product?.category ?? t('common.na')}</Text>
         </View>
         <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Stock</Text>
-          <Text style={styles.detailValue}>{product?.stock ?? 0} units</Text>
+          <Text style={styles.detailLabel}>{t('pharmacyProductDetails.labels.stock')}</Text>
+          <Text style={styles.detailValue}>{t('pharmacyProductDetails.labels.stockUnits', { count: product?.stock ?? 0 })}</Text>
         </View>
         <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Added</Text>
+          <Text style={styles.detailLabel}>{t('pharmacyProductDetails.labels.added')}</Text>
           <Text style={styles.detailValue}>{createdAt}</Text>
         </View>
       </Card>
 
       {product?.description ? (
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>Description</Text>
+          <Text style={styles.sectionTitle}>{t('pharmacyProductDetails.sections.description')}</Text>
           <Text style={styles.description}>{product.description}</Text>
         </Card>
       ) : null}
 
       <View style={styles.actions}>
         <Button
-          title="Edit product"
+          title={t('pharmacyProductDetails.actions.editProduct')}
           variant="outline"
           onPress={() => navigation.navigate('PharmacyEditProduct', { productId })}
           style={styles.actionBtn}
         />
         <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} disabled={deleteMutation.isPending}>
-          <Text style={styles.deleteBtnText}>Delete product</Text>
+          <Text style={styles.deleteBtnText}>{t('pharmacyProductDetails.actions.deleteProduct')}</Text>
         </TouchableOpacity>
       </View>
     </ScreenContainer>

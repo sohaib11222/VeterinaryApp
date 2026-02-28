@@ -10,6 +10,8 @@ import {
   Platform,
   StatusBar,
   FlatList,
+  SafeAreaView,
+  Dimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
@@ -18,15 +20,18 @@ import { useMyPetStoreSubscription, useMyPetStore } from '../../queries/petStore
 import { useMyProducts } from '../../queries/productQueries';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n/appI18n';
+import { Ionicons } from '@expo/vector-icons';
+import Svg, { G, Path, Rect, Text as SvgText } from 'react-native-svg';
 
 const STATUS_PIPELINE = [
-  { key: 'PENDING', label: 'Pending', color: colors.warning },
-  { key: 'CONFIRMED', label: 'Confirmed', color: colors.info },
-  { key: 'PROCESSING', label: 'Processing', color: colors.primary },
-  { key: 'SHIPPED', label: 'Shipped', color: colors.secondaryDark },
-  { key: 'DELIVERED', label: 'Delivered', color: colors.success },
-  { key: 'CANCELLED', label: 'Cancelled', color: colors.error },
+  { key: 'PENDING', color: colors.warning },
+  { key: 'CONFIRMED', color: colors.info },
+  { key: 'PROCESSING', color: colors.primary },
+  { key: 'SHIPPED', color: colors.secondaryDark },
+  { key: 'DELIVERED', color: colors.success },
+  { key: 'CANCELLED', color: colors.error },
 ];
 
 function extractOrders(payload: unknown): unknown[] {
@@ -44,11 +49,16 @@ function extractTotal(payload: unknown): number {
 }
 
 export function PharmacyDashboardScreen() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const navigation = useNavigation<any>();
   const isParapharmacy = user?.role === 'PARAPHARMACY';
+  const locale = i18n.language?.startsWith('it') ? 'it-IT' : 'en-GB';
 
   const [refreshing, setRefreshing] = useState(false);
+  const [chartsWidth, setChartsWidth] = useState<number>(
+    Math.min(Dimensions.get('window').width - 64, 420)
+  );
   const recentOrdersQuery = useOrders({ page: 1, limit: 100 });
   const statusPending = useOrders({ status: 'PENDING', page: 1, limit: 1 });
   const statusConfirmed = useOrders({ status: 'CONFIRMED', page: 1, limit: 1 });
@@ -102,7 +112,7 @@ export function PharmacyDashboardScreen() {
   }, [petStore]);
   const showProfileBanner = !!petStore && !isProfileComplete;
 
-  const storeName = user?.name ?? (isParapharmacy ? 'Parapharmacy' : 'Pharmacy');
+  const storeName = user?.name ?? (isParapharmacy ? t('more.pharmacy.parapharmacy') : t('more.pharmacy.pharmacy'));
 
   const revenueLast7Days = useMemo(() => {
     const dayBuckets: { key: string; label: string; total: number }[] = [];
@@ -111,7 +121,7 @@ export function PharmacyDashboardScreen() {
       d.setDate(d.getDate() - i);
       dayBuckets.push({
         key: `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`,
-        label: d.toLocaleDateString('en-GB', { weekday: 'short' }),
+        label: d.toLocaleDateString(locale, { weekday: 'short' }),
         total: 0,
       });
     }
@@ -125,7 +135,7 @@ export function PharmacyDashboardScreen() {
       if (idx !== undefined) dayBuckets[idx].total += Number(o?.total) ?? 0;
     });
     return dayBuckets;
-  }, [orders]);
+  }, [orders, locale]);
 
   const statusBreakdown = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -133,8 +143,115 @@ export function PharmacyDashboardScreen() {
       const s = String(o?.status ?? 'UNKNOWN').toUpperCase();
       counts[s] = (counts[s] ?? 0) + 1;
     });
-    return STATUS_PIPELINE.map((s) => ({ ...s, count: counts[s.key] ?? 0 })).filter((s) => s.count > 0);
-  }, [orders]);
+    const items = STATUS_PIPELINE
+      .map((s) => ({
+        ...s,
+        label: t(`pharmacyOrders.statusLabels.${s.key}`, { defaultValue: s.key }),
+        count: counts[s.key] ?? 0,
+      }))
+      .filter((s) => s.count > 0);
+    const total = items.reduce((sum, it) => sum + it.count, 0);
+    return { items, total };
+  }, [orders, t]);
+
+  const renderRevenueChart = () => {
+    const width = Math.max(240, chartsWidth);
+    const height = 170;
+    const paddingX = 12;
+    const paddingTop = 10;
+    const paddingBottom = 28;
+    const chartHeight = height - paddingTop - paddingBottom;
+    const values = revenueLast7Days.map((d) => d.total);
+    const maxValue = Math.max(...values, 1);
+    const barCount = revenueLast7Days.length;
+    const barSpace = (width - paddingX * 2) / barCount;
+    const barWidth = Math.max(10, Math.min(26, barSpace * 0.55));
+
+    return (
+      <Svg width={width} height={height}>
+        {revenueLast7Days.map((d, idx) => {
+          const barH = (d.total / maxValue) * chartHeight;
+          const x = paddingX + idx * barSpace + (barSpace - barWidth) / 2;
+          const y = paddingTop + (chartHeight - barH);
+          return (
+            <G key={d.key}>
+              <Rect x={x} y={y} width={barWidth} height={barH} rx={6} fill={colors.primary} opacity={0.9} />
+              <SvgText
+                x={paddingX + idx * barSpace + barSpace / 2}
+                y={height - 10}
+                fontSize={11}
+                fill={colors.textSecondary}
+                textAnchor="middle"
+              >
+                {d.label}
+              </SvgText>
+            </G>
+          );
+        })}
+      </Svg>
+    );
+  };
+
+  const polarToCartesian = (cx: number, cy: number, r: number, angle: number) => {
+    const a = ((angle - 90) * Math.PI) / 180.0;
+    return {
+      x: cx + r * Math.cos(a),
+      y: cy + r * Math.sin(a),
+    };
+  };
+
+  const describeArc = (
+    cx: number,
+    cy: number,
+    rOuter: number,
+    rInner: number,
+    startAngle: number,
+    endAngle: number
+  ) => {
+    const startOuter = polarToCartesian(cx, cy, rOuter, endAngle);
+    const endOuter = polarToCartesian(cx, cy, rOuter, startAngle);
+    const startInner = polarToCartesian(cx, cy, rInner, startAngle);
+    const endInner = polarToCartesian(cx, cy, rInner, endAngle);
+    const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
+
+    return [
+      `M ${startOuter.x} ${startOuter.y}`,
+      `A ${rOuter} ${rOuter} 0 ${largeArcFlag} 0 ${endOuter.x} ${endOuter.y}`,
+      `L ${startInner.x} ${startInner.y}`,
+      `A ${rInner} ${rInner} 0 ${largeArcFlag} 1 ${endInner.x} ${endInner.y}`,
+      'Z',
+    ].join(' ');
+  };
+
+  const renderStatusChart = () => {
+    const size = 170;
+    const cx = size / 2;
+    const cy = size / 2;
+    const rOuter = 72;
+    const rInner = 46;
+    const total = Math.max(statusBreakdown.total, 1);
+
+    let startAngle = 0;
+
+    return (
+      <Svg width={size} height={size}>
+        {statusBreakdown.items.map((it) => {
+          const sweep = (it.count / total) * 360;
+          const endAngle = startAngle + sweep;
+          const path = describeArc(cx, cy, rOuter, rInner, startAngle, endAngle);
+          const el = <Path key={it.key} d={path} fill={it.color} opacity={0.9} />;
+          startAngle = endAngle;
+          return el;
+        })}
+        <SvgText x={cx} y={cy - 2} fontSize={18} fill={colors.text} fontWeight="700" textAnchor="middle">
+          {statusBreakdown.total}
+        </SvgText>
+        <SvgText x={cx} y={cy + 18} fontSize={11} fill={colors.textSecondary} textAnchor="middle">
+          {t('pharmacyDashboard.charts.totalOrders')}
+        </SvgText>
+      </Svg>
+    );
+  };
 
   const latestCustomers = useMemo(() => {
     const seen = new Set<string>();
@@ -142,9 +259,9 @@ export function PharmacyDashboardScreen() {
       .slice()
       .sort((a, b) => new Date(b?.createdAt ?? 0).getTime() - new Date(a?.createdAt ?? 0).getTime());
     const formatDate = (d: string | Date | null | undefined) => {
-      if (!d) return '—';
+      if (!d) return t('common.na');
       const date = typeof d === 'string' ? new Date(d) : d;
-      return isNaN(date.getTime()) ? String(d) : date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      return isNaN(date.getTime()) ? String(d) : date.toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' });
     };
     return list
       .filter((o) => {
@@ -158,12 +275,12 @@ export function PharmacyDashboardScreen() {
         const c = o?.petOwnerId ?? o?.petOwner ?? {};
         return {
           id: o?._id ?? o?.id,
-          name: c?.name ?? '—',
-          email: c?.email ?? '—',
+          name: c?.name ?? t('common.na'),
+          email: c?.email ?? t('common.na'),
           dateAdded: formatDate(o?.createdAt),
         };
       });
-  }, [orders]);
+  }, [orders, locale, t]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -197,7 +314,7 @@ export function PharmacyDashboardScreen() {
     () => [
       {
         id: '1',
-        title: 'Revenue today',
+        title: t('pharmacyDashboard.stats.revenueToday'),
         value: `€${revenueToday.toFixed(2)}`,
         icon: '💰',
         iconColor: colors.primary,
@@ -205,7 +322,7 @@ export function PharmacyDashboardScreen() {
       },
       {
         id: '2',
-        title: 'Total orders',
+        title: t('pharmacyDashboard.stats.totalOrders'),
         value: String(totalOrders),
         icon: '📦',
         iconColor: colors.success,
@@ -213,7 +330,7 @@ export function PharmacyDashboardScreen() {
       },
       {
         id: '3',
-        title: 'Pending orders',
+        title: t('pharmacyDashboard.stats.pendingOrders'),
         value: String(pendingCount),
         icon: '⏳',
         iconColor: colors.warning,
@@ -221,32 +338,32 @@ export function PharmacyDashboardScreen() {
       },
       {
         id: '4',
-        title: 'Products',
+        title: t('pharmacyDashboard.stats.products'),
         value: String(productsData.total),
         icon: '🛍',
         iconColor: colors.info,
         progress: productsData.total > 0 ? 100 : 0,
       },
     ],
-    [revenueToday, totalOrders, pendingCount, productsData.total]
+    [revenueToday, totalOrders, pendingCount, productsData.total, t]
   );
 
   return (
-    <View style={styles.flex}>
+    <SafeAreaView style={styles.flex}>
       <ScrollView
         style={styles.scroll}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
       >
         <View style={styles.header}>
-          <Text style={styles.welcomeTitle}>Welcome, {storeName}</Text>
-          <Text style={styles.breadcrumb}>Pharmacy Dashboard</Text>
+          <Text style={styles.welcomeTitle}>{t('pharmacyDashboard.header.welcome', { storeName })}</Text>
+          <Text style={styles.breadcrumb}>{t('pharmacyDashboard.header.title')}</Text>
         </View>
 
         {showProfileBanner && (
           <TouchableOpacity style={styles.profileBanner} onPress={() => navMore('PharmacyProfile')} activeOpacity={0.8}>
             <Text style={styles.profileBannerIcon}>⚠</Text>
-            <Text style={styles.profileBannerText}>Complete your store profile</Text>
+            <Text style={styles.profileBannerText}>{t('pharmacyDashboard.banners.completeProfile')}</Text>
             <Text style={styles.profileBannerChevron}>›</Text>
           </TouchableOpacity>
         )}
@@ -255,10 +372,10 @@ export function PharmacyDashboardScreen() {
           <View style={styles.subscriptionBanner}>
             <View style={styles.subscriptionBannerRow}>
               <Text style={styles.subscriptionBannerIcon}>💳</Text>
-              <Text style={styles.subscriptionBannerText}>Subscription required to manage products.</Text>
+              <Text style={styles.subscriptionBannerText}>{t('pharmacyDashboard.banners.subscriptionRequired')}</Text>
             </View>
             <TouchableOpacity style={styles.subscriptionBtn} onPress={() => navMore('PharmacySubscription')}>
-              <Text style={styles.subscriptionBtnText}>View plans</Text>
+              <Text style={styles.subscriptionBtnText}>{t('pharmacyDashboard.actions.viewPlans')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -266,14 +383,14 @@ export function PharmacyDashboardScreen() {
         {!isParapharmacy && mySubQuery.isLoading && (
           <View style={styles.pendingBanner}>
             <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={styles.pendingBannerText}>Loading subscription…</Text>
+            <Text style={styles.pendingBannerText}>{t('pharmacyDashboard.loading.subscription')}</Text>
           </View>
         )}
 
         {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Loading dashboard…</Text>
+            <Text style={styles.loadingText}>{t('pharmacyDashboard.loading.dashboard')}</Text>
           </View>
         ) : (
           <>
@@ -307,41 +424,55 @@ export function PharmacyDashboardScreen() {
               />
             </View>
 
-            <View style={styles.chartsSection}>
+            <View
+              style={styles.chartsSection}
+              onLayout={(e) => {
+                const w = e.nativeEvent.layout.width;
+                if (w && Number.isFinite(w)) {
+                  setChartsWidth(Math.min(w - 32, 520));
+                }
+              }}
+            >
               <View style={styles.chartCard}>
-                <Text style={styles.chartTitle}>Revenue (last 7 days)</Text>
+                <View style={styles.chartHeader}>
+                  <Text style={styles.chartTitle}>{t('pharmacyDashboard.charts.revenueLast7Days')}</Text>
+                </View>
                 {revenueLast7Days.some((d) => d.total > 0) ? (
-                  <View style={styles.chartBody}>
-                    {revenueLast7Days.map((d) => (
-                      <View key={d.key} style={styles.revenueRow}>
-                        <Text style={styles.revenueLabel}>{d.label}</Text>
-                        <Text style={styles.revenueValue}>€{d.total.toFixed(2)}</Text>
-                      </View>
-                    ))}
+                  <View style={styles.chartBodySvg}>
+                    {renderRevenueChart()}
+                    <Text style={styles.chartHintText}>{t('pharmacyDashboard.charts.last7Days')}</Text>
                   </View>
                 ) : (
                   <View style={styles.chartPlaceholder}>
-                    <Text style={styles.chartPlaceholderIcon}>📊</Text>
-                    <Text style={styles.chartPlaceholderText}>No paid orders in the last 7 days</Text>
+                    <Ionicons name="bar-chart" size={48} color={colors.textLight} />
+                    <Text style={styles.chartPlaceholderText}>{t('pharmacyDashboard.charts.noPaidOrdersLast7Days')}</Text>
                   </View>
                 )}
               </View>
+
               <View style={styles.chartCard}>
-                <Text style={styles.chartTitle}>Orders by status</Text>
-                {statusBreakdown.length > 0 ? (
-                  <View style={styles.chartBody}>
-                    {statusBreakdown.map((s) => (
-                      <View key={s.key} style={styles.legendRow}>
-                        <View style={[styles.legendDot, { backgroundColor: s.color }]} />
-                        <Text style={styles.legendLabel}>{s.label}</Text>
-                        <Text style={styles.legendValue}>{s.count}</Text>
-                      </View>
-                    ))}
+                <View style={styles.chartHeader}>
+                  <Text style={styles.chartTitle}>{t('pharmacyDashboard.charts.ordersByStatus')}</Text>
+                </View>
+                {statusBreakdown.total > 0 ? (
+                  <View style={styles.statusChartBody}>
+                    {renderStatusChart()}
+                    <View style={styles.statusLegend}>
+                      {statusBreakdown.items.slice(0, 6).map((s) => (
+                        <View key={s.key} style={styles.legendRow}>
+                          <View style={[styles.legendDot, { backgroundColor: s.color }]} />
+                          <Text style={styles.legendLabel} numberOfLines={1}>
+                            {s.label}
+                          </Text>
+                          <Text style={styles.legendValue}>{s.count}</Text>
+                        </View>
+                      ))}
+                    </View>
                   </View>
                 ) : (
                   <View style={styles.chartPlaceholder}>
-                    <Text style={styles.chartPlaceholderIcon}>📦</Text>
-                    <Text style={styles.chartPlaceholderText}>No orders yet</Text>
+                    <Ionicons name="trending-up" size={48} color={colors.textLight} />
+                    <Text style={styles.chartPlaceholderText}>{t('pharmacyDashboard.charts.noOrdersYet')}</Text>
                   </View>
                 )}
               </View>
@@ -349,19 +480,19 @@ export function PharmacyDashboardScreen() {
 
             <View style={styles.customersSection}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Latest customers</Text>
+                <Text style={styles.sectionTitle}>{t('pharmacyDashboard.latestCustomers.title')}</Text>
                 <TouchableOpacity onPress={() => navOrders()}>
-                  <Text style={styles.viewAllText}>View all</Text>
+                  <Text style={styles.viewAllText}>{t('pharmacyDashboard.latestCustomers.viewAll')}</Text>
                 </TouchableOpacity>
               </View>
               <View style={styles.customersCard}>
                 <View style={styles.tableHeader}>
-                  <Text style={styles.tableHeaderCell}>Name</Text>
-                  <Text style={styles.tableHeaderCell}>Email</Text>
-                  <Text style={styles.tableHeaderCell}>Date</Text>
+                  <Text style={styles.tableHeaderCell}>{t('pharmacyDashboard.latestCustomers.table.name')}</Text>
+                  <Text style={styles.tableHeaderCell}>{t('pharmacyDashboard.latestCustomers.table.email')}</Text>
+                  <Text style={styles.tableHeaderCell}>{t('pharmacyDashboard.latestCustomers.table.date')}</Text>
                 </View>
                 {latestCustomers.length === 0 ? (
-                  <Text style={styles.emptyTableText}>No orders yet.</Text>
+                  <Text style={styles.emptyTableText}>{t('pharmacyDashboard.latestCustomers.empty')}</Text>
                 ) : (
                   latestCustomers.map((c) => (
                     <View key={c.id} style={styles.customerRow}>
@@ -374,36 +505,11 @@ export function PharmacyDashboardScreen() {
               </View>
             </View>
 
-            <View style={styles.quickActionsSection}>
-              <Text style={styles.sectionTitle}>Quick actions</Text>
-              <View style={styles.quickActionsRow}>
-                <TouchableOpacity style={styles.actionBtn} onPress={() => navOrders()}>
-                  <Text style={styles.actionBtnText}>Orders</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSecondary]} onPress={navProducts}>
-                  <Text style={styles.actionBtnTextSecondary}>Products</Text>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.quickActionsRow}>
-                <TouchableOpacity style={[styles.actionBtn, styles.actionBtnOutline]} onPress={() => navMore('PharmacyPayouts')}>
-                  <Text style={styles.actionBtnTextOutline}>Payouts</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.actionBtn, styles.actionBtnOutline]} onPress={() => navMore('PharmacyProfile')}>
-                  <Text style={styles.actionBtnTextOutline}>Profile</Text>
-                </TouchableOpacity>
-              </View>
-              {unpaidCount > 0 && (
-                <View style={styles.alertBox}>
-                  <Text style={styles.alertTitle}>Attention needed</Text>
-                  <Text style={styles.alertText}>Unpaid orders in recent list: {unpaidCount}</Text>
-                </View>
-              )}
-            </View>
             <View style={styles.bottomSpacer} />
           </>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -486,17 +592,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  chartHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   chartTitle: { fontSize: 16, fontWeight: '600', color: colors.text, marginBottom: spacing.sm },
-  chartBody: { backgroundColor: colors.backgroundSecondary, borderRadius: 8, padding: spacing.sm },
-  revenueRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
-  revenueLabel: { fontSize: 13, color: colors.textSecondary },
-  revenueValue: { fontSize: 13, fontWeight: '600', color: colors.text },
+  chartBodySvg: { backgroundColor: colors.backgroundSecondary, borderRadius: 8, padding: spacing.sm, alignItems: 'center' },
+  chartHintText: { marginTop: spacing.xs, fontSize: 12, color: colors.textSecondary },
+  statusChartBody: { flexDirection: 'row', gap: spacing.md, alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.backgroundSecondary, borderRadius: 8, padding: spacing.sm },
+  statusLegend: { flex: 1, paddingLeft: spacing.sm },
   legendRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
   legendDot: { width: 10, height: 10, borderRadius: 5, marginRight: 8 },
   legendLabel: { flex: 1, fontSize: 13, color: colors.text },
   legendValue: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
   chartPlaceholder: { paddingVertical: spacing.xl, alignItems: 'center', backgroundColor: colors.backgroundSecondary, borderRadius: 8 },
-  chartPlaceholderIcon: { fontSize: 32, marginBottom: 4 },
   chartPlaceholderText: { fontSize: 13, color: colors.textLight },
   customersSection: { padding: spacing.lg, paddingTop: 0 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
@@ -516,16 +622,5 @@ const styles = StyleSheet.create({
   customerDetail: { flex: 1, fontSize: 12, color: colors.textSecondary },
   customerDate: { fontSize: 12, color: colors.textSecondary },
   emptyTableText: { paddingVertical: spacing.lg, textAlign: 'center', fontSize: 14, color: colors.textSecondary },
-  quickActionsSection: { padding: spacing.lg },
-  quickActionsRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
-  actionBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center' },
-  actionBtnText: { fontSize: 15, fontWeight: '600', color: colors.textInverse },
-  actionBtnSecondary: { backgroundColor: colors.backgroundTertiary },
-  actionBtnTextSecondary: { fontSize: 15, fontWeight: '600', color: colors.text },
-  actionBtnOutline: { flex: 1, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.primary, alignItems: 'center' },
-  actionBtnTextOutline: { fontSize: 15, fontWeight: '600', color: colors.primary },
-  alertBox: { marginTop: spacing.md, padding: spacing.sm, backgroundColor: colors.infoLight, borderRadius: 8 },
-  alertTitle: { ...typography.body, fontWeight: '600', marginBottom: 2 },
-  alertText: { ...typography.caption, color: colors.textSecondary },
   bottomSpacer: { height: spacing.xl * 2 },
 });

@@ -22,10 +22,12 @@ import Toast from 'react-native-toast-message';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { useTranslation } from 'react-i18next';
 
 type Nav = NativeStackNavigationProp<PendingStackParamList, 'PharmacyPhoneVerification'>;
 
 export function PharmacyPhoneVerificationScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const { user, updateUser } = useAuth();
   const [phone, setPhone] = useState(user?.phone ?? '');
@@ -39,9 +41,9 @@ export function PharmacyPhoneVerificationScreen() {
     setSending(true);
     try {
       await sendPhoneOtpApi(phoneTrimmed ? { phone: phoneTrimmed } : {});
-      Toast.show({ type: 'success', text1: 'Code sent', text2: 'Verification code sent to your phone.' });
+      Toast.show({ type: 'success', text1: t('authPhoneVerification.toasts.codeSentTitle'), text2: t('authPhoneVerification.toasts.codeSentBody') });
     } catch (err: unknown) {
-      Toast.show({ type: 'error', text1: 'Failed', text2: getErrorMessage(err, 'Failed to send verification code.') });
+      Toast.show({ type: 'error', text1: t('common.failed'), text2: getErrorMessage(err, t('authPhoneVerification.errors.failedToSendCode')) });
     } finally {
       setSending(false);
     }
@@ -49,7 +51,7 @@ export function PharmacyPhoneVerificationScreen() {
 
   const handleVerify = async () => {
     if (!code.trim()) {
-      Toast.show({ type: 'error', text1: 'Code required', text2: 'Please enter the verification code.' });
+      Toast.show({ type: 'error', text1: t('authPhoneVerification.validation.codeRequiredTitle'), text2: t('authPhoneVerification.validation.codeRequiredBody') });
       return;
     }
     setVerifying(true);
@@ -64,10 +66,10 @@ export function PharmacyPhoneVerificationScreen() {
       } else {
         updateUser({ isPhoneVerified: true, phone: phoneTrimmed || user?.phone });
       }
-      Toast.show({ type: 'success', text1: 'Verified', text2: 'Phone verified successfully.' });
+      Toast.show({ type: 'success', text1: t('authPhoneVerification.toasts.verifiedTitle'), text2: t('authPhoneVerification.toasts.verifiedBody') });
       navigation.replace('PetStoreVerificationUpload');
     } catch (err: unknown) {
-      Toast.show({ type: 'error', text1: 'Verification failed', text2: getErrorMessage(err, 'Invalid verification code.') });
+      Toast.show({ type: 'error', text1: t('authPhoneVerification.errors.verificationFailedTitle'), text2: getErrorMessage(err, t('authPhoneVerification.errors.invalidVerificationCode')) });
     } finally {
       setVerifying(false);
     }
@@ -87,34 +89,34 @@ export function PharmacyPhoneVerificationScreen() {
         >
           <View style={styles.header}>
             <Text style={styles.logoIcon}>🐾</Text>
-            <Text style={styles.title}>Verify Phone Number</Text>
-            <Text style={styles.subtitle}>Enter the code we sent to your phone to continue.</Text>
+            <Text style={styles.title}>{t('authPhoneVerification.title')}</Text>
+            <Text style={styles.subtitle}>{t('authPhoneVerification.subtitle')}</Text>
           </View>
 
           <View style={styles.form}>
             <Input
-              label="Phone (E.164)"
+              label={t('authPhoneVerification.fields.phone.label')}
               value={phone}
               onChangeText={setPhone}
-              placeholder="+1234567890"
+              placeholder={t('authPhoneVerification.fields.phone.placeholder')}
               keyboardType="phone-pad"
               autoCapitalize="none"
               editable={!verifying}
             />
-            <Text style={styles.hint}>Example: +393331234567</Text>
+            <Text style={styles.hint}>{t('authPhoneVerification.fields.phone.hint')}</Text>
 
             <Input
-              label="Verification Code"
+              label={t('authPhoneVerification.fields.code.label')}
               value={code}
-              onChangeText={(t) => setCode(t.replace(/\D/g, ''))}
-              placeholder="Enter code"
+              onChangeText={(t2) => setCode(t2.replace(/\D/g, ''))}
+              placeholder={t('authPhoneVerification.fields.code.placeholder')}
               keyboardType="numeric"
               maxLength={10}
               editable={!verifying}
             />
 
             <Button
-              title={verifying ? 'Verifying...' : 'Verify & Continue'}
+              title={verifying ? t('authPhoneVerification.actions.verifying') : t('authPhoneVerification.actions.verifyContinue')}
               onPress={handleVerify}
               disabled={verifying}
               loading={verifying}
@@ -122,7 +124,7 @@ export function PharmacyPhoneVerificationScreen() {
             />
 
             <TouchableOpacity onPress={handleResend} disabled={sending} style={styles.resendWrap}>
-              {sending ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={styles.resendText}>Resend code</Text>}
+              {sending ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={styles.resendText}>{t('authPhoneVerification.actions.resendCode')}</Text>}
             </TouchableOpacity>
           </View>
         </ScrollView>

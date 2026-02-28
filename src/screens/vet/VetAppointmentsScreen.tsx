@@ -82,9 +82,19 @@ export function VetAppointmentsScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
+  const setHeaderSearchConfig = headerSearch?.setConfig;
+  const setHeaderRightAction = headerRight?.setRightAction;
+
   const { user } = useAuth();
   const currentUserId = (user as { id?: string })?.id ?? (user as { _id?: string })?._id ?? '';
-  const { data: appointmentsResponse, isLoading } = useAppointments({ limit: 50 });
+  const {
+    data: appointmentsResponse,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+  } = useAppointments({ limit: 50 });
   const getOrCreateConversation = useGetOrCreateConversation();
 
   const appointments = useMemo(
@@ -132,12 +142,12 @@ export function VetAppointmentsScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
-      headerSearch?.setConfig({
+      setHeaderSearchConfig?.({
         placeholder: t('appointments.searchPlaceholderVet'),
         value: searchQuery,
         onChangeText: setSearchQuery,
       });
-      headerRight?.setRightAction(
+      setHeaderRightAction?.(
         <View style={headerStyles.actions}>
           <TouchableOpacity
             style={headerStyles.iconBtn}
@@ -163,10 +173,10 @@ export function VetAppointmentsScreen() {
         </View>
       );
       return () => {
-        headerSearch?.setConfig(null);
-        headerRight?.setRightAction(null);
+        setHeaderSearchConfig?.(null);
+        setHeaderRightAction?.(null);
       };
-    }, [searchQuery, stackNav, headerSearch, headerRight, pendingRequestCount, t])
+    }, [searchQuery, stackNav, pendingRequestCount, t, setHeaderSearchConfig, setHeaderRightAction])
   );
 
   const tabs: { key: Tab; label: string }[] = [
@@ -313,6 +323,24 @@ export function VetAppointmentsScreen() {
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>{t('appointments.loading')}</Text>
         </View>
+      ) : isError ? (
+        <View style={styles.loading}>
+          <Text style={styles.errorTitle}>{t('common.error')}</Text>
+          <Text style={styles.errorText}>
+            {(error as { message?: string })?.message ?? t('common.somethingWentWrong')}
+          </Text>
+          <TouchableOpacity
+            style={styles.retryBtn}
+            onPress={() => refetch()}
+            disabled={isFetching}
+          >
+            {isFetching ? (
+              <ActivityIndicator color={colors.textInverse} />
+            ) : (
+              <Text style={styles.retryBtnText}>{t('common.retry')}</Text>
+            )}
+          </TouchableOpacity>
+        </View>
       ) : (
         <FlatList
           data={list}
@@ -352,6 +380,18 @@ const styles = StyleSheet.create({
   tabTextActive: { color: colors.primary, fontWeight: '600' },
   loading: { paddingVertical: spacing.xxl, alignItems: 'center', gap: spacing.sm },
   loadingText: { ...typography.bodySmall, color: colors.textSecondary },
+  errorTitle: { ...typography.h3, color: colors.text, textAlign: 'center' },
+  errorText: { ...typography.bodySmall, color: colors.textSecondary, textAlign: 'center' },
+  retryBtn: {
+    marginTop: spacing.sm,
+    paddingVertical: 10,
+    paddingHorizontal: 22,
+    backgroundColor: colors.primary,
+    borderRadius: 22,
+    minWidth: 140,
+    alignItems: 'center',
+  },
+  retryBtnText: { ...typography.bodySmall, color: colors.textInverse, fontWeight: '700' },
   listContent: { paddingBottom: spacing.xxl },
   card: { marginBottom: spacing.sm },
   topRow: {

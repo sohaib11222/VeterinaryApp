@@ -24,6 +24,8 @@ import Toast from 'react-native-toast-message';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n/appI18n';
 
 type Route = RouteProp<PharmacyOrdersStackParamList, 'PharmacyOrderDetails'>;
 
@@ -52,12 +54,16 @@ function getStatusColor(status: string) {
 }
 
 function formatDate(val: string | Date | null | undefined): string {
-  if (!val) return '—';
+  if (!val) return i18n.t('common.na');
   const d = typeof val === 'string' ? new Date(val) : val;
-  return isNaN(d.getTime()) ? String(val) : d.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const locale = i18n.language?.startsWith('it') ? 'it-IT' : 'en-GB';
+  return isNaN(d.getTime())
+    ? String(val)
+    : d.toLocaleString(locale, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 export function PharmacyOrderDetailsScreen() {
+  const { t } = useTranslation();
   const route = useRoute<Route>();
   const navigation = useNavigation<any>();
   const orderId = route.params?.orderId ?? '';
@@ -69,12 +75,19 @@ export function PharmacyOrderDetailsScreen() {
   const [showShippingModal, setShowShippingModal] = useState(false);
   const [shippingFee, setShippingFee] = useState('');
 
-  const isPaid = order && String(order?.paymentStatus ?? '').toUpperCase() === 'PAID';
+  const paymentStatusCode = String(order?.paymentStatus ?? '').toUpperCase();
+  const isPaid = order && paymentStatusCode === 'PAID';
   const shippingSet = order && order.shipping != null && order.shipping !== undefined;
   const subtotal = order?.subtotal ?? order?.initialTotal ?? 0;
   const shipping = order?.shipping ?? 0;
   const total = order?.total ?? order?.finalTotal ?? (subtotal + shipping);
   const currentStatus = order?.status ?? '';
+
+  const statusLabel = (code: string) =>
+    code ? t(`pharmacyOrders.statusLabels.${code}`, { defaultValue: code }) : t('common.na');
+
+  const paymentLabel = (code: string) =>
+    code ? t(`pharmacyOrders.paymentLabels.${code}`, { defaultValue: code }) : t('common.na');
 
   const canChangeStatusTo = (s: string) => {
     if (isPaid) return true;
@@ -84,24 +97,24 @@ export function PharmacyOrderDetailsScreen() {
   const onStatusChange = async (newStatus: string) => {
     try {
       await updateStatus.mutateAsync({ orderId, data: { status: newStatus } });
-      Toast.show({ type: 'success', text1: 'Status updated' });
+      Toast.show({ type: 'success', text1: t('pharmacyOrderDetails.toasts.statusUpdated') });
     } catch (err) {
-      Toast.show({ type: 'error', text1: 'Failed', text2: getErrorMessage(err, 'Could not update status') });
+      Toast.show({ type: 'error', text1: t('common.failed'), text2: getErrorMessage(err, t('pharmacyOrderDetails.errors.couldNotUpdateStatus')) });
     }
   };
 
   const onSaveShipping = async () => {
     const n = parseFloat(shippingFee);
     if (!Number.isFinite(n) || n < 0) {
-      Toast.show({ type: 'error', text1: 'Enter a valid shipping fee (≥ 0)' });
+      Toast.show({ type: 'error', text1: t('pharmacyOrderDetails.validation.invalidShippingFee') });
       return;
     }
     try {
       await updateShipping.mutateAsync({ orderId, data: { shippingFee: n } });
-      Toast.show({ type: 'success', text1: 'Shipping fee updated' });
+      Toast.show({ type: 'success', text1: t('pharmacyOrderDetails.toasts.shippingFeeUpdated') });
       setShowShippingModal(false);
     } catch (err) {
-      Toast.show({ type: 'error', text1: 'Failed', text2: getErrorMessage(err, 'Could not update shipping fee') });
+      Toast.show({ type: 'error', text1: t('common.failed'), text2: getErrorMessage(err, t('pharmacyOrderDetails.errors.couldNotUpdateShippingFee')) });
     }
   };
 
@@ -116,16 +129,16 @@ export function PharmacyOrderDetailsScreen() {
     const errMsg = error?.message;
     return (
       <ScreenContainer padded>
-        <Text style={styles.errorText}>{errMsg ?? 'Order not found.'}</Text>
-        <Button title="Back" onPress={() => navigation.goBack()} />
+        <Text style={styles.errorText}>{errMsg ?? t('pharmacyOrderDetails.errors.notFound')}</Text>
+        <Button title={t('common.back')} onPress={() => navigation.goBack()} />
       </ScreenContainer>
     );
   }
 
   const customer = order?.petOwnerId ?? order?.petOwner ?? {};
-  const customerName = customer?.name ?? '—';
-  const customerEmail = customer?.email ?? '—';
-  const customerPhone = customer?.phone ?? '—';
+  const customerName = customer?.name ?? t('common.na');
+  const customerEmail = customer?.email ?? t('common.na');
+  const customerPhone = customer?.phone ?? t('common.na');
   const shippingAddress = order?.shippingAddress ?? {};
   const items = Array.isArray(order?.items) ? order.items : [];
   const orderNumber = order?.orderNumber ?? order?._id ?? orderId;
@@ -138,28 +151,29 @@ export function PharmacyOrderDetailsScreen() {
       <View style={styles.headerCard}>
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.label}>Order number</Text>
+            <Text style={styles.label}>{t('pharmacyOrderDetails.labels.orderNumber')}</Text>
             <Text style={styles.orderNumber}>#{orderNumber}</Text>
-            <Text style={styles.orderDate}>Order date: {createdAt}</Text>
+            <Text style={styles.orderDate}>{t('pharmacyOrderDetails.labels.orderDate', { createdAt })}</Text>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: getStatusColor(currentStatus) + '25' }]}>
-            <Text style={[styles.statusText, { color: getStatusColor(currentStatus) }]}>{currentStatus}</Text>
+            <Text style={[styles.statusText, { color: getStatusColor(currentStatus) }]}>{statusLabel(currentStatus)}</Text>
           </View>
         </View>
         <View style={styles.paymentRow}>
-          <Text style={styles.paymentLabel}>Payment</Text>
+          <Text style={styles.paymentLabel}>{t('pharmacyOrderDetails.labels.payment')}</Text>
           <View style={[styles.paymentBadge, isPaid ? styles.paymentPaid : styles.paymentPending]}>
-            <Text style={[styles.paymentBadgeText, isPaid ? styles.paymentPaidText : styles.paymentPendingText]}>{order?.paymentStatus ?? '—'}</Text>
+            <Text style={[styles.paymentBadgeText, isPaid ? styles.paymentPaidText : styles.paymentPendingText]}>{paymentLabel(paymentStatusCode || '')}</Text>
           </View>
         </View>
       </View>
 
       <Card style={styles.section}>
-        <Text style={styles.sectionTitle}>Customer information</Text>
+        <Text style={styles.sectionTitle}>{t('pharmacyOrderDetails.labels.customerInformation')}</Text>
         <View style={styles.infoRow}>
           <Text style={styles.infoIcon}>👤</Text>
           <Text style={styles.infoText}>{customerName}</Text>
         </View>
+
         <View style={styles.infoRow}>
           <Text style={styles.infoIcon}>✉</Text>
           <Text style={styles.infoText}>{customerEmail}</Text>
@@ -172,35 +186,37 @@ export function PharmacyOrderDetailsScreen() {
 
       {shippingAddress && (shippingAddress.line1 || shippingAddress.city) && (
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>Shipping address</Text>
+          <Text style={styles.sectionTitle}>{t('pharmacyOrderDetails.labels.shippingAddress')}</Text>
           {shippingAddress.line1 ? <Text style={styles.addressLine}>{shippingAddress.line1}</Text> : null}
           {shippingAddress.line2 ? <Text style={styles.addressLine}>{shippingAddress.line2}</Text> : null}
           <Text style={styles.addressLine}>
             {[shippingAddress.city, shippingAddress.state, shippingAddress.zip].filter(Boolean).join(', ')}
           </Text>
+
           {shippingAddress.country ? <Text style={styles.addressLine}>{shippingAddress.country}</Text> : null}
         </Card>
       )}
 
       <Card style={styles.section}>
-        <Text style={styles.sectionTitle}>Order items ({items.length})</Text>
+        <Text style={styles.sectionTitle}>{t('pharmacyOrderDetails.labels.orderItems', { count: items.length })}</Text>
         {items.map((item: any, idx: number) => {
           const itemId = item?._id ?? item?.id ?? idx;
           const product = item?.productId;
-          const name = product?.name ?? item?.name ?? '—';
+          const name = product?.name ?? item?.name ?? t('common.na');
           const qty = item?.quantity ?? 0;
           const price = item?.price ?? 0;
           const itemTotal = item?.total ?? item?.subtotal ?? (qty * price);
           const imgUrl = Array.isArray(product?.images) && product.images[0] ? getImageUrl(product.images[0]) : null;
           return (
+
             <View key={itemId} style={styles.itemRow}>
               <View style={styles.itemImage}>
                 {imgUrl ? <Image source={{ uri: imgUrl }} style={styles.itemImageInner} resizeMode="cover" /> : null}
               </View>
               <View style={styles.itemInfo}>
                 <Text style={styles.itemName}>{name}</Text>
-                <Text style={styles.itemMeta}>Quantity: {qty}</Text>
-                <Text style={styles.itemMeta}>€{Number(price).toFixed(2)} each</Text>
+                <Text style={styles.itemMeta}>{t('pharmacyOrderDetails.item.quantity', { count: qty })}</Text>
+                <Text style={styles.itemMeta}>{t('pharmacyOrderDetails.item.eachPrice', { price: Number(price).toFixed(2) })}</Text>
               </View>
               <Text style={styles.itemTotal}>€{Number(itemTotal).toFixed(2)}</Text>
             </View>
@@ -209,26 +225,26 @@ export function PharmacyOrderDetailsScreen() {
       </Card>
 
       <Card style={styles.section}>
-        <Text style={styles.sectionTitle}>Order summary</Text>
+        <Text style={styles.sectionTitle}>{t('pharmacyOrderDetails.summary.title')}</Text>
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Subtotal</Text>
+          <Text style={styles.summaryLabel}>{t('pharmacyOrderDetails.summary.subtotal')}</Text>
           <Text style={styles.summaryValue}>€{Number(subtotal).toFixed(2)}</Text>
         </View>
         <View style={styles.summaryRow}>
           <View>
-            <Text style={styles.summaryLabel}>Shipping</Text>
+            <Text style={styles.summaryLabel}>{t('pharmacyOrderDetails.summary.shipping')}</Text>
             {shippingUpdatedAt && (
-              <Text style={styles.shippingNote}>Updated on {shippingUpdatedAt}</Text>
+              <Text style={styles.shippingNote}>{t('pharmacyOrderDetails.summary.updatedOn', { date: shippingUpdatedAt })}</Text>
             )}
             {initialShipping != null && initialShipping !== shipping && (
-              <Text style={styles.shippingNote}>Updated from €{Number(initialShipping).toFixed(2)}</Text>
+              <Text style={styles.shippingNote}>{t('pharmacyOrderDetails.summary.updatedFrom', { amount: Number(initialShipping).toFixed(2) })}</Text>
             )}
           </View>
           <Text style={styles.summaryValue}>€{Number(shipping).toFixed(2)}</Text>
         </View>
         <View style={styles.summaryDivider} />
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryTotalLabel}>Total</Text>
+          <Text style={styles.summaryTotalLabel}>{t('pharmacyOrderDetails.summary.total')}</Text>
           <Text style={styles.summaryTotalValue}>€{Number(total).toFixed(2)}</Text>
         </View>
       </Card>
@@ -237,17 +253,18 @@ export function PharmacyOrderDetailsScreen() {
         <View style={styles.actionsBlock}>
           {!isPaid && (
             <Button
-              title={shippingSet ? 'Update shipping fee' : 'Set shipping fee'}
+              title={shippingSet ? t('pharmacyOrderDetails.actions.updateShippingFee') : t('pharmacyOrderDetails.actions.setShippingFee')}
               variant="outline"
               onPress={() => {
                 setShippingFee(String(order?.shipping ?? 0));
                 setShowShippingModal(true);
               }}
+
               style={styles.actionButton}
             />
           )}
           <View style={styles.statusBlock}>
-            <Text style={styles.statusLabel}>Status</Text>
+            <Text style={styles.statusLabel}>{t('pharmacyOrderDetails.labels.status')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statusChips}>
               {STATUS_OPTIONS.map((s) => (
                 <TouchableOpacity
@@ -256,7 +273,7 @@ export function PharmacyOrderDetailsScreen() {
                   onPress={() => canChangeStatusTo(s) && onStatusChange(s)}
                   disabled={!canChangeStatusTo(s) || updateStatus.isPending}
                 >
-                  <Text style={[styles.statusChipText, currentStatus === s && styles.statusChipTextActive]}>{s}</Text>
+                  <Text style={[styles.statusChipText, currentStatus === s && styles.statusChipTextActive]}>{statusLabel(s)}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -268,36 +285,37 @@ export function PharmacyOrderDetailsScreen() {
         <Pressable style={styles.modalOverlay} onPress={() => setShowShippingModal(false)}>
           <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{shippingSet ? 'Update shipping fee' : 'Set shipping fee'}</Text>
+              <Text style={styles.modalTitle}>{shippingSet ? t('pharmacyOrderDetails.actions.updateShippingFee') : t('pharmacyOrderDetails.actions.setShippingFee')}</Text>
               <TouchableOpacity onPress={() => setShowShippingModal(false)} hitSlop={12}>
                 <Text style={styles.modalClose}>✕</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.modalBody}>
-              <Text style={styles.modalOrderNo}>Order #{orderNumber}</Text>
-              <Text style={styles.modalLabel}>Current shipping</Text>
+              <Text style={styles.modalOrderNo}>{t('pharmacyOrderDetails.modal.orderNumber', { orderNumber })}</Text>
+              <Text style={styles.modalLabel}>{t('pharmacyOrderDetails.modal.currentShipping')}</Text>
               <Text style={styles.modalCurrentShipping}>€{Number(shipping).toFixed(2)}</Text>
-              <Text style={[styles.modalLabel, { marginTop: spacing.sm }]}>New shipping fee (€)</Text>
+              <Text style={[styles.modalLabel, { marginTop: spacing.sm }]}>{t('pharmacyOrderDetails.modal.newShippingFee')}</Text>
               <TextInput
                 style={styles.modalInput}
                 value={shippingFee}
                 onChangeText={setShippingFee}
-                placeholder="0.00"
+                placeholder={t('pharmacyOrderDetails.modal.shippingFeePlaceholder')}
                 keyboardType="decimal-pad"
               />
               {shippingFee && !isNaN(parseFloat(shippingFee)) && (
                 <Text style={styles.modalNewTotal}>
-                  New total: €{(subtotal + parseFloat(shippingFee)).toFixed(2)}
+                  {t('pharmacyOrderDetails.modal.newTotal', { amount: (subtotal + parseFloat(shippingFee)).toFixed(2) })}
                 </Text>
               )}
             </View>
             <View style={styles.modalFooter}>
-              <Button title="Cancel" variant="outline" onPress={() => setShowShippingModal(false)} style={styles.modalBtn} />
-              <Button title="Save" onPress={onSaveShipping} loading={updateShipping.isPending} style={styles.modalBtn} />
+              <Button title={t('common.cancel')} variant="outline" onPress={() => setShowShippingModal(false)} style={styles.modalBtn} />
+              <Button title={t('common.save')} onPress={onSaveShipping} loading={updateShipping.isPending} style={styles.modalBtn} />
             </View>
           </Pressable>
         </Pressable>
       </Modal>
+
     </ScreenContainer>
   );
 }

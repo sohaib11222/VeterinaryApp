@@ -19,16 +19,18 @@ import { getErrorMessage, getFieldErrors } from '../../utils/errorUtils';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { useTranslation } from 'react-i18next';
 
 type Nav = AuthStackScreenProps<'Register'>['navigation'];
 
-const ROLE_OPTIONS: { role: UserRole; label: string }[] = [
-  { role: 'VETERINARIAN', label: 'Register as Veterinarian' },
-  { role: 'PET_STORE', label: 'Register as Pharmacy' },
-  { role: 'PARAPHARMACY', label: 'Register as Parapharmacy' },
+const ROLE_OPTIONS: { role: UserRole; labelKey: string }[] = [
+  { role: 'VETERINARIAN', labelKey: 'authRegister.actions.registerAsVeterinarian' },
+  { role: 'PET_STORE', labelKey: 'authRegister.actions.registerAsPharmacy' },
+  { role: 'PARAPHARMACY', labelKey: 'authRegister.actions.registerAsParapharmacy' },
 ];
 
 export function RegisterScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const { register, logout } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -41,15 +43,15 @@ export function RegisterScreen() {
 
   const validate = () => {
     const next: Record<string, string> = {};
-    if (!name.trim()) next.name = 'Name is required';
-    else if (name.trim().length < 2) next.name = 'Name must be at least 2 characters';
-    else if (name.trim().length > 50) next.name = 'Name must be less than 50 characters';
-    if (!email.trim()) next.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = 'Invalid email';
-    if (!phone.trim()) next.phone = 'Phone is required';
-    if (!password) next.password = 'Password is required';
-    else if (password.length < 6) next.password = 'Password must be at least 6 characters';
-    if (password !== confirmPassword) next.confirmPassword = 'Passwords must match';
+    if (!name.trim()) next.name = t('auth.validation.nameRequired');
+    else if (name.trim().length < 2) next.name = t('auth.validation.nameMinLength', { count: 2 });
+    else if (name.trim().length > 50) next.name = t('auth.validation.nameMaxLength', { count: 50 });
+    if (!email.trim()) next.email = t('auth.validation.emailRequired');
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = t('auth.validation.invalidEmail');
+    if (!phone.trim()) next.phone = t('auth.validation.phoneRequired');
+    if (!password) next.password = t('auth.validation.passwordRequired');
+    else if (password.length < 6) next.password = t('auth.validation.passwordMinLength', { count: 6 });
+    if (password !== confirmPassword) next.confirmPassword = t('auth.validation.passwordsMustMatch');
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -68,7 +70,7 @@ export function RegisterScreen() {
       // For VETERINARIAN / PET_STORE / PARAPHARMACY, RootNavigator shows Pending stack
       // with DoctorVerificationUpload or PetStoreVerificationUpload as initial screen
     } catch (err: unknown) {
-      const message = getErrorMessage(err, 'Registration failed. Try again.');
+      const message = getErrorMessage(err, t('authRegister.errors.registrationFailedTryAgain'));
       const fieldErrs = getFieldErrors(err);
       if (fieldErrs._form) {
         setErrors({ email: fieldErrs._form });
@@ -101,21 +103,21 @@ export function RegisterScreen() {
             <View style={styles.logoWrap}>
               <Text style={styles.logoIcon}>🐾</Text>
             </View>
-            <Text style={styles.title}>Join PetCare</Text>
-            <Text style={styles.subtitle}>Create your pet health account</Text>
+            <Text style={styles.title}>{t('authRegister.title')}</Text>
+            <Text style={styles.subtitle}>{t('authRegister.subtitle')}</Text>
           </View>
 
           <View style={styles.form}>
             <Input
-              label="Full Name"
-              placeholder="Enter your full name"
+              label={t('authRegister.fields.fullName.label')}
+              placeholder={t('authRegister.fields.fullName.placeholder')}
               value={name}
               onChangeText={setName}
               error={errors.name}
             />
             <Input
-              label="Email Address"
-              placeholder="Enter your email"
+              label={t('authRegister.fields.email.label')}
+              placeholder={t('authRegister.fields.email.placeholder')}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -123,24 +125,24 @@ export function RegisterScreen() {
               error={errors.email}
             />
             <Input
-              label="Phone Number"
-              placeholder="Enter your phone"
+              label={t('authRegister.fields.phone.label')}
+              placeholder={t('authRegister.fields.phone.placeholder')}
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
               error={errors.phone}
             />
             <Input
-              label="Password"
-              placeholder="Min 6 characters"
+              label={t('authRegister.fields.password.label')}
+              placeholder={t('authRegister.fields.password.placeholder')}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
               error={errors.password}
             />
             <Input
-              label="Confirm Password"
-              placeholder="Confirm your password"
+              label={t('authRegister.fields.confirmPassword.label')}
+              placeholder={t('authRegister.fields.confirmPassword.placeholder')}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry
@@ -148,7 +150,7 @@ export function RegisterScreen() {
             />
 
             <Button
-              title={loading ? 'Creating Account...' : 'Create PetCare Account'}
+              title={loading ? t('authRegister.actions.creatingAccount') : t('authRegister.actions.createPetCareAccount')}
               onPress={onSubmitPetOwner}
               loading={loading}
               style={styles.submitBtn}
@@ -156,14 +158,14 @@ export function RegisterScreen() {
 
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}> or </Text>
+              <Text style={styles.dividerText}>{t('authRegister.divider.or')}</Text>
               <View style={styles.dividerLine} />
             </View>
 
-            {ROLE_OPTIONS.map(({ role, label }) => (
+            {ROLE_OPTIONS.map(({ role, labelKey }) => (
               <Button
                 key={role}
-                title={label}
+                title={t(labelKey)}
                 onPress={() => submitWithRole(role)}
                 variant="outline"
                 style={styles.altBtn}
@@ -172,9 +174,9 @@ export function RegisterScreen() {
             ))}
 
             <View style={styles.registerRow}>
-              <Text style={styles.registerText}>Already have an account? </Text>
+              <Text style={styles.registerText}>{t('authRegister.footer.alreadyHaveAccount')}{' '}</Text>
               <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                <Text style={styles.registerLink}>Login to PetCare</Text>
+                <Text style={styles.registerLink}>{t('authRegister.footer.loginToPetCare')}</Text>
               </TouchableOpacity>
             </View>
           </View>

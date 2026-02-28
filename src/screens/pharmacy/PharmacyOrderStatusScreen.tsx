@@ -8,21 +8,23 @@ import { PharmacyOrdersStackParamList } from '../../navigation/types';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { useTranslation } from 'react-i18next';
 
 type Route = RouteProp<PharmacyOrdersStackParamList, 'PharmacyOrderStatus'>;
 
 export function PharmacyOrderStatusScreen() {
+  const { t } = useTranslation();
   const route = useRoute<Route>();
   const orderId = route.params?.orderId;
 
   return (
     <ScreenContainer padded>
       <Card>
-        <Text style={styles.title}>Update Order Status</Text>
-        <Text style={styles.orderId}>Order #{orderId}</Text>
+        <Text style={styles.title}>{t('pharmacyOrderStatus.title')}</Text>
+        <Text style={styles.orderId}>{t('pharmacyOrderStatus.orderId', { orderId })}</Text>
         <View style={styles.buttons}>
           {['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'].map((s) => (
-            <Button key={s} title={s} onPress={() => {}} style={styles.statusBtn} />
+            <Button key={s} title={t(`pharmacyOrders.statusLabels.${s}`, { defaultValue: s })} onPress={() => {}} style={styles.statusBtn} />
           ))}
         </View>
       </Card>

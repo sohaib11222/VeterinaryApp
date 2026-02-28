@@ -24,6 +24,9 @@ export function VetDashboardScreen() {
   const headerSearch = useVetHeaderSearch();
   const headerRight = useVetHeaderRightAction();
 
+  const setHeaderSearchConfig = headerSearch?.setConfig;
+  const setHeaderRightAction = headerRight?.setRightAction;
+
   const dashboardQuery = useVetDashboard();
   const scheduleQuery = useWeeklySchedule();
 
@@ -135,10 +138,10 @@ export function VetDashboardScreen() {
   // Dashboard: no header search, no right icons
   useFocusEffect(
     React.useCallback(() => {
-      headerSearch?.setConfig(null);
-      headerRight?.setRightAction(null);
+      setHeaderSearchConfig?.(null);
+      setHeaderRightAction?.(null);
       return () => {};
-    }, [])
+    }, [setHeaderSearchConfig, setHeaderRightAction])
   );
 
   const stats = [

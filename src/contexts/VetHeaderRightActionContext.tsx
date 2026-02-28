@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useMemo, useState } from 'react';
 
 type VetHeaderRightActionContextType = {
   rightAction: React.ReactNode | null;
@@ -9,8 +9,10 @@ const VetHeaderRightActionContext = createContext<VetHeaderRightActionContextTyp
 
 export function VetHeaderRightActionProvider({ children }: { children: React.ReactNode }) {
   const [rightAction, setRightAction] = useState<React.ReactNode | null>(null);
+
+  const value = useMemo(() => ({ rightAction, setRightAction }), [rightAction]);
   return (
-    <VetHeaderRightActionContext.Provider value={{ rightAction, setRightAction }}>
+    <VetHeaderRightActionContext.Provider value={value}>
       {children}
     </VetHeaderRightActionContext.Provider>
   );

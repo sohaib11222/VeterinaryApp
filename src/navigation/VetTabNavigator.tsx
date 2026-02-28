@@ -31,7 +31,7 @@ function TabIcon({ name, focused }: { name: string; focused: boolean }) {
     VetMore: '⋯',
   };
   return (
-    <Text style={[styles.tabIcon, focused && styles.tabIconActive]}>
+    <Text style={[styles.tabIcon, { color: focused ? colors.tabActive : colors.tabInactive }, focused && styles.tabIconActive]}>
       {icons[name] || '•'}
     </Text>
   );

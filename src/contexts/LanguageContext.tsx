@@ -13,14 +13,14 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 const normalizeLang = (lang: string) => {
   const cleaned = String(lang || '').trim();
-  if (!cleaned) return 'en';
+  if (!cleaned) return 'it';
   const lower = cleaned.toLowerCase();
   if (lower.startsWith('it')) return 'it';
   return 'en';
 };
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<string>('en');
+  const [language, setLanguageState] = useState<string>('it');
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -28,7 +28,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       try {
         const stored = await SecureStore.getItemAsync(LANGUAGE_KEY);
-        const initial = normalizeLang(stored || 'en');
+        const initial = normalizeLang(stored || 'it');
         if (!cancelled) setLanguageState(initial);
         setApiLanguage(initial);
         await i18n.changeLanguage(initial);

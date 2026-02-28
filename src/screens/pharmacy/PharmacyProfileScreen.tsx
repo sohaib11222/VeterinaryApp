@@ -15,6 +15,7 @@ import Toast from 'react-native-toast-message';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { useTranslation } from 'react-i18next';
 
 function extractPetStore(payload: unknown): any {
   const outer = (payload as { data?: unknown })?.data ?? payload;
@@ -22,6 +23,7 @@ function extractPetStore(payload: unknown): any {
 }
 
 export function PharmacyProfileScreen() {
+  const { t } = useTranslation();
   const { data, isLoading, isError } = useMyPetStore();
   const updateMutation = useUpdatePetStore();
   const createMutation = useCreatePetStore();
@@ -83,7 +85,7 @@ export function PharmacyProfileScreen() {
         const url = (res as { data?: { url?: string } })?.data?.url ?? (res as { url?: string })?.url;
         if (url) {
           update('logo')(url);
-          Toast.show({ type: 'success', text1: 'Logo uploaded' });
+          Toast.show({ type: 'success', text1: t('pharmacyProfile.toasts.logoUploaded') });
         }
       } finally {
         if (tempUris.length > 0) {
@@ -91,7 +93,7 @@ export function PharmacyProfileScreen() {
         }
       }
     } catch (err) {
-      Toast.show({ type: 'error', text1: 'Upload failed', text2: getErrorMessage(err, 'Could not upload logo') });
+      Toast.show({ type: 'error', text1: t('pharmacyProfile.errors.uploadFailedTitle'), text2: getErrorMessage(err, t('pharmacyProfile.errors.couldNotUploadLogo')) });
     } finally {
       setUploadingLogo(false);
     }
@@ -118,9 +120,9 @@ export function PharmacyProfileScreen() {
       } else {
         await createMutation.mutateAsync(payload);
       }
-      Toast.show({ type: 'success', text1: 'Profile saved' });
+      Toast.show({ type: 'success', text1: t('pharmacyProfile.toasts.profileSaved') });
     } catch (err) {
-      Toast.show({ type: 'error', text1: 'Failed', text2: getErrorMessage(err, 'Could not save profile') });
+      Toast.show({ type: 'error', text1: t('common.failed'), text2: getErrorMessage(err, t('pharmacyProfile.errors.couldNotSaveProfile')) });
     }
   };
 
@@ -135,7 +137,7 @@ export function PharmacyProfileScreen() {
   return (
     <ScreenContainer scroll padded>
       <Card>
-        <Text style={styles.sectionTitle}>Store Profile</Text>
+        <Text style={styles.sectionTitle}>{t('pharmacyProfile.title')}</Text>
         <View style={styles.logoRow}>
           {form.logo ? (
             <Image source={{ uri: getImageUrl(form.logo) ?? form.logo }} style={styles.logoImg} />
@@ -143,23 +145,23 @@ export function PharmacyProfileScreen() {
             <View style={styles.logoPlaceholder} />
           )}
           <TouchableOpacity onPress={pickAndUploadLogo} disabled={uploadingLogo}>
-            <Text style={styles.uploadText}>{uploadingLogo ? 'Uploading…' : 'Upload logo'}</Text>
+            <Text style={styles.uploadText}>{uploadingLogo ? t('pharmacyProfile.actions.uploading') : t('pharmacyProfile.actions.uploadLogo')}</Text>
           </TouchableOpacity>
         </View>
-        <Input label="Store Name" value={form.name} onChangeText={update('name')} />
-        <Input label="Phone" value={form.phone} onChangeText={update('phone')} keyboardType="phone-pad" />
-        <Text style={styles.subsectionTitle}>Address</Text>
-        <Input label="Address Line 1" value={form.line1} onChangeText={update('line1')} />
-        <Input label="Address Line 2" value={form.line2} onChangeText={update('line2')} />
+        <Input label={t('pharmacyProfile.fields.storeName')} value={form.name} onChangeText={update('name')} />
+        <Input label={t('pharmacyProfile.fields.phone')} value={form.phone} onChangeText={update('phone')} keyboardType="phone-pad" />
+        <Text style={styles.subsectionTitle}>{t('pharmacyProfile.sections.address')}</Text>
+        <Input label={t('pharmacyProfile.fields.addressLine1')} value={form.line1} onChangeText={update('line1')} />
+        <Input label={t('pharmacyProfile.fields.addressLine2')} value={form.line2} onChangeText={update('line2')} />
         <View style={styles.row}>
-          <View style={styles.half}><Input label="City" value={form.city} onChangeText={update('city')} /></View>
-          <View style={styles.half}><Input label="State" value={form.state} onChangeText={update('state')} /></View>
+          <View style={styles.half}><Input label={t('pharmacyProfile.fields.city')} value={form.city} onChangeText={update('city')} /></View>
+          <View style={styles.half}><Input label={t('pharmacyProfile.fields.state')} value={form.state} onChangeText={update('state')} /></View>
         </View>
         <View style={styles.row}>
-          <View style={styles.half}><Input label="Country" value={form.country} onChangeText={update('country')} /></View>
-          <View style={styles.half}><Input label="ZIP" value={form.zip} onChangeText={update('zip')} keyboardType="numeric" /></View>
+          <View style={styles.half}><Input label={t('pharmacyProfile.fields.country')} value={form.country} onChangeText={update('country')} /></View>
+          <View style={styles.half}><Input label={t('pharmacyProfile.fields.zip')} value={form.zip} onChangeText={update('zip')} keyboardType="numeric" /></View>
         </View>
-        <Button title="Save Changes" onPress={onSave} loading={updateMutation.isPending || createMutation.isPending} />
+        <Button title={t('common.saveChanges')} onPress={onSave} loading={updateMutation.isPending || createMutation.isPending} />
       </Card>
     </ScreenContainer>
   );

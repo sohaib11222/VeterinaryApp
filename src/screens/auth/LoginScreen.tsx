@@ -18,10 +18,12 @@ import { getErrorMessage } from '../../utils/errorUtils';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { useTranslation } from 'react-i18next';
 
 type Nav = AuthStackScreenProps<'Login'>['navigation'];
 
 export function LoginScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -31,9 +33,9 @@ export function LoginScreen() {
 
   const validate = () => {
     const next: typeof errors = {};
-    if (!email.trim()) next.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = 'Invalid email';
-    if (!password) next.password = 'Password is required';
+    if (!email.trim()) next.email = t('auth.validation.emailRequired');
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = t('auth.validation.invalidEmail');
+    if (!password) next.password = t('auth.validation.passwordRequired');
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -46,7 +48,7 @@ export function LoginScreen() {
       await login(email, password);
       // RootNavigator will switch to Pending or Main based on user.role / user.status
     } catch (err: unknown) {
-      const message = getErrorMessage(err, 'Login failed. Try again.');
+      const message = getErrorMessage(err, t('authLogin.errors.loginFailedTryAgain'));
       setErrors({ password: message });
     } finally {
       setLoading(false);
@@ -68,14 +70,14 @@ export function LoginScreen() {
             <View style={styles.logoWrap}>
               <Text style={styles.logoIcon}>🐾</Text>
             </View>
-            <Text style={styles.title}>PetCare Login</Text>
-            <Text style={styles.subtitle}>Access your pet health dashboard</Text>
+            <Text style={styles.title}>{t('authLogin.title')}</Text>
+            <Text style={styles.subtitle}>{t('authLogin.subtitle')}</Text>
           </View>
 
           <View style={styles.form}>
             <Input
-              label="Email Address"
-              placeholder="Enter your email"
+              label={t('authLogin.fields.email.label')}
+              placeholder={t('authLogin.fields.email.placeholder')}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -83,19 +85,19 @@ export function LoginScreen() {
               error={errors.email}
             />
             <Input
-              label="Password"
-              placeholder="Enter your password"
+              label={t('authLogin.fields.password.label')}
+              placeholder={t('authLogin.fields.password.placeholder')}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
               error={errors.password}
             />
             <TouchableOpacity style={styles.forgotWrap} onPress={() => navigation.navigate('ForgotPassword')}>
-              <Text style={styles.forgotText}>Forgot password?</Text>
+              <Text style={styles.forgotText}>{t('authLogin.actions.forgotPassword')}</Text>
             </TouchableOpacity>
 
             <Button
-              title={loading ? 'Logging in...' : 'Login to PetCare'}
+              title={loading ? t('authLogin.actions.loggingIn') : t('authLogin.actions.login')}
               onPress={onSubmit}
               loading={loading}
               style={styles.submitBtn}
@@ -105,21 +107,21 @@ export function LoginScreen() {
               <View style={styles.features}>
                 <View style={styles.feature}>
                   <Text style={styles.featureIcon}>🔒</Text>
-                  <Text style={styles.featureLabel}>Secure</Text>
+                  <Text style={styles.featureLabel}>{t('authLogin.features.secure')}</Text>
                 </View>
                 <View style={styles.feature}>
                   <Text style={styles.featureIcon}>❤️</Text>
-                  <Text style={styles.featureLabel}>Pet Care</Text>
+                  <Text style={styles.featureLabel}>{t('authLogin.features.petCare')}</Text>
                 </View>
                 <View style={styles.feature}>
                   <Text style={styles.featureIcon}>🕐</Text>
-                  <Text style={styles.featureLabel}>24/7</Text>
+                  <Text style={styles.featureLabel}>{t('authLogin.features.alwaysAvailable')}</Text>
                 </View>
               </View>
               <View style={styles.registerRow}>
-                <Text style={styles.registerText}>New to PetCare? </Text>
+                <Text style={styles.registerText}>{t('authLogin.footer.newToPetCare')}{' '}</Text>
                 <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                  <Text style={styles.registerLink}>Create Account</Text>
+                  <Text style={styles.registerLink}>{t('authLogin.footer.createAccount')}</Text>
                 </TouchableOpacity>
               </View>
             </View>

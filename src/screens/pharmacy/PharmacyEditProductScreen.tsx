@@ -16,10 +16,19 @@ import Toast from 'react-native-toast-message';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { useTranslation } from 'react-i18next';
 
 type Route = RouteProp<PharmacyProductsStackParamList, 'PharmacyEditProduct'>;
 
-const CATEGORIES = ['Food & Treats', 'Medications', 'Grooming', 'Toys', 'Supplements', 'Accessories', 'Other'];
+const CATEGORIES: { value: string; labelKey: string }[] = [
+  { value: 'Food & Treats', labelKey: 'pharmacyProducts.categories.foodTreats' },
+  { value: 'Medications', labelKey: 'pharmacyProducts.categories.medications' },
+  { value: 'Grooming', labelKey: 'pharmacyProducts.categories.grooming' },
+  { value: 'Toys', labelKey: 'pharmacyProducts.categories.toys' },
+  { value: 'Supplements', labelKey: 'pharmacyProducts.categories.supplements' },
+  { value: 'Accessories', labelKey: 'pharmacyProducts.categories.accessories' },
+  { value: 'Other', labelKey: 'pharmacyProducts.categories.other' },
+];
 
 function extractProduct(payload: unknown): any {
   const outer = (payload as { data?: unknown })?.data ?? payload;
@@ -27,6 +36,7 @@ function extractProduct(payload: unknown): any {
 }
 
 export function PharmacyEditProductScreen() {
+  const { t } = useTranslation();
   const route = useRoute<Route>();
   const navigation = useNavigation<any>();
   const productId = route.params?.productId ?? '';
@@ -84,11 +94,11 @@ export function PharmacyEditProductScreen() {
       const urls = res?.data?.urls ?? (res as { urls?: string[] })?.urls ?? [];
       if (urls.length > 0) {
         setForm((prev) => ({ ...prev, images: [...prev.images, ...urls] }));
-        Toast.show({ type: 'success', text1: 'Image added' });
+        Toast.show({ type: 'success', text1: t('pharmacyAddProduct.toasts.imageAdded') });
       }
       await deleteCacheFiles([uri]).catch(() => {});
     } catch (err) {
-      Toast.show({ type: 'error', text1: 'Upload failed', text2: getErrorMessage(err, 'Could not upload image') });
+      Toast.show({ type: 'error', text1: t('pharmacyAddProduct.errors.uploadFailedTitle'), text2: getErrorMessage(err, t('pharmacyAddProduct.errors.couldNotUploadImage')) });
     } finally {
       setUploadingImages(false);
     }
@@ -102,16 +112,16 @@ export function PharmacyEditProductScreen() {
     const name = String(form.name ?? '').trim();
     const priceNum = Number(form.price);
     if (!name) {
-      Toast.show({ type: 'error', text1: 'Name required' });
+      Toast.show({ type: 'error', text1: t('pharmacyEditProduct.validation.nameRequired') });
       return;
     }
     if (!Number.isFinite(priceNum) || priceNum <= 0) {
-      Toast.show({ type: 'error', text1: 'Invalid price' });
+      Toast.show({ type: 'error', text1: t('pharmacyEditProduct.validation.invalidPrice') });
       return;
     }
     const discountNum = form.discountPrice ? Number(form.discountPrice) : null;
     if (discountNum != null && (!Number.isFinite(discountNum) || discountNum >= priceNum)) {
-      Toast.show({ type: 'error', text1: 'Invalid discount' });
+      Toast.show({ type: 'error', text1: t('pharmacyEditProduct.validation.invalidDiscount') });
       return;
     }
     const payload = {
@@ -129,26 +139,26 @@ export function PharmacyEditProductScreen() {
     };
     try {
       await updateMutation.mutateAsync({ productId, data: payload });
-      Toast.show({ type: 'success', text1: 'Product updated' });
+      Toast.show({ type: 'success', text1: t('pharmacyEditProduct.toasts.productUpdated') });
       navigation.goBack();
     } catch (err) {
-      Toast.show({ type: 'error', text1: 'Failed', text2: getErrorMessage(err, 'Could not update product') });
+      Toast.show({ type: 'error', text1: t('common.failed'), text2: getErrorMessage(err, t('pharmacyEditProduct.errors.couldNotUpdateProduct')) });
     }
   };
 
   const onDelete = () => {
-    Alert.alert('Delete product', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('pharmacyEditProduct.deleteModal.title'), t('pharmacyEditProduct.deleteModal.body'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           try {
             await deleteMutation.mutateAsync(productId);
-            Toast.show({ type: 'success', text1: 'Product deleted' });
+            Toast.show({ type: 'success', text1: t('pharmacyProductDetails.toasts.productDeleted') });
             navigation.goBack();
           } catch (err) {
-            Toast.show({ type: 'error', text1: 'Failed', text2: getErrorMessage(err, 'Could not delete') });
+            Toast.show({ type: 'error', text1: t('common.failed'), text2: getErrorMessage(err, t('pharmacyEditProduct.errors.couldNotDelete')) });
           }
         },
       },
@@ -165,8 +175,8 @@ export function PharmacyEditProductScreen() {
   if (isError || !product) {
     return (
       <ScreenContainer padded>
-        <Text style={styles.errorText}>Product not found.</Text>
-        <Button title="Back" onPress={() => navigation.goBack()} />
+        <Text style={styles.errorText}>{t('pharmacyProductDetails.errors.notFound')}</Text>
+        <Button title={t('common.back')} onPress={() => navigation.goBack()} />
       </ScreenContainer>
     );
   }
@@ -174,33 +184,39 @@ export function PharmacyEditProductScreen() {
   return (
     <ScreenContainer scroll padded>
       <Card>
-        <Text style={styles.sectionTitle}>Edit product</Text>
-        <Input label="Product name" value={form.name} onChangeText={update('name') as (t: string) => void} />
-        <Input label="Description" value={form.description} onChangeText={update('description') as (t: string) => void} />
-        <Input label="SKU" value={form.sku} onChangeText={update('sku') as (t: string) => void} />
-        <Text style={styles.fieldLabel}>Category</Text>
+        <Text style={styles.sectionTitle}>{t('pharmacyEditProduct.title')}</Text>
+        <Input label={t('pharmacyAddProduct.fields.name.label')} value={form.name} onChangeText={update('name') as (t: string) => void} />
+        <Input label={t('pharmacyAddProduct.fields.description.label')} value={form.description} onChangeText={update('description') as (t: string) => void} />
+        <Input label={t('pharmacyAddProduct.fields.sku.label')} value={form.sku} onChangeText={update('sku') as (t: string) => void} />
+        <Text style={styles.fieldLabel}>{t('pharmacyAddProduct.fields.category.label')}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
           {CATEGORIES.map((cat) => (
             <TouchableOpacity
-              key={cat}
-              style={[styles.categoryChip, form.category === cat && styles.categoryChipActive]}
-              onPress={() => update('category')(cat)}
+              key={cat.value}
+              style={[styles.categoryChip, form.category === cat.value && styles.categoryChipActive]}
+              onPress={() => update('category')(cat.value)}
             >
-              <Text style={[styles.categoryChipText, form.category === cat && styles.categoryChipTextActive]}>{cat}</Text>
+              <Text style={[styles.categoryChipText, form.category === cat.value && styles.categoryChipTextActive]}>{t(cat.labelKey)}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
         <View style={styles.row}>
           <View style={styles.half}>
-            <Input label="Price (€)" value={form.price} onChangeText={update('price') as (t: string) => void} keyboardType="decimal-pad" />
+            <Input label={t('pharmacyAddProduct.fields.price.label')} value={form.price} onChangeText={update('price') as (t: string) => void} keyboardType="decimal-pad" />
           </View>
           <View style={styles.half}>
-            <Input label="Discount price (€)" value={form.discountPrice} onChangeText={update('discountPrice') as (t: string) => void} placeholder="Optional" keyboardType="decimal-pad" />
+            <Input
+              label={t('pharmacyAddProduct.fields.discountPrice.label')}
+              value={form.discountPrice}
+              onChangeText={update('discountPrice') as (t: string) => void}
+              placeholder={t('pharmacyAddProduct.fields.discountPrice.placeholder')}
+              keyboardType="decimal-pad"
+            />
           </View>
         </View>
-        <Input label="Stock" value={form.stock} onChangeText={update('stock') as (t: string) => void} keyboardType="numeric" />
-        <Input label="Tags (comma-separated)" value={form.tags} onChangeText={update('tags') as (t: string) => void} />
-        <Text style={styles.fieldLabel}>Images</Text>
+        <Input label={t('pharmacyAddProduct.fields.stock.label')} value={form.stock} onChangeText={update('stock') as (t: string) => void} keyboardType="numeric" />
+        <Input label={t('pharmacyAddProduct.fields.tags.label')} value={form.tags} onChangeText={update('tags') as (t: string) => void} />
+        <Text style={styles.fieldLabel}>{t('pharmacyAddProduct.fields.images.label')}</Text>
         <View style={styles.imageRow}>
           {form.images.map((url) => (
             <TouchableOpacity key={url} style={styles.imageWrap} onPress={() => removeImage(url)}>
@@ -209,24 +225,24 @@ export function PharmacyEditProductScreen() {
             </TouchableOpacity>
           ))}
           <TouchableOpacity style={styles.addImgBtn} onPress={pickAndUploadImages} disabled={uploadingImages}>
-            <Text style={styles.addImgBtnText}>{uploadingImages ? '…' : '+ Image'}</Text>
+            <Text style={styles.addImgBtnText}>{uploadingImages ? t('common.loading') : t('pharmacyAddProduct.actions.addImage')}</Text>
           </TouchableOpacity>
         </View>
         <TouchableOpacity style={styles.checkRow} onPress={() => update('requiresPrescription')(!form.requiresPrescription)}>
           <View style={[styles.checkbox, form.requiresPrescription && styles.checkboxChecked]}>
             {form.requiresPrescription && <Text style={styles.checkmark}>✓</Text>}
           </View>
-          <Text style={styles.checkLabel}>Requires prescription</Text>
+          <Text style={styles.checkLabel}>{t('pharmacyAddProduct.fields.requiresPrescription')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.checkRow} onPress={() => update('isActive')(!form.isActive)}>
           <View style={[styles.checkbox, form.isActive && styles.checkboxChecked]}>
             {form.isActive && <Text style={styles.checkmark}>✓</Text>}
           </View>
-          <Text style={styles.checkLabel}>Active (visible in catalog)</Text>
+          <Text style={styles.checkLabel}>{t('pharmacyAddProduct.fields.isActive')}</Text>
         </TouchableOpacity>
-        <Button title="Save changes" onPress={onSave} loading={updateMutation.isPending} style={styles.submitBtn} />
+        <Button title={t('common.saveChanges')} onPress={onSave} loading={updateMutation.isPending} style={styles.submitBtn} />
         <TouchableOpacity style={styles.deleteBtn} onPress={onDelete} disabled={deleteMutation.isPending}>
-          <Text style={styles.deleteBtnText}>Delete product</Text>
+          <Text style={styles.deleteBtnText}>{t('pharmacyEditProduct.actions.deleteProduct')}</Text>
         </TouchableOpacity>
       </Card>
     </ScreenContainer>

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useMemo, useState } from 'react';
 
 export interface VetHeaderSearchConfig {
   placeholder: string;
@@ -15,8 +15,10 @@ const VetHeaderSearchContext = createContext<VetHeaderSearchContextType | null>(
 
 export function VetHeaderSearchProvider({ children }: { children: React.ReactNode }) {
   const [config, setConfig] = useState<VetHeaderSearchConfig | null>(null);
+
+  const value = useMemo(() => ({ config, setConfig }), [config]);
   return (
-    <VetHeaderSearchContext.Provider value={{ config, setConfig }}>
+    <VetHeaderSearchContext.Provider value={value}>
       {children}
     </VetHeaderSearchContext.Provider>
   );

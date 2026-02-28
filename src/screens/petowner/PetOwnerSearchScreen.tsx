@@ -47,9 +47,11 @@ export function PetOwnerSearchScreen() {
   const headerRight = useVetHeaderRightAction();
   const { t } = useTranslation();
 
+  const setHeaderRightAction = headerRight?.setRightAction;
+
   useFocusEffect(
     React.useCallback(() => {
-      headerRight?.setRightAction(
+      setHeaderRightAction?.(
         <TouchableOpacity
           style={styles.headerMapBtn}
           onPress={() => navigation.navigate('PetOwnerClinicMap')}
@@ -58,8 +60,8 @@ export function PetOwnerSearchScreen() {
           <Text style={styles.headerMapBtnIcon}>🗺️</Text>
         </TouchableOpacity>
       );
-      return () => headerRight?.setRightAction(null);
-    }, [headerRight, navigation])
+      return () => setHeaderRightAction?.(null);
+    }, [setHeaderRightAction, navigation])
   );
 
   const [searchTerm, setSearchTerm] = useState('');

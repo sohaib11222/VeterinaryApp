@@ -20,30 +20,41 @@ import Toast from 'react-native-toast-message';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n/appI18n';
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  STRIPE: 'Stripe',
-  BANK_TRANSFER: 'Bank Transfer',
-  BANK: 'Bank Transfer',
-  PAYPAL: 'PayPal',
+  STRIPE: 'STRIPE',
+  BANK_TRANSFER: 'BANK_TRANSFER',
+  BANK: 'BANK_TRANSFER',
+  PAYPAL: 'PAYPAL',
 };
 
 function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en', { style: 'currency', currency: 'EUR' }).format(amount);
+  const locale = i18n.language?.startsWith('it') ? 'it-IT' : 'en-GB';
+  return new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR' }).format(amount);
 }
 
 function formatDate(dateStr: string | undefined): string {
-  if (!dateStr) return '—';
+  if (!dateStr) return i18n.t('common.na');
   const d = new Date(dateStr);
-  return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const locale = i18n.language?.startsWith('it') ? 'it-IT' : 'en-GB';
+  return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, t }: { status: string; t: (key: string, opts?: any) => string }) {
   const s = (status || '').toUpperCase();
   const isApproved = s === 'APPROVED' || s === 'COMPLETED';
   const isPending = s === 'PENDING';
   const isRejected = s === 'REJECTED';
-  const label = isApproved ? 'Approved' : isPending ? 'Pending' : isRejected ? 'Rejected' : status || '—';
+  const label =
+    isApproved
+      ? t('pharmacyPayouts.status.approved')
+      : isPending
+        ? t('pharmacyPayouts.status.pending')
+        : isRejected
+          ? t('pharmacyPayouts.status.rejected')
+          : status || t('common.na');
   return (
     <View
       style={[
@@ -66,6 +77,7 @@ function extractRequests(payload: unknown): any[] {
 }
 
 export function PharmacyPayoutsScreen() {
+  const { t } = useTranslation();
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'STRIPE' | 'BANK_TRANSFER' | 'PAYPAL'>('STRIPE');
@@ -104,25 +116,25 @@ export function PharmacyPayoutsScreen() {
   const submitWithdrawal = async () => {
     const n = parseFloat(amount);
     if (!Number.isFinite(n) || n <= 0) {
-      Toast.show({ type: 'error', text1: 'Enter a valid amount' });
+      Toast.show({ type: 'error', text1: t('pharmacyPayouts.validation.enterValidAmount') });
       return;
     }
     if (n > balance) {
-      Toast.show({ type: 'error', text1: 'Amount exceeds balance' });
+      Toast.show({ type: 'error', text1: t('pharmacyPayouts.validation.amountExceedsBalance') });
       return;
     }
     if (!payoutDetails.trim()) {
-      Toast.show({ type: 'error', text1: 'Payout details required' });
+      Toast.show({ type: 'error', text1: t('pharmacyPayouts.validation.payoutDetailsRequired') });
       return;
     }
     try {
       await requestWithdrawal.mutateAsync({ amount: n, paymentMethod, paymentDetails: payoutDetails.trim() });
-      Toast.show({ type: 'success', text1: 'Withdrawal requested' });
+      Toast.show({ type: 'success', text1: t('pharmacyPayouts.toasts.withdrawalRequested') });
       setWithdrawModalOpen(false);
       setAmount('');
       setPayoutDetails('');
     } catch (err) {
-      Toast.show({ type: 'error', text1: 'Failed', text2: getErrorMessage(err, 'Could not submit request') });
+      Toast.show({ type: 'error', text1: t('common.failed'), text2: getErrorMessage(err, t('pharmacyPayouts.errors.couldNotSubmitRequest')) });
     }
   };
 
@@ -141,25 +153,25 @@ export function PharmacyPayoutsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
       >
         <Card style={styles.card}>
-          <Text style={styles.sectionTitle}>Preferred payout method</Text>
+          <Text style={styles.sectionTitle}>{t('pharmacyPayouts.preferredMethod.title')}</Text>
           <Text style={styles.sectionSubtitle}>
-            Your earnings will be paid out using the method you provide when requesting a withdrawal.
+            {t('pharmacyPayouts.preferredMethod.subtitle')}
           </Text>
           <View style={styles.methodRow}>
             <View style={[styles.methodBox, styles.methodBoxActive]}>
               <Text style={styles.methodIcon}>💳</Text>
-              <Text style={styles.methodName}>Stripe</Text>
-              <Button title="Configure" variant="outline" onPress={openWithdrawModal} style={styles.configureBtn} />
+              <Text style={styles.methodName}>{t('pharmacyPayouts.paymentMethods.stripe')}</Text>
+              <Button title={t('pharmacyPayouts.actions.configure')} variant="outline" onPress={openWithdrawModal} style={styles.configureBtn} />
             </View>
           </View>
 
           <View style={styles.balanceRow}>
             <View>
-              <Text style={styles.balanceLabel}>Available Balance</Text>
+              <Text style={styles.balanceLabel}>{t('pharmacyPayouts.balance.available')}</Text>
               <Text style={styles.balanceAmount}>{formatCurrency(balance)}</Text>
             </View>
             <Button
-              title="Request Withdrawal"
+              title={t('pharmacyPayouts.actions.requestWithdrawal')}
               onPress={openWithdrawModal}
               disabled={balance <= 0}
               style={styles.withdrawBtn}
@@ -167,12 +179,12 @@ export function PharmacyPayoutsScreen() {
           </View>
         </Card>
 
-        <Text style={styles.sectionTitle}>Withdrawal Requests</Text>
+        <Text style={styles.sectionTitle}>{t('pharmacyPayouts.withdrawalRequests.title')}</Text>
         {requestsLoading && requests.length === 0 ? (
           <View style={styles.loadingRow}><ActivityIndicator size="small" color={colors.primary} /></View>
         ) : requests.length === 0 ? (
           <Card style={styles.card}>
-            <Text style={styles.emptyText}>No withdrawal requests found</Text>
+            <Text style={styles.emptyText}>{t('pharmacyPayouts.withdrawalRequests.empty')}</Text>
           </Card>
         ) : (
           <>
@@ -180,34 +192,38 @@ export function PharmacyPayoutsScreen() {
               <Card key={r._id ?? r.id} style={styles.requestCard}>
                 <View style={styles.requestHeader}>
                   <Text style={styles.requestDate}>{formatDate(r.requestedAt ?? r.createdAt ?? r.date)}</Text>
-                  <StatusBadge status={r.status ?? '—'} />
+                  <StatusBadge status={r.status ?? ''} t={t} />
                 </View>
                 <View style={styles.requestDetailRow}>
-                  <Text style={styles.requestDetailLabel}>Payment Method</Text>
-                  <Text style={styles.requestDetailValue}>{PAYMENT_METHOD_LABELS[r.paymentMethod ?? ''] ?? r.paymentMethod ?? '—'}</Text>
+                  <Text style={styles.requestDetailLabel}>{t('pharmacyPayouts.labels.paymentMethod')}</Text>
+                  <Text style={styles.requestDetailValue}>
+                    {t(`pharmacyPayouts.paymentMethods.${String(PAYMENT_METHOD_LABELS[r.paymentMethod ?? ''] ?? '').toLowerCase()}`, {
+                      defaultValue: r.paymentMethod ?? t('common.na'),
+                    })}
+                  </Text>
                 </View>
                 <View style={styles.requestDetailRow}>
-                  <Text style={styles.requestDetailLabel}>Amount</Text>
+                  <Text style={styles.requestDetailLabel}>{t('pharmacyPayouts.labels.amount')}</Text>
                   <Text style={styles.requestDetailAmount}>€{Number(r.amount).toFixed(2)}</Text>
                 </View>
                 {r.netAmount != null && r.netAmount !== r.amount && (
                   <View style={styles.requestDetailRow}>
-                    <Text style={styles.requestDetailLabel}>You receive</Text>
+                    <Text style={styles.requestDetailLabel}>{t('pharmacyPayouts.labels.youReceive')}</Text>
                     <Text style={styles.requestDetailValue}>€{Number(r.netAmount).toFixed(2)}</Text>
                   </View>
                 )}
                 <View style={styles.requestDetailRow}>
-                  <Text style={styles.requestDetailLabel}>Fee</Text>
+                  <Text style={styles.requestDetailLabel}>{t('pharmacyPayouts.labels.fee')}</Text>
                   <Text style={styles.requestDetailValue}>
                     {r.withdrawalFeePercent != null
                       ? `${Number(r.withdrawalFeePercent).toFixed(0)}%` +
                         (r.withdrawalFeeAmount != null ? ` (€${Number(r.withdrawalFeeAmount).toFixed(2)})` : '')
-                      : 'No fee'}
+                      : t('pharmacyPayouts.fee.noFee')}
                   </Text>
                 </View>
                 {r.totalDeducted != null && r.totalDeducted > 0 && (
                   <View style={styles.requestDetailRow}>
-                    <Text style={styles.requestDetailLabel}>Total Deducted</Text>
+                    <Text style={styles.requestDetailLabel}>{t('pharmacyPayouts.labels.totalDeducted')}</Text>
                     <Text style={styles.requestTotalDeducted}>€{Number(r.totalDeducted).toFixed(2)}</Text>
                   </View>
                 )}
@@ -223,7 +239,7 @@ export function PharmacyPayoutsScreen() {
                 >
                   <Text style={styles.pageBtnText}>‹</Text>
                 </TouchableOpacity>
-                <Text style={styles.pageText}>{page} / {pagination.pages}</Text>
+                <Text style={styles.pageText}>{t('pharmacyPayouts.pagination.pageOf', { page, pages: pagination.pages })}</Text>
                 <TouchableOpacity
                   style={[styles.pageBtn, page >= pagination.pages && styles.pageBtnDisabled]}
                   onPress={() => setPage((p) => Math.min(pagination.pages, p + 1))}
@@ -243,14 +259,14 @@ export function PharmacyPayoutsScreen() {
         <Pressable style={styles.modalOverlay} onPress={() => setWithdrawModalOpen(false)}>
           <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Request Withdrawal</Text>
+              <Text style={styles.modalTitle}>{t('pharmacyPayouts.modal.title')}</Text>
               <TouchableOpacity onPress={() => setWithdrawModalOpen(false)} hitSlop={12}>
                 <Text style={styles.modalClose}>✕</Text>
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Available Balance</Text>
+                <Text style={styles.formLabel}>{t('pharmacyPayouts.balance.available')}</Text>
                 <TextInput
                   style={[styles.formInput, styles.formInputDisabled]}
                   value={formatCurrency(balance)}
@@ -258,17 +274,17 @@ export function PharmacyPayoutsScreen() {
                 />
               </View>
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Amount to Withdraw <Text style={styles.required}>*</Text></Text>
+                <Text style={styles.formLabel}>{t('pharmacyPayouts.modal.amountToWithdraw')} <Text style={styles.required}>*</Text></Text>
                 <TextInput
                   style={styles.formInput}
                   value={amount}
                   onChangeText={setAmount}
-                  placeholder="Enter amount"
+                  placeholder={t('pharmacyPayouts.modal.amountPlaceholder')}
                   keyboardType="decimal-pad"
                 />
               </View>
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Payment Method <Text style={styles.required}>*</Text></Text>
+                <Text style={styles.formLabel}>{t('pharmacyPayouts.modal.paymentMethod')} <Text style={styles.required}>*</Text></Text>
                 <View style={styles.methodOptions}>
                   {(['STRIPE', 'BANK_TRANSFER', 'PAYPAL'] as const).map((m) => (
                     <TouchableOpacity
@@ -277,28 +293,28 @@ export function PharmacyPayoutsScreen() {
                       onPress={() => setPaymentMethod(m)}
                     >
                       <Text style={[styles.methodOptionText, paymentMethod === m && styles.methodOptionTextActive]}>
-                        {PAYMENT_METHOD_LABELS[m]}
+                        {t(`pharmacyPayouts.paymentMethods.${String(PAYMENT_METHOD_LABELS[m]).toLowerCase()}`)}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               </View>
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Payout Details <Text style={styles.required}>*</Text></Text>
-                <Text style={styles.formHint}>IBAN / account no / PayPal email / Stripe email</Text>
+                <Text style={styles.formLabel}>{t('pharmacyPayouts.modal.payoutDetails')} <Text style={styles.required}>*</Text></Text>
+                <Text style={styles.formHint}>{t('pharmacyPayouts.modal.payoutDetailsHint')}</Text>
                 <TextInput
                   style={[styles.formInput, styles.formTextArea]}
                   value={payoutDetails}
                   onChangeText={setPayoutDetails}
-                  placeholder="Enter IBAN, account number, or email"
+                  placeholder={t('pharmacyPayouts.modal.payoutDetailsPlaceholder')}
                   multiline
                   numberOfLines={3}
                 />
               </View>
             </ScrollView>
             <View style={styles.modalFooter}>
-              <Button title="Cancel" variant="outline" onPress={() => setWithdrawModalOpen(false)} style={styles.modalBtn} />
-              <Button title="Submit Request" onPress={submitWithdrawal} disabled={!canSubmit} loading={requestWithdrawal.isPending} style={styles.modalBtn} />
+              <Button title={t('common.cancel')} variant="outline" onPress={() => setWithdrawModalOpen(false)} style={styles.modalBtn} />
+              <Button title={t('pharmacyPayouts.modal.submitRequest')} onPress={submitWithdrawal} disabled={!canSubmit} loading={requestWithdrawal.isPending} style={styles.modalBtn} />
             </View>
           </Pressable>
         </Pressable>

@@ -10,6 +10,8 @@ import { typography } from '../../theme/typography';
 import { useNotifications } from '../../queries/notificationQueries';
 import { useMarkAllNotificationsRead, useMarkNotificationRead } from '../../mutations/notificationMutations';
 import { getErrorMessage } from '../../utils/errorUtils';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n/appI18n';
 
 type Filter = 'all' | 'unread' | 'read';
 
@@ -42,19 +44,21 @@ function normalizeNotifications(response: unknown): NotificationItem[] {
     : [];
 }
 
-function formatTimeAgo(dateString?: string): string {
-  if (!dateString) return 'Just now';
+function formatTimeAgo(dateString: string | undefined, t: (key: string, opts?: any) => string): string {
+  if (!dateString) return t('pharmacyNotifications.time.justNow');
   const date = new Date(dateString);
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-  if (diffInSeconds < 60) return 'Just now';
-  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
-  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
-  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`;
-  return date.toLocaleDateString();
+  if (diffInSeconds < 60) return t('pharmacyNotifications.time.justNow');
+  if (diffInSeconds < 3600) return t('pharmacyNotifications.time.minutesAgo', { count: Math.floor(diffInSeconds / 60) });
+  if (diffInSeconds < 86400) return t('pharmacyNotifications.time.hoursAgo', { count: Math.floor(diffInSeconds / 3600) });
+  if (diffInSeconds < 604800) return t('pharmacyNotifications.time.daysAgo', { count: Math.floor(diffInSeconds / 86400) });
+  const locale = i18n.language?.startsWith('it') ? 'it-IT' : 'en-GB';
+  return date.toLocaleDateString(locale);
 }
 
 export function PharmacyNotificationsScreen() {
+  const { t } = useTranslation();
   const [filter, setFilter] = useState<Filter>('all');
   const params = useMemo(() => {
     const p: { page: number; limit: number; unreadOnly?: boolean } = { page: 1, limit: 50 };
@@ -77,9 +81,9 @@ export function PharmacyNotificationsScreen() {
   const onMarkAll = async () => {
     try {
       await markAll.mutateAsync();
-      Toast.show({ type: 'success', text1: 'All notifications marked as read' });
+      Toast.show({ type: 'success', text1: t('pharmacyNotifications.toasts.allMarkedRead') });
     } catch (err) {
-      Toast.show({ type: 'error', text1: getErrorMessage(err, 'Failed to mark all as read') });
+      Toast.show({ type: 'error', text1: getErrorMessage(err, t('pharmacyNotifications.errors.failedToMarkAllRead')) });
     }
   };
 
@@ -88,12 +92,12 @@ export function PharmacyNotificationsScreen() {
       <Card style={styles.headerCard}>
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.title}>Notifications</Text>
-            <Text style={styles.subtitle}>Alerts & updates</Text>
+            <Text style={styles.title}>{t('pharmacyNotifications.title')}</Text>
+            <Text style={styles.subtitle}>{t('pharmacyNotifications.subtitle')}</Text>
           </View>
           {unreadCount > 0 ? (
             <Button
-              title={markAll.isPending ? 'Marking...' : 'Mark all'}
+              title={markAll.isPending ? t('pharmacyNotifications.actions.marking') : t('pharmacyNotifications.actions.markAll')}
               variant="outline"
               onPress={onMarkAll}
               disabled={markAll.isPending}
@@ -106,21 +110,23 @@ export function PharmacyNotificationsScreen() {
             style={[styles.tab, filter === 'all' && styles.tabActive]}
             onPress={() => setFilter('all')}
           >
-            <Text style={[styles.tabText, filter === 'all' && styles.tabTextActive]}>All</Text>
+            <Text style={[styles.tabText, filter === 'all' && styles.tabTextActive]}>{t('common.all')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tab, filter === 'unread' && styles.tabActive]}
             onPress={() => setFilter('unread')}
           >
             <Text style={[styles.tabText, filter === 'unread' && styles.tabTextActive]}>
-              Unread {unreadCount > 0 ? `(${unreadCount})` : ''}
+              {unreadCount > 0
+                ? t('pharmacyNotifications.tabs.unreadWithCount', { count: unreadCount })
+                : t('pharmacyNotifications.tabs.unread')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tab, filter === 'read' && styles.tabActive]}
             onPress={() => setFilter('read')}
           >
-            <Text style={[styles.tabText, filter === 'read' && styles.tabTextActive]}>Read</Text>
+            <Text style={[styles.tabText, filter === 'read' && styles.tabTextActive]}>{t('pharmacyNotifications.tabs.read')}</Text>
           </TouchableOpacity>
         </View>
       </Card>
@@ -131,7 +137,7 @@ export function PharmacyNotificationsScreen() {
         </View>
       ) : items.length === 0 ? (
         <View style={styles.center}>
-          <Text style={styles.emptyText}>No notifications found.</Text>
+          <Text style={styles.emptyText}>{t('pharmacyNotifications.empty')}</Text>
         </View>
       ) : (
         <FlatList
@@ -147,7 +153,7 @@ export function PharmacyNotificationsScreen() {
                 try {
                   await markRead.mutateAsync(item._id);
                 } catch (err) {
-                  Toast.show({ type: 'error', text1: getErrorMessage(err, 'Failed to mark as read') });
+                  Toast.show({ type: 'error', text1: getErrorMessage(err, t('pharmacyNotifications.errors.failedToMarkRead')) });
                 }
               }}
             >
@@ -157,9 +163,9 @@ export function PharmacyNotificationsScreen() {
                   ...(!item.isRead ? styles.unread : {}),
                 }}
               >
-                <Text style={styles.itemTitle}>{item.title || 'Notification'}</Text>
+                <Text style={styles.itemTitle}>{item.title || t('pharmacyNotifications.fallbackTitle')}</Text>
                 {item.body ? <Text style={styles.itemBody}>{item.body}</Text> : null}
-                <Text style={styles.itemTime}>{formatTimeAgo(item.createdAt)}</Text>
+                <Text style={styles.itemTime}>{formatTimeAgo(item.createdAt, t)}</Text>
               </Card>
             </TouchableOpacity>
           )}

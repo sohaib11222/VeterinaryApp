@@ -6,8 +6,10 @@ import { Button } from '../../components/common/Button';
 import { useChangePasswordMutation } from '../../mutations/authMutations';
 import { getErrorMessage } from '../../utils/errorUtils';
 import Toast from 'react-native-toast-message';
+import { useTranslation } from 'react-i18next';
 
 export function PharmacyChangePasswordScreen() {
+  const { t } = useTranslation();
   const [current, setCurrent] = useState('');
   const [newPass, setNewPass] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -15,35 +17,35 @@ export function PharmacyChangePasswordScreen() {
 
   const onSubmit = async () => {
     if (!current.trim()) {
-      Toast.show({ type: 'error', text1: 'Current password required' });
+      Toast.show({ type: 'error', text1: t('pharmacyChangePassword.validation.currentPasswordRequired') });
       return;
     }
     if (!newPass.trim() || newPass.length < 6) {
-      Toast.show({ type: 'error', text1: 'New password must be at least 6 characters' });
+      Toast.show({ type: 'error', text1: t('pharmacyChangePassword.validation.newPasswordMinLength') });
       return;
     }
     if (newPass !== confirm) {
-      Toast.show({ type: 'error', text1: 'New password and confirm do not match' });
+      Toast.show({ type: 'error', text1: t('pharmacyChangePassword.validation.passwordsDoNotMatch') });
       return;
     }
     try {
       await changePassword.mutateAsync({ oldPassword: current, newPassword: newPass });
-      Toast.show({ type: 'success', text1: 'Password updated' });
+      Toast.show({ type: 'success', text1: t('pharmacyChangePassword.toasts.passwordUpdated') });
       setCurrent('');
       setNewPass('');
       setConfirm('');
     } catch (err) {
-      Toast.show({ type: 'error', text1: 'Failed', text2: getErrorMessage(err, 'Could not update password') });
+      Toast.show({ type: 'error', text1: t('common.failed'), text2: getErrorMessage(err, t('pharmacyChangePassword.errors.couldNotUpdatePassword')) });
     }
   };
 
   return (
     <ScreenContainer scroll padded>
       <Card>
-        <Input label="Current Password" value={current} onChangeText={setCurrent} secureTextEntry placeholder="••••••••" />
-        <Input label="New Password" value={newPass} onChangeText={setNewPass} secureTextEntry placeholder="••••••••" />
-        <Input label="Confirm New Password" value={confirm} onChangeText={setConfirm} secureTextEntry placeholder="••••••••" />
-        <Button title="Update Password" onPress={onSubmit} loading={changePassword.isPending} />
+        <Input label={t('pharmacyChangePassword.fields.currentPassword')} value={current} onChangeText={setCurrent} secureTextEntry placeholder={t('pharmacyChangePassword.fields.passwordPlaceholder')} />
+        <Input label={t('pharmacyChangePassword.fields.newPassword')} value={newPass} onChangeText={setNewPass} secureTextEntry placeholder={t('pharmacyChangePassword.fields.passwordPlaceholder')} />
+        <Input label={t('pharmacyChangePassword.fields.confirmNewPassword')} value={confirm} onChangeText={setConfirm} secureTextEntry placeholder={t('pharmacyChangePassword.fields.passwordPlaceholder')} />
+        <Button title={t('pharmacyChangePassword.actions.updatePassword')} onPress={onSubmit} loading={changePassword.isPending} />
       </Card>
     </ScreenContainer>
   );

@@ -24,6 +24,8 @@ import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import type { PharmacyOrdersStackParamList } from '../../navigation/types';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n/appI18n';
 
 type Route = RouteProp<PharmacyOrdersStackParamList, 'PharmacyOrdersList'>;
 
@@ -51,12 +53,14 @@ function getStatusColor(status: string) {
 }
 
 function formatDate(val: string | Date | null | undefined): string {
-  if (!val) return '—';
+  if (!val) return i18n.t('common.na');
   const d = typeof val === 'string' ? new Date(val) : val;
-  return isNaN(d.getTime()) ? String(val) : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const locale = i18n.language?.startsWith('it') ? 'it-IT' : 'en-GB';
+  return isNaN(d.getTime()) ? String(val) : d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export function PharmacyOrdersListScreen() {
+  const { t } = useTranslation();
   const route = useRoute<Route>();
   const navigation = useNavigation<any>();
   const initialStatus = (route.params as { status?: string } | undefined)?.status;
@@ -99,19 +103,29 @@ export function PharmacyOrdersListScreen() {
     setShippingFee('');
   };
 
+  const statusLabel = (code: string) =>
+    code
+      ? t(`pharmacyOrders.statusLabels.${code}`, { defaultValue: code })
+      : t('common.all');
+
+  const paymentLabel = (code: string) =>
+    code
+      ? t(`pharmacyOrders.paymentLabels.${code}`, { defaultValue: code })
+      : t('common.all');
+
   const saveShippingFee = async () => {
     const n = parseFloat(shippingFee);
     if (!Number.isFinite(n) || n < 0) {
-      Toast.show({ type: 'error', text1: 'Enter a valid shipping fee (≥ 0)' });
+      Toast.show({ type: 'error', text1: t('pharmacyOrdersList.validation.invalidShippingFee') });
       return;
     }
     if (!shippingModal) return;
     try {
       await updateShipping.mutateAsync({ orderId: shippingModal.orderId, data: { shippingFee: n } });
-      Toast.show({ type: 'success', text1: 'Shipping fee updated' });
+      Toast.show({ type: 'success', text1: t('pharmacyOrdersList.toasts.shippingFeeUpdated') });
       closeShippingModal();
     } catch (err) {
-      Toast.show({ type: 'error', text1: 'Failed', text2: getErrorMessage(err, 'Could not update shipping fee') });
+      Toast.show({ type: 'error', text1: t('common.failed'), text2: getErrorMessage(err, t('pharmacyOrdersList.errors.couldNotUpdateShippingFee')) });
     }
   };
 
@@ -121,7 +135,7 @@ export function PharmacyOrdersListScreen() {
         <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search by order number or customer..."
+          placeholder={t('pharmacyOrdersList.searchPlaceholder')}
           placeholderTextColor={colors.textLight}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -129,7 +143,7 @@ export function PharmacyOrdersListScreen() {
       </View>
 
       <View style={styles.filterBlock}>
-        <Text style={styles.filterLabel}>Status</Text>
+        <Text style={styles.filterLabel}>{t('pharmacyOrdersList.filters.status')}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
           {STATUS_OPTIONS.map((s) => (
             <TouchableOpacity
@@ -137,13 +151,13 @@ export function PharmacyOrdersListScreen() {
               style={[styles.chip, (!s || statusFilter === s) && styles.chipActive]}
               onPress={() => setStatusFilter(s)}
             >
-              <Text style={[styles.chipText, (!s || statusFilter === s) && styles.chipTextActive]}>{s || 'All'}</Text>
+              <Text style={[styles.chipText, (!s || statusFilter === s) && styles.chipTextActive]}>{statusLabel(s)}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
       <View style={styles.filterBlock}>
-        <Text style={styles.filterLabel}>Payment</Text>
+        <Text style={styles.filterLabel}>{t('pharmacyOrdersList.filters.payment')}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
           {PAYMENT_OPTIONS.map((p) => (
             <TouchableOpacity
@@ -151,7 +165,7 @@ export function PharmacyOrdersListScreen() {
               style={[styles.chip, (!p || paymentFilter === p) && styles.chipActive]}
               onPress={() => setPaymentFilter(p)}
             >
-              <Text style={[styles.chipText, (!p || paymentFilter === p) && styles.chipTextActive]}>{p || 'All'}</Text>
+              <Text style={[styles.chipText, (!p || paymentFilter === p) && styles.chipTextActive]}>{paymentLabel(p)}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -159,23 +173,27 @@ export function PharmacyOrdersListScreen() {
 
       {filtered.length === 0 ? (
         <Card>
-          <Text style={styles.emptyText}>No orders found.</Text>
+          <Text style={styles.emptyText}>{t('pharmacyOrdersList.empty.noOrders')}</Text>
         </Card>
       ) : (
         filtered.map((o: any) => {
           const id = o?._id ?? o?.id;
           const orderNo = o?.orderNumber ?? id;
-          const customer = o?.petOwnerId?.name ?? o?.petOwner?.name ?? '—';
+          const customer = o?.petOwnerId?.name ?? o?.petOwner?.name ?? t('common.na');
           const total = o?.total ?? o?.finalTotal ?? o?.initialTotal ?? 0;
           const shippingVal = o?.shipping;
-          const shippingDisplay = shippingVal === null || shippingVal === undefined ? 'Waiting' : `€${Number(shippingVal).toFixed(2)}`;
-          const paymentStatus = o?.paymentStatus ?? '—';
-          const status = o?.status ?? '—';
+          const shippingDisplay =
+            shippingVal === null || shippingVal === undefined
+              ? t('pharmacyOrdersList.shipping.waiting')
+              : t('pharmacyOrdersList.shipping.amount', { amount: Number(shippingVal).toFixed(2) });
+          const paymentStatus = o?.paymentStatus ?? t('common.na');
+          const status = o?.status ?? t('common.na');
           const isPaid = String(paymentStatus).toUpperCase() === 'PAID';
           const dateStr = formatDate(o?.createdAt);
           const firstItem = Array.isArray(o?.items) && o.items[0] ? o.items[0] : null;
           const productImg = firstItem?.productId?.images?.[0];
           const thumbUri = productImg ? getImageUrl(productImg) : null;
+
           return (
             <Card key={id} style={styles.orderCard}>
               <TouchableOpacity onPress={() => navigation.navigate('PharmacyOrderDetails', { orderId: String(id) })} activeOpacity={0.9}>
@@ -194,15 +212,15 @@ export function PharmacyOrdersListScreen() {
                 </View>
                 <View style={styles.metaRow}>
                   <View style={styles.metaItem}>
-                    <Text style={styles.metaLabel}>Shipping</Text>
+                    <Text style={styles.metaLabel}>{t('pharmacyOrdersList.labels.shipping')}</Text>
                     <Text style={styles.metaValue}>{shippingDisplay}</Text>
                   </View>
                   <View style={styles.metaItem}>
-                    <Text style={styles.metaLabel}>Payment</Text>
+                    <Text style={styles.metaLabel}>{t('pharmacyOrdersList.labels.payment')}</Text>
                     <Text style={[styles.metaValue, isPaid ? styles.paid : styles.unpaid]}>{paymentStatus}</Text>
                   </View>
                   <View style={styles.metaItem}>
-                    <Text style={styles.metaLabel}>Status</Text>
+                    <Text style={styles.metaLabel}>{t('pharmacyOrdersList.labels.status')}</Text>
                     <View style={[styles.statusBadge, { backgroundColor: getStatusColor(status) + '25' }]}>
                       <Text style={[styles.statusText, { color: getStatusColor(status) }]}>{status}</Text>
                     </View>
@@ -210,14 +228,14 @@ export function PharmacyOrdersListScreen() {
                 </View>
                 <View style={styles.actionsRow}>
                   <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('PharmacyOrderDetails', { orderId: String(id) })}>
-                    <Text style={styles.actionBtnText}>View</Text>
+                    <Text style={styles.actionBtnText}>{t('common.view')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.actionBtn, styles.actionBtnPrimary]}
                     onPress={(e) => { e.stopPropagation(); openShippingModal(o); }}
                     disabled={isPaid}
                   >
-                    <Text style={[styles.actionBtnText, styles.actionBtnTextPrimary]}>Set Shipping</Text>
+                    <Text style={[styles.actionBtnText, styles.actionBtnTextPrimary]}>{t('pharmacyOrdersList.actions.setShipping')}</Text>
                   </TouchableOpacity>
                 </View>
               </TouchableOpacity>
@@ -230,27 +248,27 @@ export function PharmacyOrdersListScreen() {
         <Pressable style={styles.modalOverlay} onPress={closeShippingModal}>
           <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Set Shipping Fee</Text>
+              <Text style={styles.modalTitle}>{t('pharmacyOrdersList.modal.title')}</Text>
               <TouchableOpacity onPress={closeShippingModal} hitSlop={12}>
                 <Text style={styles.modalClose}>✕</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.modalBody}>
               {shippingModal && (
-                <Text style={styles.modalOrderNo}>Order {shippingModal.orderNumber}</Text>
+                <Text style={styles.modalOrderNo}>{t('pharmacyOrdersList.modal.orderNumber', { orderNumber: shippingModal.orderNumber })}</Text>
               )}
-              <Text style={styles.modalLabel}>Shipping fee (€)</Text>
+              <Text style={styles.modalLabel}>{t('pharmacyOrdersList.modal.shippingFeeLabel')}</Text>
               <TextInput
                 style={styles.modalInput}
                 value={shippingFee}
                 onChangeText={setShippingFee}
-                placeholder="0.00"
+                placeholder={t('pharmacyOrdersList.modal.shippingFeePlaceholder')}
                 keyboardType="decimal-pad"
               />
             </View>
             <View style={styles.modalFooter}>
-              <Button title="Cancel" variant="outline" onPress={closeShippingModal} style={styles.modalBtn} />
-              <Button title="Save" onPress={saveShippingFee} loading={updateShipping.isPending} style={styles.modalBtn} />
+              <Button title={t('common.cancel')} variant="outline" onPress={closeShippingModal} style={styles.modalBtn} />
+              <Button title={t('common.save')} onPress={saveShippingFee} loading={updateShipping.isPending} style={styles.modalBtn} />
             </View>
           </Pressable>
         </Pressable>

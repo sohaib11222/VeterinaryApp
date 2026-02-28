@@ -57,6 +57,8 @@ export function VetMessagesScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const { t } = useTranslation();
 
+  const setHeaderSearchConfig = headerSearch?.setConfig;
+
   const petOwnerFallbackName = t('common.petOwner');
   const yesterdayLabel = t('common.yesterday');
 
@@ -70,13 +72,13 @@ export function VetMessagesScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
-      headerSearch?.setConfig({
+      setHeaderSearchConfig?.({
         placeholder: t('messages.searchPlaceholder'),
         value: searchQuery,
         onChangeText: setSearchQuery,
       });
-      return () => headerSearch?.setConfig(null);
-    }, [searchQuery, t])
+      return () => setHeaderSearchConfig?.(null);
+    }, [searchQuery, t, setHeaderSearchConfig])
   );
 
   /** Only show pet-owner conversations in list; admin chat is via "Admin Messages" button */

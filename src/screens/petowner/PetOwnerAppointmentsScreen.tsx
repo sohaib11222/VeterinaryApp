@@ -97,7 +97,16 @@ export function PetOwnerAppointmentsScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { data: appointmentsResponse, isLoading } = useAppointments({ limit: 50 });
+  const setHeaderSearchConfig = headerSearch?.setConfig;
+
+  const {
+    data: appointmentsResponse,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+  } = useAppointments({ limit: 50 });
   const getOrCreateConversation = useGetOrCreateConversation();
 
   const appointments = useMemo(
@@ -138,13 +147,13 @@ export function PetOwnerAppointmentsScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
-      headerSearch?.setConfig({
+      setHeaderSearchConfig?.({
         placeholder: t('appointments.searchPlaceholderPetOwner'),
         value: searchQuery,
         onChangeText: setSearchQuery,
       });
-      return () => headerSearch?.setConfig(null);
-    }, [searchQuery, headerSearch, t])
+      return () => setHeaderSearchConfig?.(null);
+    }, [searchQuery, t, setHeaderSearchConfig])
   );
 
   const tabs: { key: Tab; label: string }[] = [
@@ -292,6 +301,24 @@ export function PetOwnerAppointmentsScreen() {
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>{t('appointments.loading')}</Text>
         </View>
+      ) : isError ? (
+        <View style={styles.loading}>
+          <Text style={styles.errorTitle}>{t('common.error')}</Text>
+          <Text style={styles.errorText}>
+            {(error as { message?: string })?.message ?? t('common.somethingWentWrong')}
+          </Text>
+          <TouchableOpacity
+            style={styles.retryBtn}
+            onPress={() => refetch()}
+            disabled={isFetching}
+          >
+            {isFetching ? (
+              <ActivityIndicator color={colors.textInverse} />
+            ) : (
+              <Text style={styles.retryBtnText}>{t('common.retry')}</Text>
+            )}
+          </TouchableOpacity>
+        </View>
       ) : (
         <FlatList
           data={list}
@@ -331,6 +358,18 @@ const styles = StyleSheet.create({
   tabTextActive: { color: colors.primary, fontWeight: '600' },
   loading: { paddingVertical: spacing.xxl, alignItems: 'center', gap: spacing.sm },
   loadingText: { ...typography.bodySmall, color: colors.textSecondary },
+  errorTitle: { ...typography.h3, color: colors.text, textAlign: 'center' },
+  errorText: { ...typography.bodySmall, color: colors.textSecondary, textAlign: 'center' },
+  retryBtn: {
+    marginTop: spacing.sm,
+    paddingVertical: 10,
+    paddingHorizontal: 22,
+    backgroundColor: colors.primary,
+    borderRadius: 22,
+    minWidth: 140,
+    alignItems: 'center',
+  },
+  retryBtnText: { ...typography.bodySmall, color: colors.textInverse, fontWeight: '700' },
   listContent: { paddingBottom: spacing.xxl },
   card: { marginBottom: spacing.sm },
   topRow: {

@@ -12,6 +12,7 @@ import Toast from 'react-native-toast-message';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { useTranslation } from 'react-i18next';
 
 type Nav = AuthStackScreenProps<'DoctorVerificationUpload'>['navigation'];
 
@@ -21,11 +22,11 @@ const REQUIRED_DOCS: DocKey[] = ['registrationCertificate', 'goodStandingCertifi
 const OPTIONAL_DOCS: DocKey[] = ['specialistRegistration', 'digitalSignature'];
 
 const LABELS: Record<DocKey, string> = {
-  registrationCertificate: 'Certificate of Registration',
-  goodStandingCertificate: 'Certificate of Good Standing',
-  cv: 'Curriculum Vitae (CV)',
-  specialistRegistration: 'Specialist Registration (Optional)',
-  digitalSignature: 'Digital Signature (Optional)',
+  registrationCertificate: 'authDoctorVerificationUpload.docs.registrationCertificate',
+  goodStandingCertificate: 'authDoctorVerificationUpload.docs.goodStandingCertificate',
+  cv: 'authDoctorVerificationUpload.docs.cv',
+  specialistRegistration: 'authDoctorVerificationUpload.docs.specialistRegistration',
+  digitalSignature: 'authDoctorVerificationUpload.docs.digitalSignature',
 };
 
 const ACCEPT: Record<DocKey, string> = {
@@ -37,6 +38,7 @@ const ACCEPT: Record<DocKey, string> = {
 };
 
 export function DoctorVerificationUploadScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const [loading, setLoading] = useState(false);
   const [files, setFiles] = useState<Partial<Record<DocKey, DocumentPicker.DocumentPickerAsset>>>({});
@@ -50,7 +52,7 @@ export function DoctorVerificationUploadScreen() {
       if (result.canceled) return;
       setFiles((prev) => ({ ...prev, [key]: result.assets[0] }));
     } catch (e) {
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Could not pick file' });
+      Toast.show({ type: 'error', text1: t('common.error'), text2: t('authVerification.common.couldNotPickFile') });
     }
   };
 
@@ -59,8 +61,8 @@ export function DoctorVerificationUploadScreen() {
     if (missing.length > 0) {
       Toast.show({
         type: 'error',
-        text1: 'Required documents',
-        text2: `Please upload: ${missing.map((k) => LABELS[k]).join(', ')}`,
+        text1: t('authVerification.common.requiredDocuments'),
+        text2: t('authVerification.common.pleaseUpload', { items: missing.map((k) => t(LABELS[k])).join(', ') }),
       });
       return;
     }
@@ -83,10 +85,10 @@ export function DoctorVerificationUploadScreen() {
       }
 
       await uploadVeterinarianDocs(toUpload);
-      Toast.show({ type: 'success', text1: 'Documents uploaded', text2: 'Verification documents submitted successfully!' });
+      Toast.show({ type: 'success', text1: t('authVerification.common.documentsUploaded'), text2: t('authVerification.common.documentsSubmittedSuccessfully') });
       navigation.replace('PendingApproval');
     } catch (err: unknown) {
-      Toast.show({ type: 'error', text1: 'Upload failed', text2: getErrorMessage(err, 'Failed to upload documents.') });
+      Toast.show({ type: 'error', text1: t('authVerification.common.uploadFailedTitle'), text2: getErrorMessage(err, t('authVerification.common.failedToUploadDocuments')) });
     } finally {
       if (tempUris.length > 0) await deleteCacheFiles(tempUris).catch(() => {});
       setLoading(false);
@@ -96,25 +98,25 @@ export function DoctorVerificationUploadScreen() {
   return (
     <ScreenContainer scroll padded style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Doctor Verification</Text>
-        <Text style={styles.subtitle}>Upload your verification documents. All fields marked with * are required.</Text>
+        <Text style={styles.title}>{t('authDoctorVerificationUpload.title')}</Text>
+        <Text style={styles.subtitle}>{t('authDoctorVerificationUpload.subtitle')}</Text>
       </View>
 
       <View style={styles.listBox}>
-        <Text style={styles.listTitle}>Required documents</Text>
-        <Text style={styles.listItem}>• Certificate of Registration with the Medical Council</Text>
-        <Text style={styles.listItem}>• Certificate of Good Standing (valid 3 months)</Text>
-        <Text style={styles.listItem}>• Curriculum Vitae</Text>
-        <Text style={styles.listItem}>• Specialist Registration (if applicable)</Text>
-        <Text style={styles.listItem}>• Digital signature (if applicable)</Text>
+        <Text style={styles.listTitle}>{t('authDoctorVerificationUpload.requiredDocs.title')}</Text>
+        <Text style={styles.listItem}>{t('authDoctorVerificationUpload.requiredDocs.items.registrationCertificate')}</Text>
+        <Text style={styles.listItem}>{t('authDoctorVerificationUpload.requiredDocs.items.goodStandingCertificate')}</Text>
+        <Text style={styles.listItem}>{t('authDoctorVerificationUpload.requiredDocs.items.cv')}</Text>
+        <Text style={styles.listItem}>{t('authDoctorVerificationUpload.requiredDocs.items.specialistRegistration')}</Text>
+        <Text style={styles.listItem}>{t('authDoctorVerificationUpload.requiredDocs.items.digitalSignature')}</Text>
       </View>
 
       {(REQUIRED_DOCS as DocKey[]).map((key) => (
         <View key={key} style={styles.field}>
-          <Text style={styles.label}>{LABELS[key]} *</Text>
+          <Text style={styles.label}>{t(LABELS[key])} *</Text>
           <TouchableOpacity style={styles.pickBtn} onPress={() => pickDocument(key)}>
             <Text style={styles.pickBtnText} numberOfLines={1}>
-              {files[key]?.name ?? `Upload ${LABELS[key]}`}
+              {files[key]?.name ?? t('authVerification.common.uploadDoc', { doc: t(LABELS[key]) })}
             </Text>
           </TouchableOpacity>
         </View>
@@ -122,27 +124,27 @@ export function DoctorVerificationUploadScreen() {
 
       {(OPTIONAL_DOCS as DocKey[]).map((key) => (
         <View key={key} style={styles.field}>
-          <Text style={styles.label}>{LABELS[key]}</Text>
+          <Text style={styles.label}>{t(LABELS[key])}</Text>
           <TouchableOpacity style={styles.pickBtn} onPress={() => pickDocument(key)}>
             <Text style={styles.pickBtnText} numberOfLines={1}>
-              {files[key]?.name ?? `Upload ${LABELS[key]}`}
+              {files[key]?.name ?? t('authVerification.common.uploadDoc', { doc: t(LABELS[key]) })}
             </Text>
           </TouchableOpacity>
         </View>
       ))}
 
       <Button
-        title={loading ? 'Uploading...' : 'Submit for Verification'}
+        title={loading ? t('authVerification.common.uploading') : t('authVerification.common.submitForVerification')}
         onPress={onSubmit}
         loading={loading}
         style={styles.submitBtn}
       />
 
       <TouchableOpacity style={styles.backLink} onPress={() => navigation.goBack()}>
-        <Text style={styles.backLinkText}>← Back</Text>
+        <Text style={styles.backLinkText}>{t('common.back')}</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.statusLink} onPress={() => navigation.navigate('PendingApproval')}>
-        <Text style={styles.backLinkText}>Already submitted? View status</Text>
+        <Text style={styles.backLinkText}>{t('authVerification.common.alreadySubmittedViewStatus')}</Text>
       </TouchableOpacity>
     </ScreenContainer>
   );
