@@ -48,7 +48,11 @@ export type RootStackScreenProps<T extends keyof RootStackParamList> = NativeSta
 export type VetStackParamList = {
   VetTabs: undefined;
   VetAppointmentDetails: { appointmentId?: string };
-  VetStartAppointment: { appointmentId?: string };
+  VetStartAppointment: {
+    appointmentId?: string;
+    mode?: 'outgoing' | 'answer';
+    videoCall?: unknown;
+  };
   VetPetRequests: undefined;
   VetClinicHours: undefined;
   VetMyPets: undefined;
@@ -144,6 +148,8 @@ export type PharmacyMoreStackParamList = {
   PharmacyChangePassword: undefined;
   Language: undefined;
   PharmacyNotifications: undefined;
+  PharmacyPrescriptionRequests: undefined;
+  PharmacyAdminChat: undefined;
 };
 
 // Pet Owner stack: tabs + all detail screens (match VeterinaryFrontend patient routes)
@@ -153,7 +159,11 @@ export type PetOwnerStackParamList = {
   PetOwnerRequestReschedule: { appointmentId?: string };
   PetOwnerRescheduleRequests: undefined;
   PetOwnerPrescription: { appointmentId?: string };
-  PetOwnerVideoCall: { appointmentId?: string };
+  PetOwnerVideoCall: {
+    appointmentId?: string;
+    mode?: 'outgoing' | 'answer';
+    videoCall?: unknown;
+  };
   PetOwnerFavourites: undefined;
   PetOwnerMyPets: undefined;
   PetOwnerAddPet: undefined;
@@ -167,6 +177,9 @@ export type PetOwnerStackParamList = {
   PetOwnerOrderHistory: undefined;
   PetOwnerOrderDetails: { orderId: string };
   PetOwnerDocuments: undefined;
+  PetOwnerSupportTickets: undefined;
+  PetOwnerCreateSupportTicket: undefined;
+  PetOwnerSupportTicketDetail: { ticketId: string };
   PetOwnerNotifications: undefined;
   Language: undefined;
   PetOwnerChatDetail: {

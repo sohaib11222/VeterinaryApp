@@ -1,71 +1,81 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { ScrollView, StyleSheet } from 'react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { Card } from '../../components/common/Card';
-import { colors } from '../../theme/colors';
+import { AccountMoreMenu, type AccountMoreMenuSection } from '../../components/common/AccountMoreMenu';
+import { useVetHeaderSearch } from '../../contexts/VetHeaderSearchContext';
 import { spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
 import { useTranslation } from 'react-i18next';
+import { usePharmacyPendingPrescriptionCount } from '../../queries/productPrescriptionRequestQueries';
+import { useUnreadChatCount } from '../../queries/chatQueries';
+
+function unreadCount(payload: unknown, key: 'pendingCount' | 'unreadCount'): number {
+  const outer = (payload as { data?: unknown })?.data ?? payload;
+  const inner = (outer as { data?: unknown })?.data ?? outer;
+  const number = Number((inner as Record<string, unknown>)?.[key]);
+  return Number.isFinite(number) ? number : 0;
+}
 
 export function PharmacyMoreScreen() {
   const { user, logout } = useAuth();
   const navigation = useNavigation<any>();
+  const headerSearch = useVetHeaderSearch();
   const isParapharmacy = user?.role === 'PARAPHARMACY';
   const { t } = useTranslation();
+  const pendingPrescriptions = usePharmacyPendingPrescriptionCount({ enabled: !isParapharmacy, refetchInterval: 30_000 });
+  const unreadChat = useUnreadChatCount({ refetchInterval: 30_000 });
+  const prescriptionBadge = unreadCount(pendingPrescriptions.data, 'pendingCount');
+  const chatBadge = unreadCount(unreadChat.data, 'unreadCount');
 
-  const menuItems = [
-    { label: t('menu.profile'), icon: '👤', screen: 'PharmacyProfile' as const },
-    { label: t('menu.subscription'), icon: '📋', screen: 'PharmacySubscription' as const },
-    { label: t('menu.payouts'), icon: '💰', screen: 'PharmacyPayouts' as const },
-    { label: t('menu.notifications'), icon: '🔔', screen: 'PharmacyNotifications' as const },
-    { label: t('menu.language'), icon: '🌐', screen: 'Language' as const },
-    { label: t('menu.changePassword'), icon: '🔒', screen: 'PharmacyChangePassword' as const },
+  const menuSections = [
+    {
+      title: isParapharmacy ? t('moreMenu.parapharmacySettings') : t('moreMenu.pharmacySettings'),
+      items: [
+        { label: t('menu.profile'), icon: 'storefront-outline', screen: 'PharmacyProfile' as const, description: t('moreMenu.descriptions.storeProfile') },
+        ...(!isParapharmacy ? [{ label: t('menu.subscription'), icon: 'ribbon-outline', screen: 'PharmacySubscription' as const, description: t('moreMenu.descriptions.subscription') }] : []),
+        { label: t('menu.payouts'), icon: 'wallet-outline', screen: 'PharmacyPayouts' as const, description: t('moreMenu.descriptions.payouts') },
+        ...(!isParapharmacy ? [{ label: 'Prescription requests', icon: 'document-text-outline' as const, screen: 'PharmacyPrescriptionRequests' as const, description: 'Review medicine approvals', badge: prescriptionBadge }] : []),
+        { label: 'Admin messages', icon: 'chatbubble-ellipses-outline', screen: 'PharmacyAdminChat' as const, description: 'Contact platform support', badge: chatBadge },
+      ],
+    },
+    {
+      title: t('moreMenu.preferences'),
+      items: [
+        { label: t('menu.notifications'), icon: 'notifications-outline', screen: 'PharmacyNotifications' as const },
+        { label: t('menu.language'), icon: 'language-outline', screen: 'Language' as const },
+        { label: t('menu.changePassword'), icon: 'lock-closed-outline', screen: 'PharmacyChangePassword' as const },
+      ],
+    },
   ];
 
+  useFocusEffect(React.useCallback(() => {
+    headerSearch?.setConfig(null);
+    return () => {};
+  }, [headerSearch]));
+
   return (
-    <ScreenContainer scroll padded>
-      <Card style={styles.profileCard}>
-        <View style={styles.avatarWrap}>
-          <Text style={styles.avatarText}>{user?.name?.charAt(0) || t('pharmacyMore.avatarFallback')}</Text>
-        </View>
-        <Text style={styles.userName}>{user?.name || t('more.pharmacy.pharmacy')}</Text>
-        <Text style={styles.userRole}>{isParapharmacy ? t('more.pharmacy.parapharmacy') : t('more.pharmacy.pharmacy')}</Text>
-        <Text style={styles.userEmail}>{user?.email}</Text>
-      </Card>
-      <Card>
-        {menuItems.map((item, i) => (
-          <TouchableOpacity
-            key={item.screen}
-            style={[styles.menuRow, i < menuItems.length - 1 && styles.menuRowBorder]}
-            onPress={() => navigation.navigate(item.screen)}
-          >
-            <Text style={styles.menuIcon}>{item.icon}</Text>
-            <Text style={styles.menuLabel}>{item.label}</Text>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
-        ))}
-      </Card>
-      <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-        <Text style={styles.logoutText}>{t('common.logout')}</Text>
-      </TouchableOpacity>
+    <ScreenContainer padded>
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        <AccountMoreMenu
+          name={user?.name || (isParapharmacy ? t('more.pharmacy.parapharmacy') : t('more.pharmacy.pharmacy'))}
+          role={isParapharmacy ? t('more.pharmacy.parapharmacy') : t('more.pharmacy.pharmacy')}
+          email={user?.email}
+          avatarFallback={user?.name || t('pharmacyMore.avatarFallback')}
+          accountLabel={t('moreMenu.account')}
+          sections={menuSections.map((section) => ({
+            title: section.title,
+            items: section.items.map((item) => ({ ...item, onPress: () => navigation.navigate(item.screen) })),
+          })) as AccountMoreMenuSection[]}
+          logoutLabel={t('common.logout')}
+          onLogout={logout}
+        />
+      </ScrollView>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  profileCard: { alignItems: 'center', marginBottom: spacing.md },
-  avatarWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primaryLight + '40', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { ...typography.h1, color: colors.primary, fontSize: 28 },
-  userName: { ...typography.h3, marginTop: spacing.sm },
-  userRole: { ...typography.bodySmall, color: colors.primary, fontWeight: '600', marginTop: 2 },
-  userEmail: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
-  menuRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md },
-  menuRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.borderLight },
-  menuIcon: { fontSize: 22, marginRight: spacing.md, width: 28, textAlign: 'center' },
-  menuLabel: { ...typography.body, flex: 1 },
-  chevron: { ...typography.h3, color: colors.textLight },
-  logoutBtn: { marginTop: spacing.lg, padding: spacing.md, backgroundColor: colors.errorLight, borderRadius: 12, alignItems: 'center' },
-  logoutText: { ...typography.body, color: colors.error, fontWeight: '600' },
+  scroll: { flex: 1 },
+  scrollContent: { paddingBottom: spacing.xxl },
 });

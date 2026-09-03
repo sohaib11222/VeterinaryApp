@@ -11,6 +11,7 @@ import { typography } from '../../theme/typography';
 import { useAppointment } from '../../queries/appointmentQueries';
 import { usePrescriptionByAppointment } from '../../queries/prescriptionQueries';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 
 type Route = RouteProp<PetOwnerStackParamList, 'PetOwnerPrescription'>;
 
@@ -39,7 +40,7 @@ export function PetOwnerPrescriptionScreen() {
   if (!appointmentId) {
     return (
       <ScreenContainer padded>
-        <Text style={styles.error}>{t('petOwnerPrescription.errors.appointmentIdRequired')}</Text>
+        <View style={styles.stateCard}><Ionicons name="alert-circle-outline" size={32} color={colors.error} /><Text style={styles.error}>{t('petOwnerPrescription.errors.appointmentIdRequired')}</Text></View>
       </ScreenContainer>
     );
   }
@@ -58,7 +59,7 @@ export function PetOwnerPrescriptionScreen() {
   if (!appointment) {
     return (
       <ScreenContainer padded>
-        <Text style={styles.error}>{t('petOwnerPrescription.errors.appointmentNotFound')}</Text>
+        <View style={styles.stateCard}><Ionicons name="alert-circle-outline" size={32} color={colors.error} /><Text style={styles.error}>{t('petOwnerPrescription.errors.appointmentNotFound')}</Text></View>
       </ScreenContainer>
     );
   }
@@ -66,10 +67,13 @@ export function PetOwnerPrescriptionScreen() {
   if (status !== 'COMPLETED') {
     return (
       <ScreenContainer padded>
-        <Text style={styles.warning}>
+        <View style={styles.stateCard}>
+          <Ionicons name="time-outline" size={32} color={colors.secondaryDark} />
+          <Text style={styles.warning}>
           {t('petOwnerPrescription.onlyAfterCompleted')}
-        </Text>
-        <Button title={t('common.back')} variant="outline" onPress={() => navigation.goBack()} style={styles.btn} />
+          </Text>
+          <Button title={t('common.back')} variant="outline" onPress={() => navigation.goBack()} style={styles.btn} />
+        </View>
       </ScreenContainer>
     );
   }
@@ -93,8 +97,8 @@ export function PetOwnerPrescriptionScreen() {
   if (!prescription || !(prescription as { _id?: string })?._id) {
     return (
       <ScreenContainer padded>
-        <Card>
-          <Text style={styles.title}>{t('petOwnerPrescription.title')}</Text>
+        <Card style={styles.card}>
+          <View style={styles.titleRow}><View style={styles.titleIcon}><Ionicons name="medical-outline" size={21} color={colors.primary} /></View><Text style={styles.title}>{t('petOwnerPrescription.title')}</Text></View>
           <Text style={styles.meta}>{t('petOwnerPrescription.meta.appointment', { appointmentNumber })}</Text>
           <Text style={styles.noRx}>{t('petOwnerPrescription.noPrescriptionYet')}</Text>
           <Button title={t('common.back')} variant="outline" onPress={() => navigation.goBack()} style={styles.btn} />
@@ -107,27 +111,26 @@ export function PetOwnerPrescriptionScreen() {
   const tests = (prescription.tests as string[]) || [];
 
   return (
-    <ScreenContainer scroll padded>
+    <ScreenContainer padded>
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Card>
-          <Text style={styles.title}>{t('petOwnerPrescription.title')}</Text>
-          <Text style={styles.meta}>{t('petOwnerPrescription.meta.appointment', { appointmentNumber })}</Text>
-          <Text style={styles.meta}>
+        <View style={styles.prescriptionHero}>
+          <View style={styles.heroIcon}><Ionicons name="medical" size={25} color={colors.primaryDark} /></View>
+          <View style={styles.heroCopy}><Text style={styles.heroTitle}>{t('petOwnerPrescription.title')}</Text><Text style={styles.heroRef}>{t('petOwnerPrescription.meta.appointment', { appointmentNumber })}</Text></View>
+        </View>
+        <Card style={styles.card}>
+          <View style={styles.patientMetaRow}><Ionicons name="person-outline" size={16} color={colors.primary} /><Text style={styles.meta}>
             {t('petOwnerPrescription.meta.veterinarian', { name: (vet.name as string) || (vet.fullName as string) || t('common.na') })}
-          </Text>
-          <Text style={styles.meta}>
+          </Text></View>
+          <View style={styles.patientMetaRow}><Ionicons name="paw-outline" size={16} color={colors.primary} /><Text style={styles.meta}>
             {t('petOwnerPrescription.meta.pet', { name: (pet.name as string) || t('common.na') })}
             {(pet.breed as string) ? ` (${pet.breed})` : ''}
-          </Text>
+          </Text></View>
 
-          <Text style={styles.sectionLabel}>{t('petOwnerPrescription.sections.diagnosis')}</Text>
-          <Text style={styles.value}>{(prescription.diagnosis as string) || t('common.na')}</Text>
+          <View style={styles.sectionBlock}><Text style={styles.sectionLabel}>{t('petOwnerPrescription.sections.diagnosis')}</Text><Text style={styles.value}>{(prescription.diagnosis as string) || t('common.na')}</Text></View>
 
-          <Text style={styles.sectionLabel}>{t('petOwnerPrescription.sections.allergies')}</Text>
-          <Text style={styles.value}>{(prescription.allergies as string) || t('common.na')}</Text>
+          <View style={styles.sectionBlock}><Text style={styles.sectionLabel}>{t('petOwnerPrescription.sections.allergies')}</Text><Text style={styles.value}>{(prescription.allergies as string) || t('common.na')}</Text></View>
 
-          <Text style={styles.sectionLabel}>{t('petOwnerPrescription.sections.clinicalNotes')}</Text>
-          <Text style={styles.value}>{(prescription.clinicalNotes as string) || t('common.na')}</Text>
+          <View style={styles.sectionBlock}><Text style={styles.sectionLabel}>{t('petOwnerPrescription.sections.clinicalNotes')}</Text><Text style={styles.value}>{(prescription.clinicalNotes as string) || t('common.na')}</Text></View>
 
           <Text style={styles.sectionLabel}>{t('petOwnerPrescription.sections.medications')}</Text>
           {meds.length === 0 ? (
@@ -151,16 +154,13 @@ export function PetOwnerPrescriptionScreen() {
             ))
           )}
 
-          <Text style={styles.sectionLabel}>{t('petOwnerPrescription.sections.recommendedTests')}</Text>
-          <Text style={styles.value}>
+          <View style={styles.sectionBlock}><Text style={styles.sectionLabel}>{t('petOwnerPrescription.sections.recommendedTests')}</Text><Text style={styles.value}>
             {tests.length === 0 ? t('common.na') : tests.join(', ')}
-          </Text>
+          </Text></View>
 
-          <Text style={styles.sectionLabel}>{t('petOwnerPrescription.sections.followUp')}</Text>
-          <Text style={styles.value}>{(prescription.followUp as string) || t('common.na')}</Text>
+          <View style={styles.sectionBlock}><Text style={styles.sectionLabel}>{t('petOwnerPrescription.sections.followUp')}</Text><Text style={styles.value}>{(prescription.followUp as string) || t('common.na')}</Text></View>
 
-          <Text style={styles.sectionLabel}>{t('petOwnerPrescription.sections.advice')}</Text>
-          <Text style={styles.value}>{(prescription.advice as string) || t('common.na')}</Text>
+          <View style={styles.sectionBlock}><Text style={styles.sectionLabel}>{t('petOwnerPrescription.sections.advice')}</Text><Text style={styles.value}>{(prescription.advice as string) || t('common.na')}</Text></View>
 
           <Button title={t('common.back')} variant="outline" onPress={() => navigation.goBack()} style={styles.btn} />
         </Card>
@@ -173,15 +173,26 @@ const styles = StyleSheet.create({
   scroll: { paddingBottom: spacing.xxl },
   loading: { paddingVertical: spacing.xxl, alignItems: 'center', gap: spacing.sm },
   loadingText: { ...typography.bodySmall, color: colors.textSecondary },
-  error: { ...typography.body, color: colors.error, marginBottom: spacing.md },
-  warning: { ...typography.body, color: colors.warning, marginBottom: spacing.md },
+  stateCard: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl, gap: spacing.md },
+  error: { ...typography.body, color: colors.error, textAlign: 'center' },
+  warning: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
   btn: { marginTop: spacing.lg },
-  title: { ...typography.h3, marginBottom: spacing.sm },
-  meta: { ...typography.bodySmall, color: colors.textSecondary, marginBottom: 2 },
+  card: { borderWidth: 1, borderColor: colors.borderLight },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
+  titleIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: colors.primaryLight + '18', alignItems: 'center', justifyContent: 'center' },
+  title: { ...typography.h3, color: colors.primaryDark },
+  prescriptionHero: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.successLight, borderRadius: 18, padding: spacing.md, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.primaryLight + '28' },
+  heroIcon: { width: 50, height: 50, borderRadius: 16, backgroundColor: colors.secondaryLight, alignItems: 'center', justifyContent: 'center', marginRight: spacing.md },
+  heroCopy: { flex: 1 },
+  heroTitle: { ...typography.h3, color: colors.primaryDark },
+  heroRef: { ...typography.caption, color: colors.primaryDark, opacity: 0.72, marginTop: 3 },
+  patientMetaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+  meta: { ...typography.bodySmall, color: colors.textSecondary, flex: 1 },
   noRx: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.md },
-  sectionLabel: { ...typography.label, marginTop: spacing.md, marginBottom: spacing.xs },
-  value: { ...typography.body, marginBottom: spacing.xs },
-  medBlock: { marginTop: spacing.sm, padding: spacing.sm, backgroundColor: colors.backgroundTertiary, borderRadius: 12 },
+  sectionBlock: { marginTop: spacing.md, padding: spacing.md, borderRadius: 14, backgroundColor: colors.backgroundSecondary, borderWidth: 1, borderColor: colors.borderLight },
+  sectionLabel: { ...typography.label, color: colors.primaryDark, marginTop: spacing.md, marginBottom: spacing.xs },
+  value: { ...typography.bodySmall, color: colors.text, lineHeight: 21 },
+  medBlock: { marginTop: spacing.sm, padding: spacing.md, backgroundColor: colors.primaryLight + '10', borderWidth: 1, borderColor: colors.primaryLight + '22', borderRadius: 14 },
   medName: { ...typography.body, fontWeight: '600' },
   medDetail: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
   medInstructions: { ...typography.bodySmall, marginTop: 2, fontStyle: 'italic' },

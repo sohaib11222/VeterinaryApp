@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
@@ -22,6 +23,7 @@ type Conversation = {
   updatedAt?: string;
   createdAt?: string;
   unreadCount?: number;
+  status?: string;
 };
 
 function getConversationName(c: Conversation, veterinarianLabel: string, naLabel: string): string {
@@ -59,7 +61,10 @@ export function PetOwnerMessagesScreen() {
 
   const setHeaderSearchConfig = headerSearch?.setConfig;
 
-  const { data: conversationsResponse, isLoading, error } = useConversations({ limit: 50 });
+  const { data: conversationsResponse, isLoading, error } = useConversations(
+    { limit: 50 },
+    { refetchInterval: 5_000, refetchIntervalInBackground: true }
+  );
 
   const conversations = useMemo(() => {
     const payload = conversationsResponse as { data?: { conversations?: Conversation[] }; conversations?: Conversation[] } | undefined;
@@ -136,7 +141,10 @@ export function PetOwnerMessagesScreen() {
               </View>
               <Text style={styles.preview} numberOfLines={1}>{String(preview)}</Text>
             </View>
-            <Text style={styles.chevron}>›</Text>
+            {String(item.status ?? '').toUpperCase() === 'COMPLETED' ? (
+              <View style={styles.completedIcon}><Ionicons name="lock-closed-outline" size={14} color={colors.warning} /></View>
+            ) : null}
+            <Ionicons name="chevron-forward" size={18} color={colors.textLight} />
           </View>
         </Card>
       </TouchableOpacity>
@@ -161,7 +169,7 @@ export function PetOwnerMessagesScreen() {
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Text style={styles.emptyIcon}>💬</Text>
+              <View style={styles.emptyIcon}><Ionicons name="chatbubbles-outline" size={31} color={colors.primary} /></View>
               <Text style={styles.emptyText}>{t('messages.empty')}</Text>
             </View>
           }
@@ -187,8 +195,8 @@ const styles = StyleSheet.create({
   unreadText: { ...typography.caption, color: colors.textInverse, fontWeight: '600', fontSize: 11 },
   time: { ...typography.caption, color: colors.textSecondary },
   preview: { ...typography.bodySmall, color: colors.textSecondary },
-  chevron: { ...typography.h3, color: colors.textLight },
+  completedIcon: { marginRight: 6 },
   empty: { paddingVertical: spacing.xxl, alignItems: 'center' },
-  emptyIcon: { fontSize: 48, marginBottom: spacing.sm },
+  emptyIcon: { width: 68, height: 68, borderRadius: 24, backgroundColor: colors.primaryLight + '1A', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm },
   emptyText: { ...typography.bodySmall, color: colors.textSecondary },
 });

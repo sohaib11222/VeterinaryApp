@@ -31,6 +31,7 @@ import {
 import { useMyPrescriptions } from '../../queries/prescriptionQueries';
 import { useCreateMedicalRecordWithUpload, useDeleteMedicalRecord } from '../../mutations/medicalMutations';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 
 type TabType = 'medical' | 'vaccinations' | 'prescription';
 
@@ -134,10 +135,10 @@ export function PetOwnerMedicalRecordsScreen() {
   const createRecord = useCreateMedicalRecordWithUpload();
   const deleteRecord = useDeleteMedicalRecord();
 
-  const tabs: { key: TabType; label: string }[] = [
-    { key: 'medical', label: t('petOwnerMedicalRecords.tabs.medical') },
-    { key: 'vaccinations', label: t('petOwnerMedicalRecords.tabs.vaccinations') },
-    { key: 'prescription', label: t('petOwnerMedicalRecords.tabs.prescriptions') },
+  const tabs: { key: TabType; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+    { key: 'medical', label: t('petOwnerMedicalRecords.tabs.medical'), icon: 'document-text-outline' },
+    { key: 'vaccinations', label: t('petOwnerMedicalRecords.tabs.vaccinations'), icon: 'medkit-outline' },
+    { key: 'prescription', label: t('petOwnerMedicalRecords.tabs.prescriptions'), icon: 'medical-outline' },
   ];
 
   const handleAddRecord = async () => {
@@ -201,7 +202,10 @@ export function PetOwnerMedicalRecordsScreen() {
   const renderMedicalItem = ({ item }: { item: MedicalRecordItem }) => (
     <Card style={styles.card}>
       <View style={styles.recordHeader}>
-        <Text style={styles.recordId}>#{String(item._id).slice(-6).toUpperCase()}</Text>
+        <View style={styles.recordIdRow}>
+          <View style={styles.recordIcon}><Ionicons name="document-text-outline" size={16} color={colors.primary} /></View>
+          <Text style={styles.recordId}>#{String(item._id).slice(-6).toUpperCase()}</Text>
+        </View>
         <View style={styles.typeBadge}>
           <Text style={styles.typeBadgeText}>
             {t(`petOwnerMedicalRecords.recordTypes.${item.recordType || 'GENERAL'}`, {
@@ -228,6 +232,7 @@ export function PetOwnerMedicalRecordsScreen() {
       ) : null}
       <View style={styles.rowActions}>
         <TouchableOpacity style={styles.viewBtn} onPress={() => setViewRecord(item)}>
+          <Ionicons name="eye-outline" size={15} color={colors.textInverse} />
           <Text style={styles.viewBtnText}>{t('common.view')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -235,6 +240,7 @@ export function PetOwnerMedicalRecordsScreen() {
           onPress={() => handleDeleteRecord(item)}
           disabled={deleteRecord.isPending}
         >
+          <Ionicons name="trash-outline" size={15} color={colors.error} />
           <Text style={styles.deleteBtnText}>{t('common.delete')}</Text>
         </TouchableOpacity>
       </View>
@@ -243,7 +249,10 @@ export function PetOwnerMedicalRecordsScreen() {
 
   const renderVaccinationItem = ({ item }: { item: Record<string, unknown> }) => (
     <Card style={styles.card}>
-      <Text style={styles.recordTitle}>💉 {String(item.vaccinationType ?? t('common.na'))}</Text>
+      <View style={styles.vaccineTitleRow}>
+        <View style={styles.recordIcon}><Ionicons name="medkit-outline" size={16} color={colors.primary} /></View>
+        <Text style={styles.recordTitle}>{String(item.vaccinationType ?? t('common.na'))}</Text>
+      </View>
       <View style={styles.recordRow}>
         <Text style={styles.recordLabel}>{t('petOwnerMedicalRecords.labels.pet')}</Text>
         <Text style={styles.recordValue}>{(item.petId as { name?: string })?.name ?? t('common.na')}</Text>
@@ -315,15 +324,23 @@ export function PetOwnerMedicalRecordsScreen() {
 
   return (
     <ScreenContainer padded>
+      <View style={styles.hero}>
+        <View style={styles.heroIcon}><Ionicons name="heart-circle-outline" size={25} color={colors.primaryDark} /></View>
+        <View style={styles.heroCopy}>
+          <Text style={styles.heroTitle}>{t('menu.petMedicalRecords')}</Text>
+          <Text style={styles.heroText}>{activeTab === 'medical' ? t('petOwnerMedicalRecords.tabs.medical') : activeTab === 'vaccinations' ? t('petOwnerMedicalRecords.tabs.vaccinations') : t('petOwnerMedicalRecords.tabs.prescriptions')}</Text>
+        </View>
+      </View>
       <View style={styles.tabs}>
         {tabs.map((t) => (
-          <TouchableOpacity key={t.key} style={[styles.tab, activeTab === t.key && styles.tabActive]} onPress={() => setActiveTab(t.key)}>
+          <TouchableOpacity key={t.key} style={[styles.tab, activeTab === t.key && styles.tabActive]} onPress={() => setActiveTab(t.key)} accessibilityRole="tab">
+            <Ionicons name={t.icon} size={16} color={activeTab === t.key ? colors.primary : colors.textSecondary} />
             <Text style={[styles.tabText, activeTab === t.key && styles.tabTextActive]} numberOfLines={1}>{t.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
       <View style={styles.searchWrap}>
-        <Text style={styles.searchIcon}>🔍</Text>
+        <Ionicons name="search-outline" size={19} color={colors.textSecondary} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder={t('petOwnerMedicalRecords.searchPlaceholder')}
@@ -348,7 +365,7 @@ export function PetOwnerMedicalRecordsScreen() {
       </View>
       {activeTab === 'vaccinations' && upcomingVaccinations.length > 0 && (
         <Card style={styles.upcomingCard}>
-          <Text style={styles.upcomingTitle}>{t('petOwnerMedicalRecords.upcoming.title')}</Text>
+          <View style={styles.upcomingTitleRow}><Ionicons name="alarm-outline" size={18} color={colors.secondaryDark} /><Text style={styles.upcomingTitle}>{t('petOwnerMedicalRecords.upcoming.title')}</Text></View>
           {(upcomingVaccinations as Record<string, unknown>[]).slice(0, 5).map((v, idx) => (
             <View key={idx} style={styles.upcomingRow}>
               <Text style={styles.upcomingPet}>{(v.petId as { name?: string })?.name ?? t('common.na')}</Text>
@@ -465,45 +482,54 @@ export function PetOwnerMedicalRecordsScreen() {
 }
 
 const styles = StyleSheet.create({
-  tabs: { flexDirection: 'row', marginBottom: spacing.sm, backgroundColor: colors.backgroundTertiary, borderRadius: 12, padding: 4 },
-  tab: { flex: 1, paddingVertical: spacing.sm, alignItems: 'center', borderRadius: 10 },
-  tabActive: { backgroundColor: colors.background, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 },
-  tabText: { ...typography.caption, color: colors.textSecondary },
+  hero: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.successLight, borderRadius: 18, padding: spacing.md, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.primaryLight + '28' },
+  heroIcon: { width: 48, height: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.secondaryLight, marginRight: spacing.md },
+  heroCopy: { flex: 1 },
+  heroTitle: { ...typography.h3, color: colors.primaryDark },
+  heroText: { ...typography.caption, color: colors.primaryDark, opacity: 0.72, marginTop: 3 },
+  tabs: { flexDirection: 'row', marginBottom: spacing.md, backgroundColor: colors.backgroundTertiary, borderRadius: 15, padding: 4 },
+  tab: { flex: 1, minHeight: 47, flexDirection: 'row', gap: 4, justifyContent: 'center', alignItems: 'center', borderRadius: 12, paddingHorizontal: 2 },
+  tabActive: { backgroundColor: colors.background, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
+  tabText: { ...typography.caption, color: colors.textSecondary, fontWeight: '600' },
   tabTextActive: { color: colors.primary, fontWeight: '600' },
-  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.backgroundTertiary, borderRadius: 12, paddingHorizontal: spacing.sm, marginBottom: spacing.sm, minHeight: 44 },
-  searchIcon: { marginRight: spacing.sm, fontSize: 16 },
+  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, borderRadius: 14, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md, marginBottom: spacing.md, minHeight: 52 },
+  searchIcon: { marginRight: spacing.sm },
   searchInput: { flex: 1, ...typography.body, paddingVertical: spacing.sm },
-  filterRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
-  filterLabel: { ...typography.label, marginRight: spacing.sm },
+  filterRow: { marginBottom: spacing.md },
+  filterLabel: { ...typography.label, color: colors.textSecondary, marginBottom: spacing.xs },
   petChips: { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' },
-  petChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: 20, backgroundColor: colors.backgroundTertiary },
+  petChip: { paddingHorizontal: spacing.md, paddingVertical: 8, borderRadius: 20, backgroundColor: colors.backgroundSecondary, borderWidth: 1, borderColor: colors.borderLight },
   petChipActive: { backgroundColor: colors.primary },
   petChipText: { ...typography.caption, color: colors.textSecondary },
   petChipTextActive: { color: colors.textInverse },
-  upcomingCard: { marginBottom: spacing.sm },
-  upcomingTitle: { ...typography.body, fontWeight: '600', marginBottom: spacing.xs },
-  upcomingRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
+  upcomingCard: { marginBottom: spacing.md, borderWidth: 1, borderColor: colors.secondaryDark + '38', backgroundColor: colors.warningLight + '72' },
+  upcomingTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
+  upcomingTitle: { ...typography.label, color: colors.primaryDark },
+  upcomingRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 7, borderTopWidth: 1, borderTopColor: colors.secondaryDark + '1F' },
   upcomingPet: { ...typography.bodySmall },
   upcomingType: { ...typography.bodySmall },
   upcomingDate: { ...typography.caption },
   addBtn: { marginBottom: spacing.sm },
   loading: { paddingVertical: spacing.xxl, alignItems: 'center' },
   list: { paddingBottom: spacing.xxl },
-  card: { marginBottom: spacing.sm },
-  recordHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  card: { marginBottom: spacing.md, borderWidth: 1, borderColor: colors.borderLight },
+  recordHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+  recordIdRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  recordIcon: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primaryLight + '18' },
   recordId: { ...typography.caption, color: colors.textSecondary },
   typeBadge: { backgroundColor: colors.primaryLight + '25', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   typeBadgeText: { fontSize: 12, fontWeight: '600', color: colors.primary },
-  recordTitle: { ...typography.body, fontWeight: '600' },
+  recordTitle: { ...typography.label, color: colors.text },
   recordDesc: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
-  recordRow: { flexDirection: 'row', marginTop: 4 },
+  recordRow: { flexDirection: 'row', marginTop: 7 },
   recordLabel: { ...typography.caption, color: colors.textSecondary, width: 100 },
   recordValue: { ...typography.bodySmall, flex: 1 },
   fileLink: { ...typography.bodySmall, color: colors.primary },
-  rowActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
-  viewBtn: { paddingVertical: 6, paddingHorizontal: 14, backgroundColor: colors.primary, borderRadius: 20 },
+  vaccineTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
+  rowActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.borderLight },
+  viewBtn: { minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 6, paddingHorizontal: 14, backgroundColor: colors.primary, borderRadius: 11 },
   viewBtnText: { ...typography.bodySmall, color: colors.textInverse, fontWeight: '600' },
-  deleteBtn: { paddingVertical: 6, paddingHorizontal: 14, backgroundColor: colors.errorLight, borderRadius: 20 },
+  deleteBtn: { minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 6, paddingHorizontal: 14, backgroundColor: colors.errorLight, borderRadius: 11 },
   deleteBtnText: { ...typography.bodySmall, color: colors.error, fontWeight: '600' },
   empty: { paddingVertical: spacing.xxl, alignItems: 'center' },
   emptyText: { ...typography.bodySmall, color: colors.textSecondary },

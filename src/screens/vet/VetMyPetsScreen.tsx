@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
 import { colors } from '../../theme/colors';
@@ -17,6 +18,7 @@ import { typography } from '../../theme/typography';
 import { useAppointments } from '../../queries/appointmentQueries';
 import { getImageUrl } from '../../config/api';
 import { useTranslation } from 'react-i18next';
+import { ResponsiveFilterChips } from '../../components/common/ResponsiveFilterChips';
 
 type PetRow = {
   id: string;
@@ -181,33 +183,33 @@ export function VetMyPetsScreen() {
         </View>
         <View style={styles.info}>
           <View style={styles.topRow}>
-            <Text style={styles.petName}>{item.petName}</Text>
+            <View style={styles.petNameRow}><Text style={styles.petName}>{item.petName}</Text><View style={styles.liveDot} /></View>
             <View style={styles.speciesBadge}>
               <Text style={styles.speciesText}>{normalizeSpecies(item.species) || '—'}</Text>
             </View>
           </View>
           <Text style={styles.breed}>{item.breed || '—'}</Text>
-          <Text style={styles.owner}>{t('pets.labels.owner')}: {item.ownerName}</Text>
-          {item.ownerEmail ? <Text style={styles.contact}>✉ {item.ownerEmail}</Text> : null}
-          {item.ownerPhone ? <Text style={styles.contact}>📞 {item.ownerPhone}</Text> : null}
+          <View style={styles.ownerRow}><Ionicons name="person-outline" size={14} color={colors.textSecondary} /><Text style={styles.owner}>{t('pets.labels.owner')}: {item.ownerName}</Text></View>
           <View style={styles.metaRow}>
-            <Text style={styles.meta}>{t('pets.labels.lastVisit')}: {formatDate(item.lastVisit)}</Text>
-            <Text style={styles.meta}>{t('pets.labels.added')}: {formatDate(item.dateAdded)}</Text>
+            <View style={styles.metaPill}><Ionicons name="calendar-outline" size={13} color={colors.primary} /><Text style={styles.meta}>{t('pets.labels.lastVisit')}: {formatDate(item.lastVisit)}</Text></View>
+            <View style={styles.metaPill}><Ionicons name="time-outline" size={13} color={colors.textSecondary} /><Text style={styles.meta}>{t('pets.labels.added')}: {formatDate(item.dateAdded)}</Text></View>
           </View>
         </View>
-        {/* <Text style={styles.chevron}>›</Text> */}
+        <Ionicons name="chevron-forward" size={19} color={colors.textLight} />
       </View>
-      {/* <TouchableOpacity style={styles.viewBtn} onPress={() => {}}>
-        <Text style={styles.viewBtnText}>View details</Text>
-      </TouchableOpacity> */}
     </Card>
   );
   };
 
   return (
     <ScreenContainer padded>
+      <View style={styles.hero}>
+        <View style={styles.heroIcon}><Ionicons name="paw-outline" size={23} color={colors.primaryDark} /></View>
+        <View style={styles.heroCopy}><Text style={styles.heroTitle}>{t('menu.myPets')}</Text><Text style={styles.heroText}>{t('pets.count', { count: pets.length })}</Text></View>
+        <View style={styles.heroCount}><Text style={styles.heroCountText}>{pets.length}</Text></View>
+      </View>
       <View style={styles.searchWrap}>
-        <Text style={styles.searchIcon}>🔍</Text>
+        <Ionicons name="search-outline" size={19} color={colors.textSecondary} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder={t('pets.searchPlaceholder')}
@@ -224,19 +226,13 @@ export function VetMyPetsScreen() {
           <Text style={[styles.tabText, tab === 'inactive' && styles.tabTextActive]}>{t('pets.tabs.inactive')}</Text>
         </TouchableOpacity>
       </View>
-      <View style={styles.filterRow}>
-        {speciesOptions.map((f) => (
-          <TouchableOpacity
-            key={f}
-            style={[styles.filterChip, filterSpecies === f && styles.filterChipActive]}
-            onPress={() => setFilterSpecies(f)}
-          >
-            <Text style={[styles.filterChipText, filterSpecies === f && styles.filterChipTextActive]}>
-              {f === 'all' ? t('pets.filters.all') : f}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <ResponsiveFilterChips
+        width={116}
+        value={filterSpecies}
+        onChange={setFilterSpecies}
+        accessibilityLabel="Filter pets by species"
+        options={speciesOptions.map((value) => ({ value, label: value === 'all' ? t('pets.filters.all') : value }))}
+      />
       <FlatList
         data={list}
         keyExtractor={(item) => item.id}
@@ -255,6 +251,13 @@ export function VetMyPetsScreen() {
 const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
   errorText: { ...typography.body, color: colors.error },
+  hero: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: 18, backgroundColor: colors.successLight, borderWidth: 1, borderColor: colors.primaryLight + '25', marginBottom: spacing.md },
+  heroIcon: { width: 48, height: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.secondaryLight, marginRight: spacing.md },
+  heroCopy: { flex: 1 },
+  heroTitle: { ...typography.h3, color: colors.primaryDark },
+  heroText: { ...typography.caption, color: colors.primaryDark, opacity: 0.72, marginTop: 3 },
+  heroCount: { minWidth: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primaryDark },
+  heroCountText: { ...typography.label, color: colors.textInverse },
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -277,13 +280,8 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: colors.background, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 },
   tabText: { ...typography.label, color: colors.textSecondary },
   tabTextActive: { color: colors.primary, fontWeight: '600' },
-  filterRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
-  filterChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: 20, backgroundColor: colors.backgroundTertiary },
-  filterChipActive: { backgroundColor: colors.primary },
-  filterChipText: { ...typography.label, color: colors.textSecondary },
-  filterChipTextActive: { color: colors.textInverse },
   list: { paddingBottom: spacing.xxl },
-  card: { marginBottom: spacing.sm },
+  card: { marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.borderLight },
   row: { flexDirection: 'row', alignItems: 'flex-start' },
   avatar: {
     width: 56,
@@ -299,13 +297,16 @@ const styles = StyleSheet.create({
   avatarText: { ...typography.h3, color: colors.primary },
   info: { flex: 1, minWidth: 0 },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
+  petNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 },
   petName: { ...typography.body, fontWeight: '600' },
+  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.success },
   speciesBadge: { backgroundColor: colors.primaryLight + '30', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
   speciesText: { fontSize: 12, fontWeight: '600', color: colors.primary },
   breed: { ...typography.caption, color: colors.textSecondary },
-  owner: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 4 },
-  contact: { ...typography.caption, color: colors.textSecondary },
-  metaRow: { marginTop: spacing.xs, gap: 2 },
+  ownerRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5 },
+  owner: { ...typography.bodySmall, color: colors.textSecondary },
+  metaRow: { marginTop: spacing.sm, gap: 5 },
+  metaPill: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   meta: { ...typography.caption, color: colors.textLight },
   chevron: { ...typography.h2, color: colors.textLight },
   viewBtn: {

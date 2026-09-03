@@ -21,6 +21,7 @@ import { typography } from '../../../theme/typography';
 import { usePetStores } from '../../../queries/petStoreQueries';
 import { getImageUrl } from '../../../config/api';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 
 type StoreKind = 'PHARMACY' | 'PARAPHARMACY';
 type Nav = NativeStackNavigationProp<PetOwnerPharmacyStackParamList>;
@@ -91,13 +92,13 @@ export function PharmacySearchScreen() {
           </TouchableOpacity>
           {phone ? (
             <View style={styles.detailRow}>
-              <Text style={styles.detailIcon}>📞</Text>
+              <Ionicons name="call-outline" size={16} color={colors.primary} style={styles.detailIcon} />
               <Text style={styles.detailText}>{phone}</Text>
             </View>
           ) : null}
           {addressStr ? (
             <View style={styles.detailRow}>
-              <Text style={styles.detailIcon}>📍</Text>
+              <Ionicons name="location-outline" size={16} color={colors.primary} style={styles.detailIcon} />
               <Text style={styles.detailText} numberOfLines={2}>{addressStr}</Text>
             </View>
           ) : null}
@@ -140,7 +141,7 @@ export function PharmacySearchScreen() {
       {/* Search section */}
       <View style={styles.searchSection}>
         <View style={styles.searchContainer}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <Ionicons name="search-outline" size={19} color={colors.textSecondary} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder={selectedKind === 'PARAPHARMACY' ? t('petOwnerPharmacySearch.placeholders.searchParapharmacies') : t('petOwnerPharmacySearch.placeholders.searchPharmacies')}
@@ -150,7 +151,7 @@ export function PharmacySearchScreen() {
           />
         </View>
         <View style={styles.filterInputContainer}>
-          <Text style={styles.filterIcon}>📍</Text>
+          <Ionicons name="location-outline" size={19} color={colors.textSecondary} style={styles.filterIcon} />
           <TextInput
             style={styles.filterInput}
             placeholder={t('petOwnerPharmacySearch.placeholders.cityOrLocation')}

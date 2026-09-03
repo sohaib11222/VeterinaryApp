@@ -11,6 +11,8 @@ import { useNotifications } from '../../queries/notificationQueries';
 import { useMarkAllNotificationsRead, useMarkNotificationRead } from '../../mutations/notificationMutations';
 import { getErrorMessage } from '../../utils/errorUtils';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
+import { formatNotificationDateTime } from '../../utils/dateTime';
 
 type Filter = 'all' | 'unread' | 'read';
 
@@ -43,6 +45,15 @@ function normalizeNotifications(response: unknown): NotificationItem[] {
     : [];
 }
 
+function notificationIcon(type?: string): keyof typeof Ionicons.glyphMap {
+  const normalized = String(type ?? '').toUpperCase();
+  if (normalized.includes('PAYMENT')) return 'card-outline';
+  if (normalized.includes('PRESCRIPTION')) return 'document-text-outline';
+  if (normalized.includes('MESSAGE') || normalized.includes('CHAT')) return 'chatbubble-ellipses-outline';
+  if (normalized.includes('APPOINTMENT') || normalized.includes('RESCHEDULE')) return 'calendar-outline';
+  return 'notifications-outline';
+}
+
 export function VetNotificationsScreen() {
   const { t } = useTranslation();
   const [filter, setFilter] = useState<Filter>('all');
@@ -51,18 +62,6 @@ export function VetNotificationsScreen() {
     if (filter === 'unread') p.unreadOnly = true;
     return p;
   }, [filter]);
-
-  const formatTime = (dateString?: string): string => {
-    if (!dateString) return t('vetNotifications.timeAgo.justNow');
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-    if (diffInSeconds < 60) return t('vetNotifications.timeAgo.justNow');
-    if (diffInSeconds < 3600) return t('vetNotifications.timeAgo.minutesAgo', { count: Math.floor(diffInSeconds / 60) });
-    if (diffInSeconds < 86400) return t('vetNotifications.timeAgo.hoursAgo', { count: Math.floor(diffInSeconds / 3600) });
-    if (diffInSeconds < 604800) return t('vetNotifications.timeAgo.daysAgo', { count: Math.floor(diffInSeconds / 86400) });
-    return date.toLocaleDateString();
-  };
 
   const listQuery = useNotifications(params);
   const markRead = useMarkNotificationRead();
@@ -144,10 +143,15 @@ export function VetNotificationsScreen() {
                 }
               }}
             >
-              <Card style={{ ...styles.itemCard, ...(!item.isRead ? styles.unread : {}) }}>
-                <Text style={styles.title}>{item.title || t('vetNotifications.fallbackTitle')}</Text>
-                {item.body ? <Text style={styles.body}>{item.body}</Text> : null}
-                <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
+              <Card style={[styles.itemCard, !item.isRead && styles.unread]}>
+                <View style={styles.itemRow}>
+                  <View style={[styles.typeIcon, !item.isRead && styles.typeIconUnread]}><Ionicons name={notificationIcon(item.type)} size={19} color={colors.primary} /></View>
+                  <View style={styles.itemCopy}>
+                    <View style={styles.titleRow}><Text style={[styles.title, !item.isRead && styles.titleUnread]}>{item.title || t('vetNotifications.fallbackTitle')}</Text>{!item.isRead ? <View style={styles.unreadDot} /> : null}</View>
+                    {item.body ? <Text style={styles.body}>{item.body}</Text> : null}
+                    <Text style={styles.time}>{formatNotificationDateTime(item.createdAt)}</Text>
+                  </View>
+                </View>
               </Card>
             </TouchableOpacity>
           )}
@@ -170,9 +174,13 @@ const styles = StyleSheet.create({
   center: { paddingVertical: spacing.xxl, alignItems: 'center' },
   emptyText: { ...typography.bodySmall, color: colors.textSecondary },
   list: { paddingBottom: spacing.xxl },
-  itemCard: { marginBottom: spacing.sm },
-  unread: { backgroundColor: colors.primaryLight + '12' },
+  itemCard: { marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.borderLight },
+  unread: { backgroundColor: colors.primaryLight + '10', borderColor: colors.primaryLight + '38' },
+  itemRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  typeIcon: { width: 40, height: 40, borderRadius: 13, backgroundColor: colors.backgroundSecondary, alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm },
+  typeIconUnread: { backgroundColor: colors.primaryLight + '22' }, itemCopy: { flex: 1 }, titleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 }, unreadDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.primary },
   title: { ...typography.label },
+  titleUnread: { color: colors.primaryDark, fontWeight: '800' },
   body: { ...typography.bodySmall, marginTop: 4 },
   time: { ...typography.caption, color: colors.textSecondary, marginTop: 4 },
 });

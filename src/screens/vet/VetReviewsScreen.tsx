@@ -9,9 +9,9 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
-import { Button } from '../../components/common/Button';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -104,8 +104,13 @@ export function VetReviewsScreen() {
 
   return (
     <ScreenContainer padded>
+      <View style={styles.hero}>
+        <View style={styles.heroIcon}><Ionicons name="star-outline" size={23} color={colors.primaryDark} /></View>
+        <View style={styles.heroCopy}><Text style={styles.heroTitle}>{t('menu.reviews')}</Text><Text style={styles.heroText}>{t('vetReviews.count', { count: reviews.length })}</Text></View>
+        <View style={styles.heroScore}><Text style={styles.heroScoreText}>{avgRating}</Text><Ionicons name="star" size={12} color={colors.secondaryDark} /></View>
+      </View>
       <View style={styles.searchWrap}>
-        <Text style={styles.searchIcon}>🔍</Text>
+        <Ionicons name="search-outline" size={19} color={colors.textSecondary} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder={t('vetReviews.searchPlaceholder')}
@@ -184,14 +189,13 @@ export function VetReviewsScreen() {
                 </View>
                 <Text style={styles.owner}>{ownerName(item)}</Text>
                 <Text style={styles.petName}>{t('vetReviews.labels.pet')}: {petName(item)}</Text>
-                {/* <Text style={styles.comment}>{item.reviewText || '—'}</Text>
-                {item.veterinarianReply ? (
-                  <Text style={styles.repliedBadge}>{t('vetReviews.replied')}</Text>
-                ) : (
-                  <Button title={t('vetReviews.reply')} variant="outline" onPress={() => {}} style={styles.replyBtn} />
-                )} */}
               </View>
             </View>
+            <View style={styles.feedbackBox}>
+              <Ionicons name="chatbox-ellipses-outline" size={17} color={colors.primary} style={styles.feedbackIcon} />
+              <Text style={[styles.comment, !item.reviewText && styles.commentEmpty]}>{item.reviewText?.trim() || t('vetReviews.noWrittenFeedback')}</Text>
+            </View>
+            {item.veterinarianReply ? <View style={styles.repliedRow}><Ionicons name="checkmark-circle" size={15} color={colors.success} /><Text style={styles.repliedBadge}>{t('vetReviews.replied')}</Text></View> : null}
           </Card>
           );
         }}
@@ -208,6 +212,8 @@ export function VetReviewsScreen() {
 const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
   errorText: { ...typography.body, color: colors.error },
+  hero: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: 18, backgroundColor: colors.successLight, borderWidth: 1, borderColor: colors.primaryLight + '25', marginBottom: spacing.md },
+  heroIcon: { width: 48, height: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.secondaryLight, marginRight: spacing.md }, heroCopy: { flex: 1 }, heroTitle: { ...typography.h3, color: colors.primaryDark }, heroText: { ...typography.caption, color: colors.primaryDark, opacity: 0.72, marginTop: 3 }, heroScore: { minWidth: 46, height: 36, borderRadius: 12, backgroundColor: colors.background, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3 }, heroScoreText: { ...typography.label, color: colors.primaryDark },
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -219,7 +225,7 @@ const styles = StyleSheet.create({
   },
   searchIcon: { marginRight: spacing.sm, fontSize: 16 },
   searchInput: { flex: 1, ...typography.body, paddingVertical: spacing.sm },
-  summaryCard: { marginBottom: spacing.md },
+  summaryCard: { marginBottom: spacing.md, borderWidth: 1, borderColor: colors.borderLight },
   summaryRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.sm },
   avgRating: { ...typography.h1, color: colors.primary },
   reviewCount: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
@@ -230,12 +236,12 @@ const styles = StyleSheet.create({
   ratingBarFill: { height: '100%', backgroundColor: colors.secondaryDark, borderRadius: 4 },
   ratingCount: { ...typography.caption, width: 24, textAlign: 'right' },
   filterRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md, flexWrap: 'wrap' },
-  filterChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: 20, backgroundColor: colors.backgroundTertiary },
+  filterChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: 20, backgroundColor: colors.backgroundTertiary, borderWidth: 1, borderColor: colors.borderLight },
   filterChipActive: { backgroundColor: colors.primary },
   filterChipText: { ...typography.label, color: colors.textSecondary },
   filterChipTextActive: { color: colors.textInverse },
   list: { paddingBottom: spacing.xxl },
-  card: { marginBottom: spacing.sm },
+  card: { marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.borderLight },
   reviewRow: { flexDirection: 'row', alignItems: 'flex-start' },
   avatarWrap: { marginRight: spacing.md },
   avatarPlaceholder: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.primaryLight + '40', alignItems: 'center', justifyContent: 'center' },
@@ -247,9 +253,9 @@ const styles = StyleSheet.create({
   date: { ...typography.caption, color: colors.textSecondary },
   owner: { ...typography.label },
   petName: { ...typography.caption, color: colors.textSecondary },
-  comment: { ...typography.body, marginTop: 4 },
-  repliedBadge: { ...typography.caption, color: colors.success, marginTop: spacing.sm },
-  replyBtn: { marginTop: spacing.sm },
+  feedbackBox: { flexDirection: 'row', alignItems: 'flex-start', borderRadius: 12, backgroundColor: colors.backgroundSecondary, padding: spacing.sm, marginTop: spacing.md },
+  feedbackIcon: { marginRight: spacing.xs, marginTop: 1 }, comment: { ...typography.bodySmall, flex: 1, lineHeight: 20, color: colors.text }, commentEmpty: { color: colors.textSecondary, fontStyle: 'italic' },
+  repliedRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.sm }, repliedBadge: { ...typography.caption, color: colors.success, fontWeight: '700' },
   empty: { paddingVertical: spacing.xxl, alignItems: 'center' },
   emptyText: { ...typography.bodySmall, color: colors.textSecondary },
 });

@@ -14,6 +14,7 @@ import {
   Keyboard,
   Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
@@ -24,7 +25,7 @@ import { PetOwnerStackParamList } from '../../navigation/types';
 import { useAuth } from '../../contexts/AuthContext';
 import { getImageUrl } from '../../config/api';
 import { API_BASE_URL } from '../../config/api';
-import { useMessages } from '../../queries/chatQueries';
+import { useConversations, useMessages } from '../../queries/chatQueries';
 import { useSendMessage, useMarkConversationRead } from '../../mutations/chatMutations';
 import { useUploadChatFile } from '../../mutations/uploadMutations';
 import { copyToCacheUri, deleteCacheFiles, getExtensionFromMime } from '../../utils/fileUpload';
@@ -106,7 +107,15 @@ export function PetOwnerChatDetailScreen() {
     };
   }, []);
 
-  const { data: messagesResponse, isLoading: messagesLoading } = useMessages(conversationId);
+  const { data: messagesResponse, isLoading: messagesLoading } = useMessages(
+    conversationId,
+    {},
+    { refetchInterval: 2_500, refetchIntervalInBackground: true }
+  );
+  const { data: conversationsResponse } = useConversations(
+    { limit: 100 },
+    { refetchInterval: 5_000, refetchIntervalInBackground: true }
+  );
   const sendMessage = useSendMessage();
   const markRead = useMarkConversationRead();
   const uploadChatFile = useUploadChatFile();
@@ -117,11 +126,24 @@ export function PetOwnerChatDetailScreen() {
     return Array.isArray(list) ? list : [];
   })();
 
+  const selectedConversation = (() => {
+    const payload = conversationsResponse as {
+      data?: { conversations?: Array<{ _id?: string; status?: string; conversationType?: string }> };
+      conversations?: Array<{ _id?: string; status?: string; conversationType?: string }>;
+    } | undefined;
+    const list = payload?.data?.conversations ?? payload?.conversations ?? [];
+    return Array.isArray(list) ? list.find((item) => String(item?._id ?? '') === String(conversationId ?? '')) ?? null : null;
+  })();
+  const isAppointmentChat = String(selectedConversation?.conversationType ?? 'VETERINARIAN_PET_OWNER') === 'VETERINARIAN_PET_OWNER';
+  const isConversationCompleted = isAppointmentChat && String(selectedConversation?.status ?? '').toUpperCase() === 'COMPLETED';
+
   useEffect(() => {
-    if (!conversationId || lastMarkedReadRef.current === conversationId) return;
-    lastMarkedReadRef.current = conversationId;
+    const lastMessageId = String(messages[messages.length - 1]?._id ?? '');
+    const readKey = `${conversationId}:${lastMessageId}`;
+    if (!conversationId || !lastMessageId || lastMarkedReadRef.current === readKey) return;
+    lastMarkedReadRef.current = readKey;
     markRead.mutate(conversationId);
-  }, [conversationId, markRead]);
+  }, [conversationId, markRead, messages]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -130,6 +152,10 @@ export function PetOwnerChatDetailScreen() {
   }, [messages.length]);
 
   const handleSend = async () => {
+    if (isConversationCompleted) {
+      Toast.show({ type: 'info', text1: t('chatExperience.completedTitle'), text2: t('chatExperience.completedDescription') });
+      return;
+    }
     const text = (message ?? '').trim();
     if (!text) return;
     if (!conversationId || !veterinarianId || !petOwnerId || !appointmentId) {
@@ -156,6 +182,10 @@ export function PetOwnerChatDetailScreen() {
 
   const handleAttach = async () => {
     try {
+      if (isConversationCompleted) {
+        Toast.show({ type: 'info', text1: t('chatExperience.completedTitle'), text2: t('chatExperience.completedDescription') });
+        return;
+      }
       if (!conversationId || !veterinarianId || !petOwnerId || !appointmentId) {
         Toast.show({ type: 'error', text1: t('petOwnerChatDetail.errors.invalidConversation') });
         return;
@@ -231,6 +261,15 @@ export function PetOwnerChatDetailScreen() {
         }}
         padded={false}
       >
+          {isConversationCompleted ? (
+            <View style={styles.completedBanner}>
+              <Ionicons name="lock-closed-outline" size={18} color={colors.warning} />
+              <View style={styles.completedBannerCopy}>
+                <Text style={styles.completedBannerTitle}>{t('chatExperience.completedTitle')}</Text>
+                <Text style={styles.completedBannerText}>{t('chatExperience.completedDescription')}</Text>
+              </View>
+            </View>
+          ) : null}
           {messagesLoading ? (
             <View style={styles.centered}>
               <ActivityIndicator size="large" color={colors.primary} />
@@ -280,7 +319,7 @@ export function PetOwnerChatDetailScreen() {
                                 <Text style={[styles.fileAttachmentName, me && { color: colors.textInverse }]} numberOfLines={1}>
                                   {att.name}
                                 </Text>
-                                <Text style={styles.fileAttachmentIcon}>📥</Text>
+                                <Ionicons name="download-outline" size={18} color={me ? colors.textInverse : colors.primary} style={styles.fileAttachmentIcon} />
                               </TouchableOpacity>
                             );
                           })}
@@ -298,28 +337,30 @@ export function PetOwnerChatDetailScreen() {
           )}
           <View style={styles.inputRow}>
             <TouchableOpacity
-              style={styles.attachBtn}
+              style={[styles.attachBtn, isConversationCompleted && styles.attachBtnDisabled]}
               onPress={handleAttach}
-              disabled={uploadChatFile.isPending || sendMessage.isPending}
+              disabled={isConversationCompleted || uploadChatFile.isPending || sendMessage.isPending}
             >
-              <Text style={styles.attachIcon}>📎</Text>
+              <Ionicons name="attach-outline" size={22} color={isConversationCompleted ? colors.textLight : colors.primary} />
             </TouchableOpacity>
             <TextInput
-              style={styles.input}
-              placeholder={t('petOwnerChatDetail.placeholders.typeMessage')}
+              style={[styles.input, isConversationCompleted && styles.inputDisabled]}
+              placeholder={isConversationCompleted ? t('chatExperience.readOnlyPlaceholder') : t('petOwnerChatDetail.placeholders.typeMessage')}
               placeholderTextColor={colors.textLight}
               value={message}
               onChangeText={setMessage}
               multiline
+              submitBehavior="submit"
+              onSubmitEditing={() => { void handleSend(); }}
               maxLength={2000}
-              editable={!sendMessage.isPending}
+              editable={!isConversationCompleted && !sendMessage.isPending}
             />
             <TouchableOpacity
-              style={[styles.sendBtn, sendMessage.isPending && styles.sendBtnDisabled]}
+              style={[styles.sendBtn, (sendMessage.isPending || isConversationCompleted) && styles.sendBtnDisabled]}
               onPress={handleSend}
-              disabled={sendMessage.isPending || !(message ?? '').trim()}
+              disabled={isConversationCompleted || sendMessage.isPending || !(message ?? '').trim()}
             >
-              <Text style={styles.sendText}>{t('common.send')}</Text>
+              <Ionicons name="send" size={18} color={colors.textInverse} />
             </TouchableOpacity>
           </View>
       </ScreenContainer>
@@ -340,8 +381,12 @@ export function PetOwnerChatDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   flex: { flex: 1 },
-  screenWrap: { flex: 1, },
+  screenWrap: { flex: 1 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  completedBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, margin: spacing.md, padding: spacing.md, borderRadius: 14, backgroundColor: colors.warningLight, borderWidth: 1, borderColor: colors.warning + '66' },
+  completedBannerCopy: { flex: 1 },
+  completedBannerTitle: { ...typography.label, color: colors.primaryDark, marginBottom: 3 },
+  completedBannerText: { ...typography.caption, color: colors.textSecondary, lineHeight: 17 },
   errorText: { ...typography.body, color: colors.error },
   messagesList: { paddingVertical: spacing.md, paddingHorizontal: spacing.md, paddingBottom: spacing.lg, flexGrow: 1 },
   empty: { paddingVertical: spacing.xl, alignItems: 'center' },
@@ -359,7 +404,7 @@ const styles = StyleSheet.create({
   attachmentImage: { width: 220, height: 180 },
   fileAttachment: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 8, backgroundColor: 'rgba(0,0,0,0.06)', borderRadius: 8, marginTop: 4 },
   fileAttachmentName: { flex: 1, ...typography.bodySmall },
-  fileAttachmentIcon: { fontSize: 18, marginLeft: 8 },
+  fileAttachmentIcon: { marginLeft: 8 },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -371,7 +416,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   attachBtn: { padding: spacing.sm, justifyContent: 'center' },
-  attachIcon: { fontSize: 20 },
+  attachBtnDisabled: { opacity: 0.55 },
   input: {
     flex: 1,
     borderWidth: 1,
@@ -382,6 +427,7 @@ const styles = StyleSheet.create({
     maxHeight: 100,
     ...typography.body,
   },
+  inputDisabled: { backgroundColor: colors.backgroundTertiary, color: colors.textSecondary },
   sendBtn: { backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: 24, justifyContent: 'center' },
   sendBtnDisabled: { opacity: 0.6 },
   sendText: { ...typography.label, color: colors.textInverse },

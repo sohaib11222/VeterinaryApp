@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
@@ -27,8 +28,8 @@ export function VetDashboardScreen() {
   const setHeaderSearchConfig = headerSearch?.setConfig;
   const setHeaderRightAction = headerRight?.setRightAction;
 
-  const dashboardQuery = useVetDashboard();
-  const scheduleQuery = useWeeklySchedule();
+  const dashboardQuery = useVetDashboard({ refetchInterval: 15_000, refetchIntervalInBackground: true });
+  const scheduleQuery = useWeeklySchedule({ refetchInterval: 15_000, refetchIntervalInBackground: true });
 
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showTimingsModal, setShowTimingsModal] = useState(false);
@@ -145,19 +146,19 @@ export function VetDashboardScreen() {
   );
 
   const stats = [
-    { label: t('vetDashboard.stats.todayAppointments'), value: String(todayCount), icon: '📅', color: colors.primary },
-    { label: t('vetDashboard.stats.thisWeek'), value: String(weeklyCount), icon: '📈', color: colors.accent },
-    { label: t('vetDashboard.stats.earnings'), value: earnings ? String(Math.round(earnings)) : '0', icon: '💰', color: colors.secondaryDark },
-    { label: t('vetDashboard.stats.patients'), value: String(totalPetOwners), icon: '🐾', color: colors.info },
+    { label: t('vetDashboard.stats.todayAppointments'), value: String(todayCount), icon: 'calendar-outline', color: colors.primary },
+    { label: t('vetDashboard.stats.thisWeek'), value: String(weeklyCount), icon: 'trending-up-outline', color: colors.accent },
+    { label: t('vetDashboard.stats.earnings'), value: earnings ? String(Math.round(earnings)) : '0', icon: 'wallet-outline', color: colors.secondaryDark },
+    { label: t('vetDashboard.stats.patients'), value: String(totalPetOwners), icon: 'paw-outline', color: colors.info },
   ];
 
   const quickLinks = [
-    { label: t('menu.petRequests'), icon: '📋', screen: 'VetPetRequests' as const },
-    { label: t('menu.clinicHours'), icon: '🕐', screen: 'VetClinicHours' as const },
-    { label: t('menu.myPets'), icon: '🐾', screen: 'VetMyPets' as const },
-    { label: t('menu.vaccinations'), icon: '💉', screen: 'VetVaccinations' as const },
-    { label: t('menu.reviews'), icon: '⭐', screen: 'VetReviews' as const },
-    { label: t('menu.invoices'), icon: '📄', screen: 'VetInvoices' as const },
+    { label: t('menu.petRequests'), icon: 'clipboard-outline', screen: 'VetPetRequests' as const },
+    { label: t('menu.clinicHours'), icon: 'time-outline', screen: 'VetClinicHours' as const },
+    { label: t('menu.myPets'), icon: 'paw-outline', screen: 'VetMyPets' as const },
+    { label: t('menu.vaccinations'), icon: 'medkit-outline', screen: 'VetVaccinations' as const },
+    { label: t('menu.reviews'), icon: 'star-outline', screen: 'VetReviews' as const },
+    { label: t('menu.invoices'), icon: 'receipt-outline', screen: 'VetInvoices' as const },
   ];
 
   return (
@@ -247,7 +248,7 @@ export function VetDashboardScreen() {
         {(unreadMessages > 0 || unreadNotifications > 0) && (
           <Card style={styles.alertCard}>
             <View style={styles.alertRow}>
-              <Text style={styles.alertIcon}>🔔</Text>
+              <View style={styles.alertIconWrap}><Ionicons name="notifications-outline" size={19} color={colors.primary} /></View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.alertTitle}>{t('vetDashboard.updates.title')}</Text>
                 <Text style={styles.alertSub}>
@@ -265,7 +266,7 @@ export function VetDashboardScreen() {
 
         {!hasActiveSubscription ? (
           <TouchableOpacity style={styles.subBanner} activeOpacity={0.85} onPress={() => stackNav?.navigate('VetSubscription')}>
-            <Text style={styles.subIcon}>✨</Text>
+            <View style={styles.subIconWrap}><Ionicons name="sparkles-outline" size={18} color={colors.primary} /></View>
             <View style={{ flex: 1 }}>
               <Text style={styles.subTitle}>{t('vetDashboard.subscription.upgradeTitle')}</Text>
               <Text style={styles.subSub}>{t('vetDashboard.subscription.upgradeSubtitle')}</Text>
@@ -291,7 +292,7 @@ export function VetDashboardScreen() {
           {stats.map((s, i) => (
             <View key={i} style={[styles.statCard, { backgroundColor: s.color + '2' }]}>
               <View style={[styles.statIconWrap, { backgroundColor: s.color + '2' }]}>
-                <Text style={styles.statIcon}>{s.icon}</Text>
+                <Ionicons name={s.icon as any} size={20} color={s.color} />
               </View>
               <Text style={[styles.statValue, { color: s.color }]}>{s.value}</Text>
               <Text style={styles.statLabel} numberOfLines={2}>{s.label}</Text>
@@ -311,7 +312,7 @@ export function VetDashboardScreen() {
             <View style={[styles.progressFill, { width: `${Math.max(0, Math.min(100, profileStrength))}%` }]} />
           </View>
           <View style={styles.ratingRow}>
-            <Text style={styles.ratingLeft}>⭐ {ratingAvg.toFixed(1)} ({ratingCount})</Text>
+            <View style={styles.ratingValue}><Ionicons name="star" size={15} color={colors.warning} /><Text style={styles.ratingLeft}>{ratingAvg.toFixed(1)} ({ratingCount})</Text></View>
             <TouchableOpacity onPress={() => stackNav?.navigate('VetReviews')} activeOpacity={0.7}>
               <Text style={styles.ratingLink}>{t('vetDashboard.profile.viewReviews')}</Text>
             </TouchableOpacity>
@@ -349,7 +350,7 @@ export function VetDashboardScreen() {
                     <Text style={styles.petName}>{petName}</Text>
                     <Text style={styles.ownerName}>{subtitle}</Text>
                   </View>
-                  <Text style={styles.chevron}>›</Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.textLight} />
                 </TouchableOpacity>
               );
             })
@@ -362,7 +363,7 @@ export function VetDashboardScreen() {
           {quickLinks.map((link, i) => (
             <TouchableOpacity key={i} style={styles.quickItem} activeOpacity={0.7} onPress={() => stackNav?.navigate(link.screen)}>
               <View style={styles.quickIconWrap}>
-                <Text style={styles.quickIcon}>{link.icon}</Text>
+                <Ionicons name={link.icon as any} size={22} color={colors.primary} />
               </View>
               <Text style={styles.quickLabel} numberOfLines={1}>{link.label}</Text>
             </TouchableOpacity>
@@ -384,7 +385,7 @@ const styles = StyleSheet.create({
   loadingText: { ...typography.bodySmall, color: colors.textSecondary },
   alertCard: { marginBottom: spacing.md },
   alertRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  alertIcon: { fontSize: 18 },
+  alertIconWrap: { width: 34, height: 34, borderRadius: 12, backgroundColor: colors.primaryLight + '42', alignItems: 'center', justifyContent: 'center' },
   alertTitle: { ...typography.label, color: colors.text },
   alertSub: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
   alertCta: { ...typography.label, color: colors.primary },
@@ -398,7 +399,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.primary + '28',
   },
-  subIcon: { fontSize: 18, marginRight: spacing.sm },
+  subIconWrap: { width: 34, height: 34, borderRadius: 12, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm },
   subTitle: { ...typography.label },
   subSub: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
   subChevron: { ...typography.h3, color: colors.textSecondary, marginLeft: spacing.sm },
@@ -457,7 +458,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: spacing.sm,
   },
-  statIcon: { fontSize: 20 },
   statValue: { ...typography.h2, fontWeight: '700' },
   statLabel: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
   profileCard: { marginBottom: spacing.md },
@@ -478,7 +478,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   ratingRow: { marginTop: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  ratingLeft: { ...typography.bodySmall, color: colors.textSecondary },
+  ratingValue: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  ratingLeft: { ...typography.bodySmall, color: colors.text, fontWeight: '700' },
   ratingLink: { ...typography.bodySmall, color: colors.primary, fontWeight: '600' },
   todayCard: { marginBottom: spacing.md },
   sectionHeader: {
@@ -538,7 +539,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: spacing.sm,
   },
-  quickIcon: { fontSize: 24 },
   quickLabel: { ...typography.caption, color: colors.text, textAlign: 'center', fontWeight: '500' },
   bottomSpacer: { height: spacing.xl },
 });

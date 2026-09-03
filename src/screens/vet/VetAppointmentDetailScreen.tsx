@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { VetStackParamList } from '../../navigation/types';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
+import { AppointmentStatusPill } from '../../components/common/AppointmentStatusPill';
 import { Button } from '../../components/common/Button';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
@@ -36,15 +37,6 @@ import { getErrorMessage } from '../../utils/errorUtils';
 type Nav = NativeStackNavigationProp<VetStackParamList, 'VetAppointmentDetails'>;
 type Route = RouteProp<VetStackParamList, 'VetAppointmentDetails'>;
 
-const STATUS_COLORS: Record<string, string> = {
-  PENDING: colors.warning,
-  CONFIRMED: colors.info,
-  COMPLETED: colors.success,
-  CANCELLED: colors.error,
-  REJECTED: colors.error,
-  NO_SHOW: colors.textSecondary,
-};
-
 export function VetAppointmentDetailScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
@@ -61,7 +53,10 @@ export function VetAppointmentDetailScreen() {
 
   const { user } = useAuth();
   const currentUserId = (user as { id?: string })?.id ?? (user as { _id?: string })?._id ?? '';
-  const { data: appointmentResponse, isLoading, refetch } = useAppointment(appointmentId);
+  const { data: appointmentResponse, isLoading, refetch } = useAppointment(
+    appointmentId,
+    { refetchInterval: 7_500, refetchIntervalInBackground: true }
+  );
 
   const acceptAppointment = useAcceptAppointment();
   const rejectAppointment = useRejectAppointment();
@@ -95,6 +90,10 @@ export function VetAppointmentDetailScreen() {
       })
     : '';
   const timeStr = (appointment?.appointmentTime as string) || '';
+  const consultationFeeValue = Number(appointment?.consultationFee);
+  const consultationFeeLabel = Number.isFinite(consultationFeeValue) && consultationFeeValue >= 0
+    ? `€${consultationFeeValue.toFixed(2)}`
+    : '—';
 
   const canAccept = status === 'PENDING';
   const canReject = status === 'PENDING';
@@ -132,7 +131,6 @@ export function VetAppointmentDetailScreen() {
     }
   };
 
-  const statusColor = STATUS_COLORS[status] || colors.warning;
   const isProcessing =
     acceptAppointment.isPending ||
     rejectAppointment.isPending ||
@@ -288,10 +286,8 @@ export function VetAppointmentDetailScreen() {
           </View>
 
           <View style={styles.statusRow}>
-            <View style={[styles.statusBadge, { backgroundColor: statusColor + '25' }]}>
-              <Text style={[styles.statusText, { color: statusColor }]}>{status}</Text>
-            </View>
-            <Text style={styles.fees}>{t('vetAppointmentDetail.labels.consultationFee')}</Text>
+            <AppointmentStatusPill status={status} />
+            <Text style={styles.fees}>{t('vetAppointmentDetail.labels.consultationFee')}: {consultationFeeLabel}</Text>
           </View>
 
           <View style={styles.detailGrid}>

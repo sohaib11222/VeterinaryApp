@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
@@ -23,6 +24,7 @@ type Conversation = {
   updatedAt?: string;
   createdAt?: string;
   unreadCount?: number;
+  status?: string;
 };
 
 function getConversationPeerName(c: Conversation, fallbackName: string): string {
@@ -62,7 +64,10 @@ export function VetMessagesScreen() {
   const petOwnerFallbackName = t('common.petOwner');
   const yesterdayLabel = t('common.yesterday');
 
-  const { data: conversationsResponse, isLoading, error } = useConversations({ limit: 50 });
+  const { data: conversationsResponse, isLoading, error } = useConversations(
+    { limit: 50 },
+    { refetchInterval: 5_000, refetchIntervalInBackground: true }
+  );
 
   const conversations = useMemo(() => {
     const payload = conversationsResponse as { data?: { conversations?: Conversation[] }; conversations?: Conversation[] } | undefined;
@@ -142,7 +147,10 @@ export function VetMessagesScreen() {
               </View>
               <Text style={styles.preview} numberOfLines={1}>{String(preview)}</Text>
             </View>
-            <Text style={styles.chevron}>›</Text>
+            {String(item.status ?? '').toUpperCase() === 'COMPLETED' ? (
+              <View style={styles.completedIcon}><Ionicons name="lock-closed-outline" size={14} color={colors.warning} /></View>
+            ) : null}
+            <Ionicons name="chevron-forward" size={18} color={colors.textLight} />
           </View>
         </Card>
       </TouchableOpacity>
@@ -153,9 +161,9 @@ export function VetMessagesScreen() {
     <ScreenContainer padded>
       <View style={styles.adminLink}>
         <TouchableOpacity style={styles.adminCard} onPress={() => stackNav?.navigate('VetAdminChat')}>
-          <Text style={styles.adminIcon}>🛟</Text>
+          <View style={styles.adminIcon}><Ionicons name="shield-checkmark-outline" size={21} color={colors.primary} /></View>
           <Text style={styles.adminLabel}>{t('messages.adminMessages')}</Text>
-          <Text style={styles.chevron}>›</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.textLight} />
         </TouchableOpacity>
       </View>
       {isLoading ? (
@@ -174,7 +182,7 @@ export function VetMessagesScreen() {
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Text style={styles.emptyIcon}>💬</Text>
+              <View style={styles.emptyIcon}><Ionicons name="chatbubbles-outline" size={31} color={colors.primary} /></View>
               <Text style={styles.emptyText}>{t('messages.empty')}</Text>
             </View>
           }
@@ -195,9 +203,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  adminIcon: { fontSize: 24, marginRight: spacing.sm },
+  adminIcon: { width: 40, height: 40, borderRadius: 14, backgroundColor: colors.primaryLight + '24', alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm },
   adminLabel: { ...typography.body, fontWeight: '600', flex: 1 },
-  chevron: { ...typography.h3, color: colors.textLight },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
   errorText: { ...typography.bodySmall, color: colors.error },
   listContent: { paddingBottom: spacing.xxl },
@@ -236,7 +243,8 @@ const styles = StyleSheet.create({
   },
   unreadText: { ...typography.caption, color: colors.textInverse, fontWeight: '700', fontSize: 11 },
   preview: { ...typography.bodySmall, color: colors.textSecondary },
+  completedIcon: { marginRight: 6 },
   empty: { paddingVertical: spacing.xxl, alignItems: 'center' },
-  emptyIcon: { fontSize: 48, marginBottom: spacing.sm },
+  emptyIcon: { width: 68, height: 68, borderRadius: 24, backgroundColor: colors.primaryLight + '1A', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm },
   emptyText: { ...typography.bodySmall, color: colors.textSecondary },
 });

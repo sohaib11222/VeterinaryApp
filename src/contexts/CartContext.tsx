@@ -5,6 +5,7 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
 export interface CartItem {
+  lineId: string;
   _id: string;
   sellerId: string | null;
   name: string;
@@ -14,17 +15,29 @@ export interface CartItem {
   quantity: number;
   sku?: string;
   stock?: number;
+  variantId?: string | null;
+  variantName?: string | null;
+}
+
+export interface CartVariantOption {
+  _id?: string;
+  id?: string;
+  name?: string;
+  sku?: string | null;
+  price?: number;
+  discountPrice?: number | null;
+  stock?: number;
 }
 
 type CartContextValue = {
   cartItems: CartItem[];
-  addToCart: (product: Record<string, unknown>, quantity?: number) => void;
-  removeFromCart: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  addToCart: (product: Record<string, unknown>, quantity?: number, options?: { variant?: CartVariantOption | null }) => void;
+  removeFromCart: (lineId: string) => void;
+  updateQuantity: (lineId: string, quantity: number) => void;
   clearCart: () => void;
   getCartTotal: () => number;
   getCartItemCount: () => number;
-  isInCart: (productId: string) => boolean;
+  isInCart: (productId: string, variantId?: string | null) => boolean;
   getCartSellerId: () => string | null;
 };
 
@@ -39,9 +52,12 @@ export function useCart(): CartContextValue {
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
-  const addToCart = useCallback((product: Record<string, unknown>, quantity = 1) => {
+  const addToCart = useCallback((product: Record<string, unknown>, quantity = 1, options: { variant?: CartVariantOption | null } = {}) => {
     const id = (product?._id ?? product?.id) as string | undefined;
     if (!id) return;
+    const variant = options.variant ?? null;
+    const variantId = variant?._id ?? variant?.id ?? null;
+    const lineId = `${id}:${variantId ?? 'default'}`;
 
     const seller = product?.sellerId;
     const sellerId =
@@ -50,17 +66,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         : (seller as string) ?? null;
 
     setCartItems((prev) => {
-      const existing = prev.find((x) => String(x._id) === String(id));
+      const existing = prev.find((x) => x.lineId === lineId);
       const unitPrice =
-        typeof product?.discountPrice === 'number' && (product.discountPrice as number) > 0
-          ? (product.discountPrice as number)
-          : (product?.price as number) ?? 0;
+        typeof variant?.discountPrice === 'number' && variant.discountPrice > 0
+          ? variant.discountPrice
+          : typeof variant?.price === 'number'
+            ? variant.price
+            : typeof product?.discountPrice === 'number' && (product.discountPrice as number) > 0
+              ? (product.discountPrice as number)
+              : (product?.price as number) ?? 0;
       const images = product?.images as string[] | undefined;
       const image = Array.isArray(images) && images.length > 0 ? images[0] : null;
 
       if (existing) {
         return prev.map((x) =>
-          String(x._id) === String(id)
+          x.lineId === lineId
             ? { ...x, quantity: (x.quantity || 0) + quantity }
             : x
         );
@@ -68,6 +88,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return [
         ...prev,
         {
+          lineId,
           _id: id,
           sellerId,
           name: (product?.name as string) || 'Product',
@@ -75,24 +96,26 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           originalPrice: product?.price as number | undefined,
           image,
           quantity,
-          sku: product?.sku as string | undefined,
-          stock: product?.stock as number | undefined,
+          sku: variant?.sku ?? product?.sku as string | undefined,
+          stock: variant?.stock ?? product?.stock as number | undefined,
+          variantId: variantId ? String(variantId) : null,
+          variantName: variant?.name ?? null,
         },
       ];
     });
   }, []);
 
-  const removeFromCart = useCallback((productId: string) => {
-    setCartItems((prev) => prev.filter((x) => String(x._id) !== String(productId)));
+  const removeFromCart = useCallback((lineId: string) => {
+    setCartItems((prev) => prev.filter((x) => x.lineId !== lineId));
   }, []);
 
-  const updateQuantity = useCallback((productId: string, quantity: number) => {
+  const updateQuantity = useCallback((lineId: string, quantity: number) => {
     if (quantity <= 0) {
-      setCartItems((prev) => prev.filter((x) => String(x._id) !== String(productId)));
+      setCartItems((prev) => prev.filter((x) => x.lineId !== lineId));
       return;
     }
     setCartItems((prev) =>
-      prev.map((x) => (String(x._id) === String(productId) ? { ...x, quantity } : x))
+      prev.map((x) => (x.lineId === lineId ? { ...x, quantity } : x))
     );
   }, []);
 
@@ -109,7 +132,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   );
 
   const isInCart = useCallback(
-    (productId: string) => cartItems.some((x) => String(x._id) === String(productId)),
+    (productId: string, variantId?: string | null) => cartItems.some((x) =>
+      String(x._id) === String(productId) && String(x.variantId ?? '') === String(variantId ?? '')
+    ),
     [cartItems]
   );
 

@@ -14,6 +14,7 @@ import { PharmacyPaymentSuccessScreen } from '../screens/petowner/pharmacy/Pharm
 import { useCart } from '../contexts/CartContext';
 import { colors } from '../theme/colors';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 
 const Stack = createNativeStackNavigator<PetOwnerPharmacyStackParamList>();
 
@@ -36,7 +37,7 @@ function PharmacyStackHeader({
 
   const rightAction = showCartIcon ? (
     <TouchableOpacity style={headerStyles.cartBtn} onPress={() => navigation.navigate('Cart')}>
-      <Text style={headerStyles.cartIcon}>🛒</Text>
+      <Ionicons name="bag-handle-outline" size={23} color={colors.textInverse} />
       {cartCount > 0 && (
         <View style={headerStyles.cartBadge}>
           <Text style={headerStyles.cartBadgeText}>{cartCount > 99 ? '99+' : cartCount}</Text>
@@ -57,7 +58,6 @@ function PharmacyStackHeader({
 
 const headerStyles = StyleSheet.create({
   cartBtn: { position: 'relative', padding: 8 },
-  cartIcon: { fontSize: 22 },
   cartBadge: {
     position: 'absolute',
     top: 0,

@@ -14,7 +14,7 @@ export interface OrderListParams {
   limit?: number;
 }
 
-export function useOrders(params: OrderListParams = {}) {
+export function useOrders(params: OrderListParams = {}, queryOptions: Record<string, unknown> = {}) {
   return useQuery({
     queryKey: ['orders', params],
     queryFn: () =>
@@ -22,10 +22,13 @@ export function useOrders(params: OrderListParams = {}) {
         API_ROUTES.ORDERS.LIST,
         { params }
       ),
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    ...queryOptions,
   });
 }
 
-export function useOrder(orderId: string | null | undefined) {
+export function useOrder(orderId: string | null | undefined, queryOptions: Record<string, unknown> = {}) {
   return useQuery({
     queryKey: ['order', orderId],
     queryFn: () =>
@@ -33,5 +36,8 @@ export function useOrder(orderId: string | null | undefined) {
         API_ROUTES.ORDERS.GET(orderId!)
       ),
     enabled: !!orderId,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    ...queryOptions,
   });
 }

@@ -1,22 +1,15 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableOpacity,
-} from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { AuthStackScreenProps } from '../../navigation/types';
-import { ScreenContainer } from '../../components/common/ScreenContainer';
+import { AuthLayout } from '../../components/common/AuthLayout';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 import { useAuth } from '../../contexts/AuthContext';
 import { getErrorMessage } from '../../utils/errorUtils';
 import { colors } from '../../theme/colors';
-import { spacing } from '../../theme/spacing';
+import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useTranslation } from 'react-i18next';
 
@@ -46,155 +39,105 @@ export function LoginScreen() {
     setErrors({});
     try {
       await login(email, password);
-      // RootNavigator will switch to Pending or Main based on user.role / user.status
+      // RootNavigator switches to the correct approved or pending flow.
     } catch (err: unknown) {
-      const message = getErrorMessage(err, t('authLogin.errors.loginFailedTryAgain'));
-      setErrors({ password: message });
+      setErrors({ password: getErrorMessage(err, t('authLogin.errors.loginFailedTryAgain')) });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <ScreenContainer scroll padded style={styles.bg}>
-      <KeyboardAvoidingView
-        style={styles.keyboard}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.header}>
-            <View style={styles.logoWrap}>
-              <Text style={styles.logoIcon}>🐾</Text>
-            </View>
-            <Text style={styles.title}>{t('authLogin.title')}</Text>
-            <Text style={styles.subtitle}>{t('authLogin.subtitle')}</Text>
-          </View>
+    <AuthLayout
+      icon="heart-pulse"
+      title={t('authLogin.title')}
+      subtitle={t('authLogin.subtitle')}
+      footer={
+        <View style={styles.registerRow}>
+          <Text style={styles.registerText}>{t('authLogin.footer.newToPetCare')}{' '}</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Register')} hitSlop={8}>
+            <Text style={styles.registerLink}>{t('authLogin.footer.createAccount')}</Text>
+          </TouchableOpacity>
+        </View>
+      }
+    >
+      <View style={styles.formHeading}>
+        <Text style={styles.formTitle}>{t('authExperience.login.welcomeBack')}</Text>
+        <Text style={styles.formCopy}>{t('authExperience.login.continueCare')}</Text>
+      </View>
 
-          <View style={styles.form}>
-            <Input
-              label={t('authLogin.fields.email.label')}
-              placeholder={t('authLogin.fields.email.placeholder')}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              error={errors.email}
-            />
-            <Input
-              label={t('authLogin.fields.password.label')}
-              placeholder={t('authLogin.fields.password.placeholder')}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              error={errors.password}
-            />
-            <TouchableOpacity style={styles.forgotWrap} onPress={() => navigation.navigate('ForgotPassword')}>
-              <Text style={styles.forgotText}>{t('authLogin.actions.forgotPassword')}</Text>
-            </TouchableOpacity>
+      <Input
+        label={t('authLogin.fields.email.label')}
+        placeholder={t('authLogin.fields.email.placeholder')}
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        error={errors.email}
+        leftIcon={<Ionicons name="mail-outline" size={20} color={colors.primary} />}
+      />
+      <Input
+        label={t('authLogin.fields.password.label')}
+        placeholder={t('authLogin.fields.password.placeholder')}
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+        error={errors.password}
+        leftIcon={<Ionicons name="lock-closed-outline" size={20} color={colors.primary} />}
+      />
 
-            <Button
-              title={loading ? t('authLogin.actions.loggingIn') : t('authLogin.actions.login')}
-              onPress={onSubmit}
-              loading={loading}
-              style={styles.submitBtn}
-            />
+      <TouchableOpacity style={styles.forgotWrap} onPress={() => navigation.navigate('ForgotPassword')} hitSlop={8}>
+        <Ionicons name="key-outline" size={15} color={colors.primary} />
+        <Text style={styles.forgotText}>{t('authLogin.actions.forgotPassword')}</Text>
+      </TouchableOpacity>
 
-            <View style={styles.footer}>
-              <View style={styles.features}>
-                <View style={styles.feature}>
-                  <Text style={styles.featureIcon}>🔒</Text>
-                  <Text style={styles.featureLabel}>{t('authLogin.features.secure')}</Text>
-                </View>
-                <View style={styles.feature}>
-                  <Text style={styles.featureIcon}>❤️</Text>
-                  <Text style={styles.featureLabel}>{t('authLogin.features.petCare')}</Text>
-                </View>
-                <View style={styles.feature}>
-                  <Text style={styles.featureIcon}>🕐</Text>
-                  <Text style={styles.featureLabel}>{t('authLogin.features.alwaysAvailable')}</Text>
-                </View>
-              </View>
-              <View style={styles.registerRow}>
-                <Text style={styles.registerText}>{t('authLogin.footer.newToPetCare')}{' '}</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                  <Text style={styles.registerLink}>{t('authLogin.footer.createAccount')}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </ScreenContainer>
+      <Button
+        title={loading ? t('authLogin.actions.loggingIn') : t('authLogin.actions.login')}
+        onPress={onSubmit}
+        loading={loading}
+        style={styles.submitBtn}
+        icon={<Ionicons name="log-in-outline" size={20} color={colors.textInverse} />}
+      />
+
+      <View style={styles.trustStrip}>
+        <MaterialCommunityIcons name="shield-check-outline" size={19} color={colors.primary} />
+        <Text style={styles.trustText}>{t('authExperience.login.secureAccess')}</Text>
+      </View>
+
+      <View style={styles.features}>
+        <Feature icon="shield-checkmark-outline" label={t('authLogin.features.secure')} />
+        <Feature icon="heart-outline" label={t('authLogin.features.petCare')} />
+        <Feature icon="time-outline" label={t('authLogin.features.alwaysAvailable')} />
+      </View>
+    </AuthLayout>
+  );
+}
+
+function Feature({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; label: string }) {
+  return (
+    <View style={styles.feature}>
+      <View style={styles.featureIcon}>
+        <Ionicons name={icon} size={17} color={colors.primary} />
+      </View>
+      <Text style={styles.featureLabel} numberOfLines={1}>{label}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  bg: { backgroundColor: colors.backgroundSecondary },
-  keyboard: { flex: 1 },
-  scrollContent: { paddingBottom: spacing.xxl, paddingHorizontal: spacing.xs, flexGrow: 1 },
-  header: {
-    alignItems: 'center',
-    paddingTop: spacing.xxl,
-    paddingBottom: spacing.xl,
-  },
-  logoWrap: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: colors.primaryLight + '25',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.lg,
-  },
-  logoIcon: { fontSize: 42 },
-  title: {
-    ...typography.h1,
-    color: colors.primary,
-    marginBottom: spacing.xs,
-    textAlign: 'center',
-  },
-  subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    paddingHorizontal: spacing.lg,
-  },
-  form: {
-    backgroundColor: colors.background,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xl,
-    borderRadius: 24,
-    marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    elevation: 2,
-  },
-  forgotWrap: { alignSelf: 'flex-end', marginTop: -spacing.xs, marginBottom: spacing.md },
-  forgotText: { ...typography.bodySmall, color: colors.primary, fontWeight: '600' },
-  submitBtn: { marginTop: spacing.sm, marginBottom: spacing.md },
-  footer: {
-    borderTopWidth: 0,
-    paddingTop: spacing.lg,
-    alignItems: 'center',
-  },
-  features: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-    marginBottom: spacing.xl,
-  },
-  feature: { alignItems: 'center' },
-  featureIcon: { fontSize: 24, marginBottom: spacing.xs },
-  featureLabel: { ...typography.caption, color: colors.textSecondary },
-  registerRow: { flexDirection: 'row', alignItems: 'center' },
+  formHeading: { marginBottom: spacing.lg },
+  formTitle: { ...typography.h3, color: colors.primaryDark, marginBottom: 4 },
+  formCopy: { ...typography.bodySmall, color: colors.textSecondary },
+  forgotWrap: { alignSelf: 'flex-end', flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: -spacing.sm, marginBottom: spacing.lg },
+  forgotText: { ...typography.bodySmall, color: colors.primary, fontWeight: '700' },
+  submitBtn: { marginBottom: spacing.md },
+  trustStrip: { alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: spacing.sm, paddingVertical: spacing.sm, borderRadius: borderRadius.md, backgroundColor: colors.primaryLight + '14', marginBottom: spacing.lg },
+  trustText: { ...typography.caption, color: colors.primaryDark, fontWeight: '600' },
+  features: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.borderLight },
+  feature: { alignItems: 'center', flex: 1, paddingHorizontal: 2 },
+  featureIcon: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primaryLight + '16', marginBottom: 5 },
+  featureLabel: { ...typography.caption, fontSize: 10, color: colors.textSecondary, textAlign: 'center' },
+  registerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   registerText: { ...typography.bodySmall },
-  registerLink: { ...typography.bodySmall, color: colors.primary, fontWeight: '600' },
+  registerLink: { ...typography.bodySmall, color: colors.primary, fontWeight: '800' },
 });

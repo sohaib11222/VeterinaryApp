@@ -40,7 +40,10 @@ export function useProduct(productId: string | null | undefined) {
 }
 
 /** Products for current pharmacy/parapharmacy. */
-export function useMyProducts(params: { page?: number; limit?: number; isActive?: string; search?: string } = {}) {
+export function useMyProducts(
+  params: { page?: number; limit?: number; isActive?: string; search?: string } = {},
+  queryOptions: Record<string, unknown> = {}
+) {
   return useQuery({
     queryKey: ['products', 'mine', params],
     queryFn: () =>
@@ -48,5 +51,8 @@ export function useMyProducts(params: { page?: number; limit?: number; isActive?
         API_ROUTES.PRODUCTS.MINE,
         { params }
       ),
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    ...queryOptions,
   });
 }

@@ -7,7 +7,8 @@ import { api } from '../api/api';
 import { API_ROUTES } from '../api/apiConfig';
 
 export interface GetOrCreateConversationPayload {
-  veterinarianId: string;
+  veterinarianId?: string;
+  businessId?: string;
   petOwnerId?: string;
   appointmentId?: string;
   adminId?: string;
@@ -28,7 +29,8 @@ export interface SendMessagePayload {
   conversationId: string;
   message?: string;
   type?: string;
-  veterinarianId: string;
+  veterinarianId?: string;
+  businessId?: string;
   petOwnerId?: string;
   appointmentId?: string;
   adminId?: string;
@@ -59,6 +61,20 @@ export function useMarkConversationRead() {
       api.post(API_ROUTES.CHAT.MARK_READ(conversationId)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chat', 'conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['chat', 'unread-count'] });
+    },
+  });
+}
+
+/** Only the assigned veterinarian can close a doctor–pet owner conversation. */
+export function useMarkConversationComplete() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (conversationId: string) =>
+      api.post(API_ROUTES.CHAT.MARK_COMPLETE(conversationId)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chat', 'conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['chat', 'messages'] });
       queryClient.invalidateQueries({ queryKey: ['chat', 'unread-count'] });
     },
   });

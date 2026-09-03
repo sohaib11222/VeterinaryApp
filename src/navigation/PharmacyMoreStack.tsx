@@ -8,6 +8,8 @@ import { PharmacySubscriptionScreen } from '../screens/pharmacy/PharmacySubscrip
 import { PharmacyPayoutsScreen } from '../screens/pharmacy/PharmacyPayoutsScreen';
 import { PharmacyChangePasswordScreen } from '../screens/pharmacy/PharmacyChangePasswordScreen';
 import { PharmacyNotificationsScreen } from '../screens/pharmacy/PharmacyNotificationsScreen';
+import { PharmacyPrescriptionRequestsScreen } from '../screens/pharmacy/PharmacyPrescriptionRequestsScreen';
+import { PharmacyAdminChatScreen } from '../screens/pharmacy/PharmacyAdminChatScreen';
 import { LanguageScreen } from '../screens/shared/LanguageScreen';
 
 const Stack = createNativeStackNavigator<PharmacyMoreStackParamList>();
@@ -19,6 +21,8 @@ const TITLES: Record<string, { title: string; subtitle?: string }> = {
   PharmacyPayouts: { title: 'Payouts', subtitle: 'Earnings' },
   PharmacyChangePassword: { title: 'Change Password', subtitle: '' },
   PharmacyNotifications: { title: 'Notifications', subtitle: 'Alerts & updates' },
+  PharmacyPrescriptionRequests: { title: 'Prescription requests', subtitle: 'Review medicine approvals' },
+  PharmacyAdminChat: { title: 'Admin messages', subtitle: 'Support conversation' },
   Language: { title: 'Language', subtitle: 'Choose language' },
 };
 
@@ -48,6 +52,8 @@ export function PharmacyMoreStack() {
       <Stack.Screen name="PharmacyPayouts" component={PharmacyPayoutsScreen} />
       <Stack.Screen name="PharmacyChangePassword" component={PharmacyChangePasswordScreen} />
       <Stack.Screen name="PharmacyNotifications" component={PharmacyNotificationsScreen} />
+      <Stack.Screen name="PharmacyPrescriptionRequests" component={PharmacyPrescriptionRequestsScreen} />
+      <Stack.Screen name="PharmacyAdminChat" component={PharmacyAdminChatScreen} />
       <Stack.Screen name="Language" component={LanguageScreen} />
     </Stack.Navigator>
   );

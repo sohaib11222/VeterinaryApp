@@ -1,32 +1,25 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableOpacity,
-} from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { AuthStackScreenProps } from '../../navigation/types';
-import { ScreenContainer } from '../../components/common/ScreenContainer';
+import { AuthLayout } from '../../components/common/AuthLayout';
 import { Input } from '../../components/common/Input';
+import { CountryPhoneInput } from '../../components/common/CountryPhoneInput';
 import { Button } from '../../components/common/Button';
-import { useAuth } from '../../contexts/AuthContext';
-import type { UserRole } from '../../contexts/AuthContext';
+import { useAuth, type UserRole } from '../../contexts/AuthContext';
 import { getErrorMessage, getFieldErrors } from '../../utils/errorUtils';
 import { colors } from '../../theme/colors';
-import { spacing } from '../../theme/spacing';
+import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useTranslation } from 'react-i18next';
 
 type Nav = AuthStackScreenProps<'Register'>['navigation'];
 
-const ROLE_OPTIONS: { role: UserRole; labelKey: string }[] = [
-  { role: 'VETERINARIAN', labelKey: 'authRegister.actions.registerAsVeterinarian' },
-  { role: 'PET_STORE', labelKey: 'authRegister.actions.registerAsPharmacy' },
-  { role: 'PARAPHARMACY', labelKey: 'authRegister.actions.registerAsParapharmacy' },
+const ROLE_OPTIONS: { role: UserRole; labelKey: string; icon: keyof typeof MaterialCommunityIcons.glyphMap }[] = [
+  { role: 'VETERINARIAN', labelKey: 'authRegister.actions.registerAsVeterinarian', icon: 'stethoscope' },
+  { role: 'PET_STORE', labelKey: 'authRegister.actions.registerAsPharmacy', icon: 'medical-bag' },
+  { role: 'PARAPHARMACY', labelKey: 'authRegister.actions.registerAsParapharmacy', icon: 'pill' },
 ];
 
 export function RegisterScreen() {
@@ -49,6 +42,7 @@ export function RegisterScreen() {
     if (!email.trim()) next.email = t('auth.validation.emailRequired');
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = t('auth.validation.invalidEmail');
     if (!phone.trim()) next.phone = t('auth.validation.phoneRequired');
+    else if (!/^\+\d{7,18}$/.test(phone)) next.phone = 'Enter a valid phone number with a country code.';
     if (!password) next.password = t('auth.validation.passwordRequired');
     else if (password.length < 6) next.password = t('auth.validation.passwordMinLength', { count: 6 });
     if (password !== confirmPassword) next.confirmPassword = t('auth.validation.passwordsMustMatch');
@@ -62,171 +56,79 @@ export function RegisterScreen() {
     setErrors({});
     try {
       await register({ name, email, phone, password }, role);
-      // Success toast is shown by AuthContext
       if (role === 'PET_OWNER') {
         await logout();
         navigation.replace('Login');
       }
-      // For VETERINARIAN / PET_STORE / PARAPHARMACY, RootNavigator shows Pending stack
-      // with DoctorVerificationUpload or PetStoreVerificationUpload as initial screen
+      // Role-specific document and approval screens are selected by RootNavigator.
     } catch (err: unknown) {
       const message = getErrorMessage(err, t('authRegister.errors.registrationFailedTryAgain'));
       const fieldErrs = getFieldErrors(err);
-      if (fieldErrs._form) {
-        setErrors({ email: fieldErrs._form });
-      } else if (Object.keys(fieldErrs).length > 0) {
-        setErrors({ ...fieldErrs } as Record<string, string>);
-      } else {
-        setErrors({ email: message });
-      }
+      if (fieldErrs._form) setErrors({ email: fieldErrs._form });
+      else if (Object.keys(fieldErrs).length > 0) setErrors({ ...fieldErrs } as Record<string, string>);
+      else setErrors({ email: message });
     } finally {
       setLoading(false);
     }
   };
 
-  const onSubmitPetOwner = async () => {
-    await submitWithRole('PET_OWNER');
-  };
-
   return (
-    <ScreenContainer scroll padded style={styles.bg}>
-      <KeyboardAvoidingView
-        style={styles.keyboard}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.header}>
-            <View style={styles.logoWrap}>
-              <Text style={styles.logoIcon}>🐾</Text>
-            </View>
-            <Text style={styles.title}>{t('authRegister.title')}</Text>
-            <Text style={styles.subtitle}>{t('authRegister.subtitle')}</Text>
-          </View>
+    <AuthLayout
+      icon="account-plus-outline"
+      title={t('authRegister.title')}
+      subtitle={t('authRegister.subtitle')}
+      footer={
+        <View style={styles.loginRow}>
+          <Text style={styles.loginText}>{t('authRegister.footer.alreadyHaveAccount')}{' '}</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Login')} hitSlop={8}>
+            <Text style={styles.loginLink}>{t('authRegister.footer.loginToPetCare')}</Text>
+          </TouchableOpacity>
+        </View>
+      }
+    >
+      <View style={styles.formHeading}>
+        <Text style={styles.formTitle}>{t('authExperience.register.createAccount')}</Text>
+        <Text style={styles.formCopy}>{t('authExperience.register.protectedInfo')}</Text>
+      </View>
 
-          <View style={styles.form}>
-            <Input
-              label={t('authRegister.fields.fullName.label')}
-              placeholder={t('authRegister.fields.fullName.placeholder')}
-              value={name}
-              onChangeText={setName}
-              error={errors.name}
-            />
-            <Input
-              label={t('authRegister.fields.email.label')}
-              placeholder={t('authRegister.fields.email.placeholder')}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              error={errors.email}
-            />
-            <Input
-              label={t('authRegister.fields.phone.label')}
-              placeholder={t('authRegister.fields.phone.placeholder')}
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              error={errors.phone}
-            />
-            <Input
-              label={t('authRegister.fields.password.label')}
-              placeholder={t('authRegister.fields.password.placeholder')}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              error={errors.password}
-            />
-            <Input
-              label={t('authRegister.fields.confirmPassword.label')}
-              placeholder={t('authRegister.fields.confirmPassword.placeholder')}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-              error={errors.confirmPassword}
-            />
+      <Input label={t('authRegister.fields.fullName.label')} placeholder={t('authRegister.fields.fullName.placeholder')} value={name} onChangeText={setName} error={errors.name} autoCapitalize="words" leftIcon={<Ionicons name="person-outline" size={20} color={colors.primary} />} />
+      <Input label={t('authRegister.fields.email.label')} placeholder={t('authRegister.fields.email.placeholder')} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" error={errors.email} leftIcon={<Ionicons name="mail-outline" size={20} color={colors.primary} />} />
+      <CountryPhoneInput label={t('authRegister.fields.phone.label')} value={phone} onChangeText={setPhone} error={errors.phone} helperText="Select your country so we can verify the correct number." />
+      <Input label={t('authRegister.fields.password.label')} placeholder={t('authRegister.fields.password.placeholder')} value={password} onChangeText={setPassword} secureTextEntry error={errors.password} leftIcon={<Ionicons name="lock-closed-outline" size={20} color={colors.primary} />} />
+      <Input label={t('authRegister.fields.confirmPassword.label')} placeholder={t('authRegister.fields.confirmPassword.placeholder')} value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry error={errors.confirmPassword} leftIcon={<Ionicons name="shield-checkmark-outline" size={20} color={colors.primary} />} />
 
-            <Button
-              title={loading ? t('authRegister.actions.creatingAccount') : t('authRegister.actions.createPetCareAccount')}
-              onPress={onSubmitPetOwner}
-              loading={loading}
-              style={styles.submitBtn}
-            />
+      <Button title={loading ? t('authRegister.actions.creatingAccount') : t('authRegister.actions.createPetCareAccount')} onPress={() => submitWithRole('PET_OWNER')} loading={loading} style={styles.submitBtn} icon={<Ionicons name="arrow-forward" size={19} color={colors.textInverse} />} />
 
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>{t('authRegister.divider.or')}</Text>
-              <View style={styles.dividerLine} />
-            </View>
+      <View style={styles.divider}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerText}>{t('authRegister.divider.or')}</Text>
+        <View style={styles.dividerLine} />
+      </View>
 
-            {ROLE_OPTIONS.map(({ role, labelKey }) => (
-              <Button
-                key={role}
-                title={t(labelKey)}
-                onPress={() => submitWithRole(role)}
-                variant="outline"
-                style={styles.altBtn}
-                disabled={loading}
-              />
-            ))}
-
-            <View style={styles.registerRow}>
-              <Text style={styles.registerText}>{t('authRegister.footer.alreadyHaveAccount')}{' '}</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                <Text style={styles.registerLink}>{t('authRegister.footer.loginToPetCare')}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </ScreenContainer>
+      <View style={styles.professionalBlock}>
+        <Text style={styles.professionalTitle}>{t('authExperience.register.professionals')}</Text>
+        <Text style={styles.professionalCopy}>{t('authExperience.register.professionalsDescription')}</Text>
+        {ROLE_OPTIONS.map(({ role, labelKey, icon }) => (
+          <Button key={role} title={t(labelKey)} onPress={() => submitWithRole(role)} variant="outline" style={styles.roleBtn} disabled={loading} icon={<MaterialCommunityIcons name={icon} size={20} color={colors.primary} />} />
+        ))}
+      </View>
+    </AuthLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  bg: { backgroundColor: colors.backgroundSecondary },
-  keyboard: { flex: 1 },
-  scrollContent: { paddingBottom: spacing.xxl, paddingHorizontal: spacing.xs, flexGrow: 1 },
-  header: {
-    alignItems: 'center',
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.lg,
-  },
-  logoWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.primaryLight + '25',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.lg,
-  },
-  logoIcon: { fontSize: 38 },
-  title: { ...typography.h1, color: colors.primary, marginBottom: spacing.xs, textAlign: 'center' },
-  subtitle: { ...typography.body, color: colors.textSecondary, textAlign: 'center', paddingHorizontal: spacing.lg },
-  form: {
-    backgroundColor: colors.background,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xl,
-    borderRadius: 24,
-    marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    elevation: 2,
-  },
-  submitBtn: { marginTop: spacing.sm, marginBottom: spacing.md },
-  divider: { flexDirection: 'row', alignItems: 'center', marginVertical: spacing.lg },
-  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
-  dividerText: { ...typography.caption, marginHorizontal: spacing.sm, color: colors.textLight },
-  altBtn: { marginBottom: spacing.sm },
-  registerRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: spacing.xl },
-  registerText: { ...typography.bodySmall },
-  registerLink: { ...typography.bodySmall, color: colors.primary, fontWeight: '600' },
+  formHeading: { marginBottom: spacing.lg },
+  formTitle: { ...typography.h3, color: colors.primaryDark, marginBottom: 4 },
+  formCopy: { ...typography.bodySmall, color: colors.textSecondary, lineHeight: 19 },
+  submitBtn: { marginTop: spacing.xs },
+  divider: { flexDirection: 'row', alignItems: 'center', marginVertical: spacing.xl },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.borderLight },
+  dividerText: { ...typography.caption, marginHorizontal: spacing.md, color: colors.textLight, fontWeight: '700' },
+  professionalBlock: { borderRadius: borderRadius.lg, padding: spacing.md, backgroundColor: colors.primaryLight + '0E', borderWidth: 1, borderColor: colors.primaryLight + '22' },
+  professionalTitle: { ...typography.label, color: colors.primaryDark, marginBottom: 3 },
+  professionalCopy: { ...typography.caption, color: colors.textSecondary, lineHeight: 17, marginBottom: spacing.md },
+  roleBtn: { marginBottom: spacing.sm, backgroundColor: colors.background },
+  loginRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  loginText: { ...typography.bodySmall },
+  loginLink: { ...typography.bodySmall, color: colors.primary, fontWeight: '800' },
 });

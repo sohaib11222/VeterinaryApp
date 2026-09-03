@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Linking } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenContainer } from '../../../components/common/ScreenContainer';
@@ -85,9 +86,9 @@ export function PharmacyDetailsScreen() {
             )}
             <View style={styles.storeInfo}>
               <Text style={styles.storeName}>{storeName}</Text>
-              <Text style={styles.storeDetail}>🏪 {storeKind}</Text>
-              {storePhone ? <Text style={styles.storeDetail}>📞 {storePhone}</Text> : null}
-              {storeAddress ? <Text style={styles.storeDetail} numberOfLines={2}>📍 {storeAddress}</Text> : null}
+              <View style={styles.storeDetailRow}><Ionicons name="storefront-outline" size={14} color={colors.primary} /><Text style={styles.storeDetail}>{storeKind}</Text></View>
+              {storePhone ? <View style={styles.storeDetailRow}><Ionicons name="call-outline" size={14} color={colors.primary} /><Text style={styles.storeDetail}>{storePhone}</Text></View> : null}
+              {storeAddress ? <View style={styles.storeDetailRow}><Ionicons name="location-outline" size={14} color={colors.primary} /><Text style={[styles.storeDetail, styles.addressDetail]} numberOfLines={2}>{storeAddress}</Text></View> : null}
             </View>
           </View>
           <View style={styles.actions}>
@@ -186,7 +187,9 @@ const styles = StyleSheet.create({
   logo: { width: 100, height: 70, backgroundColor: colors.backgroundTertiary, borderRadius: 8 },
   storeInfo: { flex: 1, marginLeft: spacing.sm },
   storeName: { ...typography.h3, marginBottom: 4 },
-  storeDetail: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
+  storeDetailRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 4, marginTop: 4 },
+  storeDetail: { ...typography.bodySmall, color: colors.textSecondary, flexShrink: 1 },
+  addressDetail: { flex: 1 },
   actions: { gap: 8 },
   callBtn: { paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.primary, borderRadius: 8 },
   callBtnText: { ...typography.body, color: colors.primary, fontWeight: '600' },

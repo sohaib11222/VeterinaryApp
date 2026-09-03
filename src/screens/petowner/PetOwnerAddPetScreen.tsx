@@ -11,6 +11,7 @@ import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 
 const PET_SPECIES = ['DOG', 'CAT', 'BIRD', 'RABBIT', 'REPTILE', 'FISH', 'HAMSTER', 'GUINEA_PIG', 'FERRET', 'HORSE', 'OTHER'];
 const PET_GENDER = ['MALE', 'FEMALE', 'NEUTERED', 'SPAYED', 'UNKNOWN'];
@@ -75,12 +76,29 @@ export function PetOwnerAddPetScreen() {
   };
 
   return (
-    <ScreenContainer scroll padded>
+    <ScreenContainer padded>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        <View style={styles.hero}>
+          <View style={styles.heroIcon}><Ionicons name="paw" size={25} color={colors.primaryDark} /></View>
+          <View style={styles.heroCopy}>
+            <Text style={styles.heroTitle}>{t('petOwnerAddPet.title')}</Text>
+            <Text style={styles.heroHint}>{t('petOwnerAddPet.hint')}</Text>
+          </View>
+        </View>
+
         <Card style={styles.card}>
-          <Text style={styles.sectionTitle}>{t('petOwnerAddPet.title')}</Text>
-          <Text style={styles.hint}>{t('petOwnerAddPet.hint')}</Text>
-          <Input label={t('petOwnerAddPet.fields.name.label')} placeholder={t('petOwnerAddPet.fields.name.placeholder')} value={name} onChangeText={setName} />
+          <View style={styles.sectionHeading}>
+            <View style={styles.sectionIcon}><Ionicons name="information-circle-outline" size={19} color={colors.primary} /></View>
+            <Text style={styles.sectionTitle}>{t('petOwnerAddPet.fields.name.label')}</Text>
+          </View>
+          <Input
+            label={t('petOwnerAddPet.fields.name.label')}
+            placeholder={t('petOwnerAddPet.fields.name.placeholder')}
+            value={name}
+            onChangeText={setName}
+            autoCapitalize="words"
+            leftIcon={<Ionicons name="paw-outline" size={20} color={colors.textSecondary} />}
+          />
           <Text style={styles.fieldLabel}>{t('petOwnerAddPet.fields.species.label')}</Text>
           <View style={styles.chipRow}>
             {PET_SPECIES.slice(0, 6).map((s) => (
@@ -96,7 +114,21 @@ export function PetOwnerAddPetScreen() {
               </TouchableOpacity>
             ))}
           </View>
-          <Input label={t('petOwnerAddPet.fields.breed.label')} placeholder={t('petOwnerAddPet.fields.breed.placeholder')} value={breed} onChangeText={setBreed} />
+          <Input
+            label={t('petOwnerAddPet.fields.breed.label')}
+            placeholder={t('petOwnerAddPet.fields.breed.placeholder')}
+            value={breed}
+            onChangeText={setBreed}
+            autoCapitalize="words"
+            leftIcon={<Ionicons name="pricetag-outline" size={19} color={colors.textSecondary} />}
+          />
+        </Card>
+
+        <Card style={styles.card}>
+          <View style={styles.sectionHeading}>
+            <View style={styles.sectionIcon}><Ionicons name="pulse-outline" size={19} color={colors.primary} /></View>
+            <Text style={styles.sectionTitle}>{t('petOwnerAddPet.fields.gender.label')}</Text>
+          </View>
           <Text style={styles.fieldLabel}>{t('petOwnerAddPet.fields.gender.label')}</Text>
           <View style={styles.chipRow}>
             {PET_GENDER.map((g) => (
@@ -105,19 +137,55 @@ export function PetOwnerAddPetScreen() {
               </TouchableOpacity>
             ))}
           </View>
-          <Input label={t('petOwnerAddPet.fields.ageMonths.label')} placeholder={t('petOwnerAddPet.fields.ageMonths.placeholder')} value={ageMonths} onChangeText={setAgeMonths} keyboardType="numeric" />
-          <Input label={t('petOwnerAddPet.fields.weightKg.label')} placeholder={t('petOwnerAddPet.fields.weightKg.placeholder')} value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" />
-          <Input label={t('petOwnerAddPet.fields.microchipNumber.label')} placeholder={t('petOwnerAddPet.fields.microchipNumber.placeholder')} value={microchipNumber} onChangeText={setMicrochipNumber} />
+          <Input
+            label={t('petOwnerAddPet.fields.ageMonths.label')}
+            placeholder={t('petOwnerAddPet.fields.ageMonths.placeholder')}
+            value={ageMonths}
+            onChangeText={setAgeMonths}
+            keyboardType="numeric"
+            leftIcon={<Ionicons name="calendar-outline" size={19} color={colors.textSecondary} />}
+          />
+          <Input
+            label={t('petOwnerAddPet.fields.weightKg.label')}
+            placeholder={t('petOwnerAddPet.fields.weightKg.placeholder')}
+            value={weightKg}
+            onChangeText={setWeightKg}
+            keyboardType="decimal-pad"
+            leftIcon={<Ionicons name="analytics-outline" size={19} color={colors.textSecondary} />}
+          />
+          <Input
+            label={t('petOwnerAddPet.fields.microchipNumber.label')}
+            placeholder={t('petOwnerAddPet.fields.microchipNumber.placeholder')}
+            value={microchipNumber}
+            onChangeText={setMicrochipNumber}
+            leftIcon={<Ionicons name="hardware-chip-outline" size={19} color={colors.textSecondary} />}
+          />
+        </Card>
+
+        <Card style={styles.card}>
+          <View style={styles.sectionHeading}>
+            <View style={styles.sectionIcon}><Ionicons name="image-outline" size={19} color={colors.primary} /></View>
+            <Text style={styles.sectionTitle}>{t('petOwnerAddPet.fields.photo.label')}</Text>
+          </View>
           <Text style={styles.fieldLabel}>{t('petOwnerAddPet.fields.photo.label')}</Text>
-          <TouchableOpacity style={styles.photoPlaceholder} onPress={pickPhoto}>
+          <TouchableOpacity style={[styles.photoPlaceholder, photo?.uri && styles.photoPlaceholderSelected]} onPress={pickPhoto} activeOpacity={0.78}>
             {photo?.uri ? (
               <Image source={{ uri: photo.uri }} style={styles.photoPreview} />
             ) : (
-              <Text style={styles.photoText}>{t('petOwnerAddPet.fields.photo.placeholder')}</Text>
+              <>
+                <View style={styles.uploadIcon}><Ionicons name="cloud-upload-outline" size={26} color={colors.primary} /></View>
+                <Text style={styles.photoText}>{t('petOwnerAddPet.fields.photo.placeholder')}</Text>
+              </>
             )}
           </TouchableOpacity>
-          <Button title={createPet.isPending ? t('petOwnerAddPet.actions.saving') : t('petOwnerAddPet.actions.savePet')} onPress={onSave} style={styles.saveBtn} disabled={createPet.isPending} />
         </Card>
+        <Button
+          title={createPet.isPending ? t('petOwnerAddPet.actions.saving') : t('petOwnerAddPet.actions.savePet')}
+          onPress={onSave}
+          icon={<Ionicons name="checkmark-circle-outline" size={20} color={colors.textInverse} />}
+          style={styles.saveBtn}
+          disabled={createPet.isPending}
+        />
       </ScrollView>
     </ScreenContainer>
   );
@@ -125,17 +193,25 @@ export function PetOwnerAddPetScreen() {
 
 const styles = StyleSheet.create({
   scroll: { paddingBottom: spacing.xxl },
-  card: { marginBottom: spacing.md },
-  sectionTitle: { ...typography.h3, marginBottom: 4 },
-  hint: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.md },
-  fieldLabel: { ...typography.label, marginBottom: spacing.xs },
+  hero: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primaryDark, borderRadius: 20, padding: spacing.md, marginBottom: spacing.md, overflow: 'hidden' },
+  heroIcon: { width: 50, height: 50, borderRadius: 16, backgroundColor: colors.secondaryLight, alignItems: 'center', justifyContent: 'center', marginRight: spacing.md },
+  heroCopy: { flex: 1 },
+  heroTitle: { ...typography.h3, color: colors.textInverse },
+  heroHint: { ...typography.bodySmall, color: 'rgba(255,255,255,0.74)', marginTop: 3 },
+  card: { marginBottom: spacing.md, borderWidth: 1, borderColor: colors.borderLight },
+  sectionHeading: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
+  sectionIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: colors.primaryLight + '18', alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm },
+  sectionTitle: { ...typography.label, color: colors.primaryDark },
+  fieldLabel: { ...typography.label, color: colors.textSecondary, marginBottom: spacing.xs },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.sm },
-  chip: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 20, backgroundColor: colors.backgroundTertiary },
+  chip: { paddingHorizontal: 11, paddingVertical: 8, borderRadius: 20, backgroundColor: colors.backgroundSecondary, borderWidth: 1, borderColor: colors.borderLight },
   chipActive: { backgroundColor: colors.primary },
-  chipText: { ...typography.caption, color: colors.textSecondary },
+  chipText: { ...typography.caption, color: colors.textSecondary, fontWeight: '600' },
   chipTextActive: { color: colors.textInverse },
-  photoPlaceholder: { borderWidth: 1, borderStyle: 'dashed', borderColor: colors.border, borderRadius: 12, padding: spacing.lg, alignItems: 'center', marginBottom: spacing.md },
-  photoText: { ...typography.bodySmall, color: colors.textSecondary },
-  photoPreview: { width: 160, height: 160, borderRadius: 12 },
-  saveBtn: { marginTop: spacing.xs },
+  photoPlaceholder: { minHeight: 158, borderWidth: 1.5, borderStyle: 'dashed', borderColor: colors.primaryLight + '80', backgroundColor: colors.primaryLight + '0D', borderRadius: 16, padding: spacing.lg, alignItems: 'center', justifyContent: 'center', marginBottom: 0 },
+  photoPlaceholderSelected: { padding: spacing.xs, borderStyle: 'solid' },
+  uploadIcon: { width: 50, height: 50, borderRadius: 16, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm },
+  photoText: { ...typography.bodySmall, color: colors.primaryDark, fontWeight: '600', textAlign: 'center' },
+  photoPreview: { width: '100%', height: 180, borderRadius: 12, resizeMode: 'cover' },
+  saveBtn: { marginTop: spacing.xs, marginBottom: spacing.xl },
 });

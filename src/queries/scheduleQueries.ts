@@ -5,11 +5,12 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../api/api';
 import { API_ROUTES } from '../api/apiConfig';
 
-export function useWeeklySchedule() {
+export function useWeeklySchedule(queryOptions: Record<string, unknown> = {}) {
   return useQuery({
     queryKey: ['weekly-schedule'],
     queryFn: () =>
       api.get<{ success: boolean; data?: unknown }>(API_ROUTES.WEEKLY_SCHEDULE.LIST),
+    ...queryOptions,
   });
 }
 
@@ -24,22 +25,27 @@ export function useWeeklyScheduleSlots(veterinarianId: string | null, date: stri
   });
 }
 
-export function useRescheduleRequests(params: Record<string, unknown> = {}) {
+export function useRescheduleRequests(
+  params: Record<string, unknown> = {},
+  queryOptions: Record<string, unknown> = {}
+) {
   return useQuery({
     queryKey: ['reschedule-requests', params],
     queryFn: () =>
       api.get<{ success: boolean; data?: unknown }>(API_ROUTES.RESCHEDULE_REQUEST.LIST, {
         params,
       }),
+    ...queryOptions,
   });
 }
 
-export function useEligibleRescheduleAppointments() {
+export function useEligibleRescheduleAppointments(queryOptions: Record<string, unknown> = {}) {
   return useQuery({
     queryKey: ['reschedule-requests', 'eligible-appointments'],
     queryFn: () =>
       api.get<{ success: boolean; data?: unknown }>(
         API_ROUTES.RESCHEDULE_REQUEST.ELIGIBLE_APPOINTMENTS
       ),
+    ...queryOptions,
   });
 }

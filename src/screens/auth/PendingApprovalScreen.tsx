@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { AuthInfoRow, AuthLayout } from '../../components/common/AuthLayout';
 import { useAuth, type User } from '../../contexts/AuthContext';
 import { Button } from '../../components/common/Button';
 import { getMeApi } from '../../queries/authQueries';
 import { colors } from '../../theme/colors';
-import { spacing } from '../../theme/spacing';
+import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useTranslation } from 'react-i18next';
 
@@ -26,7 +28,7 @@ export function PendingApprovalScreen() {
       };
       if (normalized.id) updateUser(normalized);
     } catch {
-      // ignore
+      // A temporary connection problem should not block the existing pending state.
     } finally {
       setCheckingStatus(false);
     }
@@ -36,10 +38,6 @@ export function PendingApprovalScreen() {
     checkApprovalStatus();
   }, [checkApprovalStatus]);
 
-  const handleLogout = async () => {
-    await logout();
-  };
-
   const status = (user?.status ?? '').toUpperCase();
   const isRejectedOrBlocked = status === 'REJECTED' || status === 'BLOCKED';
   const title = isRejectedOrBlocked ? t('authPendingApproval.rejected.title') : t('authPendingApproval.pending.title');
@@ -47,136 +45,58 @@ export function PendingApprovalScreen() {
 
   if (checkingStatus) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.checkingText}>{t('authPendingApproval.loading.checkingStatus')}</Text>
-      </View>
+      <AuthLayout icon="clock-check-outline" title={t('authPendingApproval.loading.checkingStatus')} subtitle={t('authExperience.pending.checkingDescription')} compact>
+        <View style={styles.loadingCard}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>{t('authPendingApproval.loading.checkingStatus')}</Text>
+        </View>
+      </AuthLayout>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <View style={styles.header}>
-        <View style={styles.iconWrap}>
-          <Text style={styles.icon}>{isRejectedOrBlocked ? '⚠️' : '🕐'}</Text>
+    <AuthLayout
+      icon={isRejectedOrBlocked ? 'alert-octagon-outline' : 'clock-check-outline'}
+      title={title}
+      subtitle={subtitle}
+      compact
+    >
+      {!isRejectedOrBlocked ? (
+        <View style={styles.stepsCard}>
+          <Text style={styles.stepsHeading}>{t('authExperience.pending.progress')}</Text>
+          <AuthInfoRow icon="checkmark-circle-outline" tone="success" title={t('authPendingApproval.steps.documentsSubmitted.title')} description={t('authPendingApproval.steps.documentsSubmitted.desc')} />
+          <AuthInfoRow icon="time-outline" tone="warning" title={t('authPendingApproval.steps.reviewInProgress.title')} description={t('authPendingApproval.steps.reviewInProgress.desc')} />
+          <AuthInfoRow icon="notifications-outline" title={t('authPendingApproval.steps.notification.title')} description={t('authPendingApproval.steps.notification.desc')} last />
         </View>
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.subtitle}>{subtitle}</Text>
-      </View>
+      ) : null}
 
-      {!isRejectedOrBlocked && (
-        <View style={styles.card}>
-          <View style={styles.cardRow}>
-            <Text style={styles.cardIcon}>✓</Text>
-            <View>
-              <Text style={styles.cardTitle}>{t('authPendingApproval.steps.documentsSubmitted.title')}</Text>
-              <Text style={styles.cardDesc}>{t('authPendingApproval.steps.documentsSubmitted.desc')}</Text>
-            </View>
-          </View>
-          <View style={styles.cardRow}>
-            <Text style={styles.cardIcon}>🕐</Text>
-            <View>
-              <Text style={styles.cardTitle}>{t('authPendingApproval.steps.reviewInProgress.title')}</Text>
-              <Text style={styles.cardDesc}>{t('authPendingApproval.steps.reviewInProgress.desc')}</Text>
-            </View>
-          </View>
-          <View style={styles.cardRow}>
-            <Text style={styles.cardIcon}>✉️</Text>
-            <View>
-              <Text style={styles.cardTitle}>{t('authPendingApproval.steps.notification.title')}</Text>
-              <Text style={styles.cardDesc}>{t('authPendingApproval.steps.notification.desc')}</Text>
-            </View>
-          </View>
+      <View style={[styles.infoBox, isRejectedOrBlocked && styles.infoBoxWarning]}>
+        <Ionicons name={isRejectedOrBlocked ? 'information-circle-outline' : 'sparkles-outline'} size={20} color={isRejectedOrBlocked ? colors.error : colors.primary} />
+        <View style={styles.infoCopy}>
+          <Text style={styles.infoTitle}>{t('authPendingApproval.whatNext.title')}</Text>
+          <Text style={styles.infoText}>{isRejectedOrBlocked ? t('authPendingApproval.whatNext.rejected') : t('authPendingApproval.whatNext.pending')}</Text>
         </View>
-      )}
-
-      <View style={styles.infoBox}>
-        <Text style={styles.infoTitle}>{t('authPendingApproval.whatNext.title')}</Text>
-        <Text style={styles.infoText}>
-          {isRejectedOrBlocked ? t('authPendingApproval.whatNext.rejected') : t('authPendingApproval.whatNext.pending')}
-        </Text>
       </View>
 
       <View style={styles.actions}>
-        {!isRejectedOrBlocked && (
-          <Button title={t('authPendingApproval.actions.checkStatusAgain')} onPress={checkApprovalStatus} style={styles.btn} />
-        )}
-        <Button title={t('common.logout')} onPress={handleLogout} variant="outline" style={styles.btn} />
+        {!isRejectedOrBlocked ? (
+          <Button title={t('authPendingApproval.actions.checkStatusAgain')} onPress={checkApprovalStatus} icon={<Ionicons name="refresh-outline" size={20} color={colors.textInverse} />} />
+        ) : null}
+        <Button title={t('common.logout')} onPress={logout} variant="outline" icon={<Ionicons name="log-out-outline" size={20} color={colors.primary} />} />
       </View>
-    </ScrollView>
+    </AuthLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    padding: spacing.xl,
-    paddingTop: spacing.xxl,
-    backgroundColor: colors.backgroundSecondary,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.backgroundSecondary,
-  },
-  checkingText: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginTop: spacing.md,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
-  iconWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.primaryLight + '30',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.lg,
-  },
-  icon: { fontSize: 40 },
-  title: {
-    ...typography.h2,
-    color: colors.primary,
-    textAlign: 'center',
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    paddingHorizontal: spacing.md,
-  },
-  card: {
-    backgroundColor: colors.background,
-    borderRadius: 16,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  cardRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: spacing.md,
-  },
-  cardIcon: { fontSize: 20, marginRight: spacing.sm },
-  cardTitle: { ...typography.body, fontWeight: '600', marginBottom: 2 },
-  cardDesc: { ...typography.caption, color: colors.textSecondary },
-  infoBox: {
-    backgroundColor: colors.primaryLight + '15',
-    borderRadius: 12,
-    padding: spacing.lg,
-    marginBottom: spacing.xl,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.primary,
-  },
-  infoTitle: { ...typography.body, fontWeight: '600', marginBottom: spacing.xs },
-  infoText: { ...typography.bodySmall, color: colors.textSecondary },
+  loadingCard: { alignItems: 'center', paddingVertical: spacing.xl, gap: spacing.md },
+  loadingText: { ...typography.bodySmall, color: colors.textSecondary },
+  stepsCard: { borderWidth: 1, borderColor: colors.borderLight, borderRadius: borderRadius.md, paddingHorizontal: spacing.md, marginBottom: spacing.lg },
+  stepsHeading: { ...typography.label, color: colors.primaryDark, paddingTop: spacing.md, marginBottom: spacing.xs },
+  infoBox: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: colors.primaryLight + '12', borderRadius: borderRadius.md, padding: spacing.md, marginBottom: spacing.lg },
+  infoBoxWarning: { backgroundColor: colors.errorLight + '70' },
+  infoCopy: { flex: 1, marginLeft: spacing.sm },
+  infoTitle: { ...typography.label, color: colors.primaryDark, marginBottom: 3 },
+  infoText: { ...typography.bodySmall, color: colors.textSecondary, lineHeight: 19 },
   actions: { gap: spacing.sm },
-  btn: { marginBottom: spacing.sm },
 });

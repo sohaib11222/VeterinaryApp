@@ -20,6 +20,7 @@ import { useMyPetStoreSubscription, useMyPetStore } from '../../queries/petStore
 import { useMyProducts } from '../../queries/productQueries';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
+import { typography } from '../../theme/typography';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n/appI18n';
 import { Ionicons } from '@expo/vector-icons';
@@ -59,16 +60,17 @@ export function PharmacyDashboardScreen() {
   const [chartsWidth, setChartsWidth] = useState<number>(
     Math.min(Dimensions.get('window').width - 64, 420)
   );
-  const recentOrdersQuery = useOrders({ page: 1, limit: 100 });
-  const statusPending = useOrders({ status: 'PENDING', page: 1, limit: 1 });
-  const statusConfirmed = useOrders({ status: 'CONFIRMED', page: 1, limit: 1 });
-  const statusProcessing = useOrders({ status: 'PROCESSING', page: 1, limit: 1 });
-  const statusShipped = useOrders({ status: 'SHIPPED', page: 1, limit: 1 });
-  const statusDelivered = useOrders({ status: 'DELIVERED', page: 1, limit: 1 });
-  const statusCancelled = useOrders({ status: 'CANCELLED', page: 1, limit: 1 });
+  const polling = { refetchInterval: 20_000, refetchIntervalInBackground: true };
+  const recentOrdersQuery = useOrders({ page: 1, limit: 100 }, polling);
+  const statusPending = useOrders({ status: 'PENDING', page: 1, limit: 1 }, polling);
+  const statusConfirmed = useOrders({ status: 'CONFIRMED', page: 1, limit: 1 }, polling);
+  const statusProcessing = useOrders({ status: 'PROCESSING', page: 1, limit: 1 }, polling);
+  const statusShipped = useOrders({ status: 'SHIPPED', page: 1, limit: 1 }, polling);
+  const statusDelivered = useOrders({ status: 'DELIVERED', page: 1, limit: 1 }, polling);
+  const statusCancelled = useOrders({ status: 'CANCELLED', page: 1, limit: 1 }, polling);
 
-  const mySubQuery = useMyPetStoreSubscription({ enabled: !isParapharmacy });
-  const myStoreQuery = useMyPetStore();
+  const mySubQuery = useMyPetStoreSubscription({ enabled: !isParapharmacy, refetchInterval: 30_000 });
+  const myStoreQuery = useMyPetStore({ refetchInterval: 30_000 });
   const productsQuery = useMyProducts({ page: 1, limit: 1 });
 
   const orders = useMemo(() => extractOrders(recentOrdersQuery.data), [recentOrdersQuery.data]);
@@ -113,6 +115,8 @@ export function PharmacyDashboardScreen() {
   const showProfileBanner = !!petStore && !isProfileComplete;
 
   const storeName = user?.name ?? (isParapharmacy ? t('more.pharmacy.parapharmacy') : t('more.pharmacy.pharmacy'));
+  const workspaceLabel = isParapharmacy ? 'Parapharmacy workspace' : 'Pharmacy workspace';
+  const todayLabel = new Date().toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'short' });
 
   const revenueLast7Days = useMemo(() => {
     const dayBuckets: { key: string; label: string; total: number }[] = [];
@@ -316,7 +320,7 @@ export function PharmacyDashboardScreen() {
         id: '1',
         title: t('pharmacyDashboard.stats.revenueToday'),
         value: `€${revenueToday.toFixed(2)}`,
-        icon: '💰',
+        icon: 'cash-outline',
         iconColor: colors.primary,
         progress: Math.min(100, revenueToday > 0 ? Math.round((revenueToday / 500) * 100) : 0),
       },
@@ -324,7 +328,7 @@ export function PharmacyDashboardScreen() {
         id: '2',
         title: t('pharmacyDashboard.stats.totalOrders'),
         value: String(totalOrders),
-        icon: '📦',
+        icon: 'cube-outline',
         iconColor: colors.success,
         progress: totalOrders > 0 ? 100 : 0,
       },
@@ -332,7 +336,7 @@ export function PharmacyDashboardScreen() {
         id: '3',
         title: t('pharmacyDashboard.stats.pendingOrders'),
         value: String(pendingCount),
-        icon: '⏳',
+        icon: 'time-outline',
         iconColor: colors.warning,
         progress: totalOrders ? Math.min(100, Math.round((pendingCount / totalOrders) * 100)) : 0,
       },
@@ -340,7 +344,7 @@ export function PharmacyDashboardScreen() {
         id: '4',
         title: t('pharmacyDashboard.stats.products'),
         value: String(productsData.total),
-        icon: '🛍',
+        icon: 'bag-handle-outline',
         iconColor: colors.info,
         progress: productsData.total > 0 ? 100 : 0,
       },
@@ -355,14 +359,26 @@ export function PharmacyDashboardScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
       >
-        <View style={styles.header}>
-          <Text style={styles.welcomeTitle}>{t('pharmacyDashboard.header.welcome', { storeName })}</Text>
-          <Text style={styles.breadcrumb}>{t('pharmacyDashboard.header.title')}</Text>
+        <View style={styles.dashboardHero}>
+          <View style={styles.heroOrbLarge} />
+          <View style={styles.heroOrbSmall} />
+          <View style={styles.heroTopRow}>
+            <View style={styles.heroIcon}><Ionicons name={isParapharmacy ? 'leaf-outline' : 'medkit-outline'} size={23} color={colors.primaryDark} /></View>
+            <View style={styles.heroPill}><Ionicons name="sparkles-outline" size={13} color={colors.primaryDark} /><Text style={styles.heroPillText}>{workspaceLabel}</Text></View>
+          </View>
+          <Text style={styles.heroWelcome}>Welcome back,</Text>
+          <Text style={styles.heroName} numberOfLines={1}>{storeName}</Text>
+          <Text style={styles.heroDate}>{todayLabel} · Your operations are up to date.</Text>
+          <View style={styles.heroKpiRow}>
+            <View style={styles.heroKpi}><Text style={styles.heroKpiLabel}>Today’s revenue</Text><Text style={styles.heroKpiValue}>€{revenueToday.toFixed(2)}</Text></View>
+            <View style={styles.heroKpiDivider} />
+            <View style={styles.heroKpi}><Text style={styles.heroKpiLabel}>Orders to review</Text><Text style={styles.heroKpiValue}>{pendingCount}</Text></View>
+          </View>
         </View>
 
         {showProfileBanner && (
           <TouchableOpacity style={styles.profileBanner} onPress={() => navMore('PharmacyProfile')} activeOpacity={0.8}>
-            <Text style={styles.profileBannerIcon}>⚠</Text>
+            <View style={styles.bannerIconWarning}><Ionicons name="alert-circle-outline" size={19} color={colors.secondaryDark} /></View>
             <Text style={styles.profileBannerText}>{t('pharmacyDashboard.banners.completeProfile')}</Text>
             <Text style={styles.profileBannerChevron}>›</Text>
           </TouchableOpacity>
@@ -371,7 +387,7 @@ export function PharmacyDashboardScreen() {
         {!isParapharmacy && !mySubQuery.isLoading && !hasActiveSubscription && (
           <View style={styles.subscriptionBanner}>
             <View style={styles.subscriptionBannerRow}>
-              <Text style={styles.subscriptionBannerIcon}>💳</Text>
+              <View style={styles.bannerIconWarning}><Ionicons name="ribbon-outline" size={19} color={colors.secondaryDark} /></View>
               <Text style={styles.subscriptionBannerText}>{t('pharmacyDashboard.banners.subscriptionRequired')}</Text>
             </View>
             <TouchableOpacity style={styles.subscriptionBtn} onPress={() => navMore('PharmacySubscription')}>
@@ -394,7 +410,16 @@ export function PharmacyDashboardScreen() {
           </View>
         ) : (
           <>
+            <View style={styles.quickActionsSection}>
+              <View style={styles.sectionHeader}><View><Text style={styles.sectionEyebrow}>WORKSPACE</Text><Text style={styles.sectionTitle}>Quick actions</Text></View><Ionicons name="flash-outline" size={19} color={colors.secondaryDark} /></View>
+              <View style={styles.quickActionGrid}>
+                <TouchableOpacity style={styles.quickAction} onPress={navProducts} activeOpacity={0.82}><View style={[styles.quickActionIcon, { backgroundColor: colors.primaryLight + '18' }]}><Ionicons name="cube-outline" size={20} color={colors.primary} /></View><Text style={styles.quickActionLabel}>Products</Text><Text style={styles.quickActionHint}>Manage catalog</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.quickAction} onPress={() => navOrders({ status: 'PENDING' })} activeOpacity={0.82}><View style={[styles.quickActionIcon, { backgroundColor: colors.warningLight }]}><Ionicons name="time-outline" size={20} color={colors.secondaryDark} /></View><Text style={styles.quickActionLabel}>Pending orders</Text><Text style={styles.quickActionHint}>Review and prepare</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.quickAction} onPress={() => navMore('PharmacyPayouts')} activeOpacity={0.82}><View style={[styles.quickActionIcon, { backgroundColor: colors.infoLight }]}><Ionicons name="wallet-outline" size={20} color={colors.info} /></View><Text style={styles.quickActionLabel}>Payouts</Text><Text style={styles.quickActionHint}>Balance and history</Text></TouchableOpacity>
+              </View>
+            </View>
             <View style={styles.statsSection}>
+              <View style={styles.sectionHeader}><View><Text style={styles.sectionEyebrow}>PERFORMANCE</Text><Text style={styles.sectionTitle}>At a glance</Text></View><Text style={styles.sectionCaption}>Live overview</Text></View>
               <FlatList
                 data={stats}
                 keyExtractor={(item) => item.id}
@@ -409,7 +434,7 @@ export function PharmacyDashboardScreen() {
                   >
                     <View style={styles.statHeader}>
                       <View style={[styles.statIconWrap, { backgroundColor: item.iconColor + '22' }]}>
-                        <Text style={styles.statIcon}>{item.icon}</Text>
+                        <Ionicons name={item.icon as keyof typeof Ionicons.glyphMap} size={22} color={item.iconColor} />
                       </View>
                       <Text style={styles.statValue}>{item.value}</Text>
                     </View>
@@ -433,6 +458,7 @@ export function PharmacyDashboardScreen() {
                 }
               }}
             >
+              <View style={styles.sectionHeader}><View><Text style={styles.sectionEyebrow}>INSIGHTS</Text><Text style={styles.sectionTitle}>Store performance</Text></View><Ionicons name="analytics-outline" size={19} color={colors.primary} /></View>
               <View style={styles.chartCard}>
                 <View style={styles.chartHeader}>
                   <Text style={styles.chartTitle}>{t('pharmacyDashboard.charts.revenueLast7Days')}</Text>
@@ -480,9 +506,9 @@ export function PharmacyDashboardScreen() {
 
             <View style={styles.customersSection}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>{t('pharmacyDashboard.latestCustomers.title')}</Text>
-                <TouchableOpacity onPress={() => navOrders()}>
-                  <Text style={styles.viewAllText}>{t('pharmacyDashboard.latestCustomers.viewAll')}</Text>
+                <View><Text style={styles.sectionEyebrow}>CUSTOMERS</Text><Text style={styles.sectionTitle}>{t('pharmacyDashboard.latestCustomers.title')}</Text></View>
+                <TouchableOpacity style={styles.viewAllButton} onPress={() => navOrders()}>
+                  <Text style={styles.viewAllText}>{t('pharmacyDashboard.latestCustomers.viewAll')}</Text><Ionicons name="arrow-forward" size={14} color={colors.primary} />
                 </TouchableOpacity>
               </View>
               <View style={styles.customersCard}>
@@ -516,16 +542,18 @@ export function PharmacyDashboardScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.backgroundSecondary },
   scroll: { flex: 1 },
-  header: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: (Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0) + spacing.lg,
-    paddingBottom: spacing.md,
-    backgroundColor: colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  welcomeTitle: { fontSize: 22, fontWeight: '700', color: colors.text, marginBottom: 4 },
-  breadcrumb: { fontSize: 14, color: colors.textSecondary },
+  dashboardHero: { overflow: 'hidden', backgroundColor: colors.primaryDark, padding: spacing.lg, paddingTop: spacing.xl, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
+  heroOrbLarge: { position: 'absolute', width: 220, height: 220, borderRadius: 110, right: -75, top: -105, backgroundColor: colors.primaryLight, opacity: .32 },
+  heroOrbSmall: { position: 'absolute', width: 110, height: 110, borderRadius: 55, left: -42, bottom: -58, backgroundColor: colors.secondary, opacity: .18 },
+  heroTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  heroIcon: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.successLight },
+  heroPill: { flexDirection: 'row', gap: 4, alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.16)' },
+  heroPillText: { ...typography.caption, color: colors.textInverse, fontWeight: '700' },
+  heroWelcome: { ...typography.bodySmall, color: 'rgba(255,255,255,0.72)', marginTop: spacing.lg },
+  heroName: { ...typography.h1, color: colors.textInverse, marginTop: 1 },
+  heroDate: { ...typography.caption, color: 'rgba(255,255,255,0.72)', marginTop: 5 },
+  heroKpiRow: { flexDirection: 'row', marginTop: spacing.md, padding: spacing.sm, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.10)' },
+  heroKpi: { flex: 1 }, heroKpiLabel: { ...typography.caption, color: 'rgba(255,255,255,0.68)' }, heroKpiValue: { ...typography.h3, color: colors.textInverse, marginTop: 2 }, heroKpiDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.20)', marginHorizontal: spacing.sm },
   profileBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -536,7 +564,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     gap: 8,
   },
-  profileBannerIcon: { fontSize: 18 },
+  bannerIconWarning: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
   profileBannerText: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.text },
   profileBannerChevron: { fontSize: 18, color: colors.textLight },
   pendingBanner: {
@@ -559,26 +587,30 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   subscriptionBannerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  subscriptionBannerIcon: { fontSize: 18 },
   subscriptionBannerText: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.text },
   subscriptionBtn: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 16, backgroundColor: colors.primary, borderRadius: 20 },
   subscriptionBtnText: { fontSize: 14, fontWeight: '600', color: colors.textInverse },
   loadingContainer: { padding: spacing.xl * 2, alignItems: 'center' },
   loadingText: { marginTop: spacing.sm, fontSize: 14, color: colors.textSecondary },
-  statsSection: { padding: spacing.lg },
+  quickActionsSection: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
+  quickActionGrid: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  quickAction: { flex: 1, minHeight: 123, padding: spacing.sm, borderRadius: 16, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.borderLight },
+  quickActionIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm },
+  quickActionLabel: { ...typography.caption, color: colors.primaryDark, fontWeight: '800' },
+  quickActionHint: { ...typography.caption, color: colors.textSecondary, marginTop: 3, lineHeight: 15 },
+  statsSection: { padding: spacing.lg, paddingBottom: spacing.md },
   statRow: { gap: 12, marginBottom: 12 },
   statCard: {
     flex: 1,
     backgroundColor: colors.background,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderLight,
   },
   statHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   statIconWrap: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  statIcon: { fontSize: 22 },
-  statValue: { fontSize: 18, fontWeight: '700', color: colors.text },
+  statValue: { fontSize: 20, fontWeight: '800', color: colors.primaryDark },
   statFooter: {},
   statLabel: { fontSize: 12, color: colors.textSecondary, marginBottom: 6 },
   progressBar: { height: 4, backgroundColor: colors.border, borderRadius: 2, overflow: 'hidden' },
@@ -586,7 +618,7 @@ const styles = StyleSheet.create({
   chartsSection: { paddingHorizontal: spacing.lg, gap: spacing.md },
   chartCard: {
     backgroundColor: colors.background,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
@@ -604,13 +636,16 @@ const styles = StyleSheet.create({
   legendValue: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
   chartPlaceholder: { paddingVertical: spacing.xl, alignItems: 'center', backgroundColor: colors.backgroundSecondary, borderRadius: 8 },
   chartPlaceholderText: { fontSize: 13, color: colors.textLight },
-  customersSection: { padding: spacing.lg, paddingTop: 0 },
+  customersSection: { padding: spacing.lg, paddingTop: spacing.md },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  sectionTitle: { fontSize: 17, fontWeight: '600', color: colors.text },
-  viewAllText: { fontSize: 14, color: colors.primary, fontWeight: '600' },
+  sectionEyebrow: { ...typography.caption, color: colors.textSecondary, fontWeight: '800', letterSpacing: .6 },
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: colors.primaryDark, marginTop: 2 },
+  sectionCaption: { ...typography.caption, color: colors.textSecondary },
+  viewAllButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 5, paddingLeft: spacing.sm },
+  viewAllText: { fontSize: 13, color: colors.primary, fontWeight: '800' },
   customersCard: {
     backgroundColor: colors.background,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,

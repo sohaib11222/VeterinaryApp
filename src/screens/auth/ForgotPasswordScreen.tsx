@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { AuthStackScreenProps } from '../../navigation/types';
-import { ScreenContainer } from '../../components/common/ScreenContainer';
+import { AuthInfoRow, AuthLayout } from '../../components/common/AuthLayout';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 import { forgotPasswordApi } from '../../mutations/authMutations';
 import { getErrorMessage } from '../../utils/errorUtils';
 import { colors } from '../../theme/colors';
-import { spacing } from '../../theme/spacing';
+import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useTranslation } from 'react-i18next';
 
@@ -51,104 +52,80 @@ export function ForgotPasswordScreen() {
 
   if (sent) {
     return (
-      <ScreenContainer padded style={styles.bg}>
-        <View style={styles.centered}>
-          <View style={styles.iconWrap}>
-            <Text style={styles.icon}>✉️</Text>
-          </View>
-          <Text style={styles.title}>{t('authForgotPassword.sent.title')}</Text>
-          <Text style={styles.subtitle}>{t('authForgotPassword.sent.subtitle', { email })}</Text>
-          <Button
-            title={t('authForgotPassword.actions.backToLogin')}
-            onPress={() => navigation.navigate('Login')}
-            style={styles.backBtn}
-          />
+      <AuthLayout
+        icon="email-check-outline"
+        title={t('authForgotPassword.sent.title')}
+        subtitle={t('authForgotPassword.sent.subtitle', { email })}
+        compact
+      >
+        <View style={styles.successBanner}>
+          <Ionicons name="checkmark-circle" size={22} color={colors.success} />
+          <Text style={styles.successText}>{t('authExperience.password.resetSent')}</Text>
         </View>
-      </ScreenContainer>
+        <AuthInfoRow
+          icon="mail-open-outline"
+          tone="success"
+          title={t('authExperience.password.checkInbox')}
+          description={t('authExperience.password.checkInboxDescription')}
+          last
+        />
+        <Button
+          title={t('authForgotPassword.actions.backToLogin')}
+          onPress={() => navigation.navigate('Login')}
+          style={styles.backBtn}
+          icon={<Ionicons name="arrow-back" size={19} color={colors.textInverse} />}
+        />
+      </AuthLayout>
     );
   }
 
   return (
-    <ScreenContainer scroll padded style={styles.bg}>
-      <View style={styles.header}>
-        <View style={styles.logoWrap}>
-          <Text style={styles.logoIcon}>🐾</Text>
-        </View>
-        <Text style={styles.title}>{t('authForgotPassword.title')}</Text>
-        <Text style={styles.subtitle}>{t('authForgotPassword.subtitle')}</Text>
+    <AuthLayout
+      icon="lock-reset"
+      title={t('authForgotPassword.title')}
+      subtitle={t('authForgotPassword.subtitle')}
+      compact
+    >
+      <View style={styles.formHeading}>
+        <Text style={styles.formTitle}>{t('authExperience.password.recovery')}</Text>
+        <Text style={styles.formCopy}>{t('authExperience.password.recoveryDescription')}</Text>
       </View>
-
-      <View style={styles.form}>
-        <Input
-          label={t('authForgotPassword.fields.email.label')}
-          placeholder={t('authForgotPassword.fields.email.placeholder')}
-          value={email}
-          onChangeText={(val) => {
-            setEmail(val);
-            if (error) setError('');
-          }}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          error={error}
-        />
-        <Button
-          title={loading ? t('authForgotPassword.actions.sending') : t('authForgotPassword.actions.submit')}
-          onPress={onSubmit}
-          loading={loading}
-          style={styles.submitBtn}
-        />
-        <Button
-          title={t('common.back')}
-          onPress={() => navigation.navigate('Login')}
-          variant="outline"
-        />
-      </View>
-    </ScreenContainer>
+      <Input
+        label={t('authForgotPassword.fields.email.label')}
+        placeholder={t('authForgotPassword.fields.email.placeholder')}
+        value={email}
+        onChangeText={(value) => {
+          setEmail(value);
+          if (error) setError('');
+        }}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        error={error}
+        leftIcon={<Ionicons name="mail-outline" size={20} color={colors.primary} />}
+      />
+      <Button
+        title={loading ? t('authForgotPassword.actions.sending') : t('authForgotPassword.actions.submit')}
+        onPress={onSubmit}
+        loading={loading}
+        style={styles.submitBtn}
+        icon={<Ionicons name="send-outline" size={19} color={colors.textInverse} />}
+      />
+      <Button
+        title={t('common.back')}
+        onPress={() => navigation.navigate('Login')}
+        variant="ghost"
+        icon={<Ionicons name="arrow-back" size={18} color={colors.primary} />}
+      />
+    </AuthLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  bg: { backgroundColor: colors.backgroundSecondary },
-  header: {
-    alignItems: 'center',
-    paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.lg,
-  },
-  logoWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.primaryLight + '30',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-  },
-  logoIcon: { fontSize: 32 },
-  title: {
-    ...typography.h2,
-    color: colors.primary,
-    marginBottom: spacing.xs,
-    textAlign: 'center',
-  },
-  subtitle: {
-    ...typography.bodySmall,
-    textAlign: 'center',
-    marginBottom: spacing.lg,
-  },
-  form: {
-    backgroundColor: colors.background,
-    marginHorizontal: spacing.md,
-    padding: spacing.lg,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  submitBtn: { marginBottom: spacing.md },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
-  iconWrap: { marginBottom: spacing.lg },
-  icon: { fontSize: 48 },
+  formHeading: { marginBottom: spacing.lg },
+  formTitle: { ...typography.h3, color: colors.primaryDark, marginBottom: 4 },
+  formCopy: { ...typography.bodySmall, color: colors.textSecondary, lineHeight: 19 },
+  submitBtn: { marginTop: spacing.sm, marginBottom: spacing.sm },
+  successBanner: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, backgroundColor: colors.successLight + '80', borderRadius: borderRadius.md, marginBottom: spacing.sm },
+  successText: { ...typography.bodySmall, color: colors.success, fontWeight: '700' },
   backBtn: { marginTop: spacing.lg },
 });

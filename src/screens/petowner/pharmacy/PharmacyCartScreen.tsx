@@ -60,6 +60,7 @@ export function PharmacyCartScreen() {
         <View style={styles.cartItemsSection}>
           {cartItems.map((item) => {
             const id = item._id;
+            const lineId = item.lineId;
             const lineTotal = Number(item.price || 0) * Number(item.quantity || 0);
             const imageUri = getImageUrl(item.image ?? undefined);
             return (
@@ -76,19 +77,20 @@ export function PharmacyCartScreen() {
                     <Text style={styles.itemName}>{item.name}</Text>
                   </TouchableOpacity>
                   {item.sku ? <Text style={styles.itemSku}>{t('petOwnerPharmacyCart.labels.sku', { sku: item.sku })}</Text> : null}
+                  {item.variantName ? <Text style={styles.itemVariant}>{item.variantName}</Text> : null}
                   <Text style={styles.itemPrice}>€{Number(item.price || 0).toFixed(2)}</Text>
                   <View style={styles.quantitySection}>
                     <View style={styles.quantityControls}>
                       <TouchableOpacity
                         style={styles.quantityButton}
-                        onPress={() => updateQuantity(id, Math.max(0, (item.quantity || 0) - 1))}
+                        onPress={() => updateQuantity(lineId, Math.max(0, (item.quantity || 0) - 1))}
                       >
                         <Text style={styles.quantityButtonText}>−</Text>
                       </TouchableOpacity>
                       <Text style={styles.quantityValue}>{item.quantity}</Text>
                       <TouchableOpacity
                         style={styles.quantityButton}
-                        onPress={() => updateQuantity(id, (item.quantity || 0) + 1)}
+                        onPress={() => updateQuantity(lineId, (item.quantity || 0) + 1)}
                       >
                         <Text style={styles.quantityButtonText}>+</Text>
                       </TouchableOpacity>
@@ -96,7 +98,7 @@ export function PharmacyCartScreen() {
                     <Text style={styles.itemTotal}>€{lineTotal.toFixed(2)}</Text>
                   </View>
                 </View>
-                <TouchableOpacity style={styles.removeButton} onPress={() => removeFromCart(id)}>
+                <TouchableOpacity style={styles.removeButton} onPress={() => removeFromCart(lineId)}>
                   <Text style={styles.removeButtonText}>✕</Text>
                 </TouchableOpacity>
               </View>
@@ -174,6 +176,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: 4,
   },
+  itemVariant: { fontSize: 12, color: colors.primary, fontWeight: '600', marginBottom: 4 },
   itemPrice: {
     fontSize: 14,
     fontWeight: '600',

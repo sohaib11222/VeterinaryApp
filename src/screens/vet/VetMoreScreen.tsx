@@ -1,14 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { Card } from '../../components/common/Card';
+import { AccountMoreMenu, type AccountMoreMenuSection } from '../../components/common/AccountMoreMenu';
 import { useVetHeaderSearch } from '../../contexts/VetHeaderSearchContext';
 import { useVetHeaderRightAction } from '../../contexts/VetHeaderRightActionContext';
-import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
 import { useTranslation } from 'react-i18next';
 
 export function VetMoreScreen() {
@@ -22,34 +20,34 @@ export function VetMoreScreen() {
   const setHeaderSearchConfig = headerSearch?.setConfig;
   const setHeaderRightAction = headerRight?.setRightAction;
 
-  const menuSections: { title: string; items: { label: string; icon: string; screen: string }[] }[] = [
+  const menuSections: { title: string; items: { label: string; icon: any; screen: string; description?: string }[] }[] = [
     {
       title: t('more.vet.practice'),
       items: [
-        { label: t('menu.petRequests'), icon: '📋', screen: 'VetPetRequests' },
-        { label: t('menu.clinicHours'), icon: '🕐', screen: 'VetClinicHours' },
-        { label: t('menu.myPetsPatients'), icon: '🐾', screen: 'VetMyPets' },
-        { label: t('menu.vaccinations'), icon: '💉', screen: 'VetVaccinations' },
-        { label: t('menu.reviews'), icon: '⭐', screen: 'VetReviews' },
-        { label: t('menu.rescheduleRequests'), icon: '📅', screen: 'VetRescheduleRequests' },
+        { label: t('menu.petRequests'), icon: 'document-text-outline', screen: 'VetPetRequests', description: t('moreMenu.descriptions.petRequests') },
+        { label: t('menu.clinicHours'), icon: 'time-outline', screen: 'VetClinicHours', description: t('moreMenu.descriptions.clinicHours') },
+        { label: t('menu.myPetsPatients'), icon: 'paw-outline', screen: 'VetMyPets', description: t('moreMenu.descriptions.patientProfiles') },
+        { label: t('menu.vaccinations'), icon: 'medkit-outline', screen: 'VetVaccinations', description: t('moreMenu.descriptions.vaccinations') },
+        { label: t('menu.reviews'), icon: 'star-outline', screen: 'VetReviews' },
+        { label: t('menu.rescheduleRequests'), icon: 'calendar-outline', screen: 'VetRescheduleRequests' },
       ],
     },
     {
       title: t('more.vet.financeInvoices'),
       items: [
-        { label: t('menu.invoices'), icon: '📄', screen: 'VetInvoices' },
-        { label: t('menu.paymentSettings'), icon: '💳', screen: 'VetPaymentSettings' },
+        { label: t('menu.invoices'), icon: 'receipt-outline', screen: 'VetInvoices', description: t('moreMenu.descriptions.invoices') },
+        { label: t('menu.paymentSettings'), icon: 'card-outline', screen: 'VetPaymentSettings', description: t('moreMenu.descriptions.paymentSettings') },
       ],
     },
     {
       title: t('more.vet.contentSettings'),
       items: [
-        { label: t('menu.clinicAnnouncements'), icon: '📢', screen: 'VetAnnouncements' },
-        { label: t('menu.subscription'), icon: '👑', screen: 'VetSubscription' },
-        { label: t('menu.profileSettings'), icon: '👤', screen: 'VetProfileSettings' },
-        { label: t('menu.notifications'), icon: '🔔', screen: 'VetNotifications' },
-        { label: t('menu.language'), icon: '🌐', screen: 'Language' },
-        { label: t('menu.changePassword'), icon: '🔒', screen: 'VetChangePassword' },
+        { label: t('menu.clinicAnnouncements'), icon: 'megaphone-outline', screen: 'VetAnnouncements' },
+        { label: t('menu.subscription'), icon: 'ribbon-outline', screen: 'VetSubscription' },
+        { label: t('menu.profileSettings'), icon: 'person-circle-outline', screen: 'VetProfileSettings', description: t('moreMenu.descriptions.vetProfile') },
+        { label: t('menu.notifications'), icon: 'notifications-outline', screen: 'VetNotifications' },
+        { label: t('menu.language'), icon: 'language-outline', screen: 'Language' },
+        { label: t('menu.changePassword'), icon: 'lock-closed-outline', screen: 'VetChangePassword' },
       ],
     },
   ];
@@ -68,105 +66,27 @@ export function VetMoreScreen() {
   };
 
   return (
-    <ScreenContainer scroll padded>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Profile card */}
-        <Card style={styles.profileCard}>
-          <View style={styles.profileRow}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{user?.name?.charAt(0) || 'V'}</Text>
-            </View>
-            <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>{user?.name || t('common.veterinarian')}</Text>
-              <Text style={styles.profileRole}>{t('common.veterinarian')}</Text>
-              <Text style={styles.profileEmail}>{user?.email}</Text>
-            </View>
-          </View>
-        </Card>
-
-        {menuSections.map((section, si) => (
-          <View key={si} style={styles.section}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
-            <Card>
-              {section.items.map((item, ii) => (
-                <TouchableOpacity
-                  key={ii}
-                  style={[styles.menuRow, ii < section.items.length - 1 && styles.menuRowBorder]}
-                  activeOpacity={0.7}
-                  onPress={() => onMenuPress(item.screen)}
-                >
-                  <Text style={styles.menuIcon}>{item.icon}</Text>
-                  <Text style={styles.menuLabel}>{item.label}</Text>
-                  <Text style={styles.chevron}>›</Text>
-                </TouchableOpacity>
-              ))}
-            </Card>
-          </View>
-        ))}
-
-        <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.8}>
-          <Text style={styles.logoutIcon}>🚪</Text>
-          <Text style={styles.logoutText}>{t('common.logout')}</Text>
-        </TouchableOpacity>
-
-        <View style={styles.bottomSpacer} />
+    <ScreenContainer padded>
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        <AccountMoreMenu
+          name={user?.name || t('common.veterinarian')}
+          role={t('common.veterinarian')}
+          email={user?.email}
+          avatarFallback={user?.name || 'V'}
+          accountLabel={t('moreMenu.account')}
+          sections={menuSections.map((section) => ({
+            title: section.title,
+            items: section.items.map((item) => ({ ...item, onPress: () => onMenuPress(item.screen) })),
+          })) as AccountMoreMenuSection[]}
+          logoutLabel={t('common.logout')}
+          onLogout={logout}
+        />
       </ScrollView>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
+  scroll: { flex: 1 },
   scrollContent: { paddingBottom: spacing.xxl },
-  profileCard: { marginBottom: spacing.lg },
-  profileRow: { flexDirection: 'row', alignItems: 'center' },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primaryLight + '40',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-  },
-  avatarText: { ...typography.h1, color: colors.primary, fontSize: 24 },
-  profileInfo: { flex: 1 },
-  profileName: { ...typography.h3 },
-  profileRole: {
-    ...typography.bodySmall,
-    color: colors.primary,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  profileEmail: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
-  section: { marginBottom: spacing.lg },
-  sectionTitle: {
-    ...typography.label,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-    marginLeft: spacing.xs,
-  },
-  menuRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-  },
-  menuRowBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  menuIcon: { fontSize: 20, marginRight: spacing.md, width: 28, textAlign: 'center' },
-  menuLabel: { ...typography.body, flex: 1 },
-  chevron: { ...typography.h3, color: colors.textLight },
-  logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.md,
-    backgroundColor: colors.errorLight,
-    borderRadius: 12,
-    marginTop: spacing.sm,
-  },
-  logoutIcon: { fontSize: 18, marginRight: spacing.sm },
-  logoutText: { ...typography.label, color: colors.error },
-  bottomSpacer: { height: spacing.xl },
 });

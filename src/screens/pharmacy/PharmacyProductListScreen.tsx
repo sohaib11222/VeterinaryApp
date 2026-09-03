@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
@@ -40,7 +41,7 @@ export function PharmacyProductListScreen() {
     search: search.trim() || undefined,
   }), [filter, search]);
 
-  const { data, isLoading, isError } = useMyProducts(queryParams);
+  const { data, isLoading, isError, refetch, isFetching } = useMyProducts(queryParams, { refetchInterval: 20_000, refetchIntervalInBackground: true });
   const products = useMemo(() => extractProducts(data), [data]);
 
   const filtered = useMemo(() => {
@@ -54,6 +55,10 @@ export function PharmacyProductListScreen() {
 
   return (
     <ScreenContainer scroll padded>
+      <View style={styles.overviewRow}>
+        <View><Text style={styles.overviewTitle}>Your catalogue</Text><Text style={styles.overviewText}>{filtered.length} product{filtered.length === 1 ? '' : 's'} shown</Text></View>
+        <TouchableOpacity style={styles.refreshButton} onPress={() => refetch()} disabled={isFetching}><Ionicons name="refresh-outline" size={19} color={colors.primaryDark} /></TouchableOpacity>
+      </View>
       <View style={styles.filterRow}>
         <Input placeholder={t('pharmacyProductList.searchPlaceholder')} value={search} onChangeText={setSearch} />
         <View style={styles.filterTabs}>
@@ -69,6 +74,7 @@ export function PharmacyProductListScreen() {
         </View>
       </View>
       <TouchableOpacity style={styles.addBtn} onPress={() => navigation.navigate('PharmacyAddProduct')}>
+        <Ionicons name="add-circle-outline" size={19} color={colors.textInverse} />
         <Text style={styles.addBtnText}>{t('pharmacyProductList.actions.addProduct')}</Text>
       </TouchableOpacity>
       {isLoading ? (
@@ -76,7 +82,7 @@ export function PharmacyProductListScreen() {
       ) : isError ? (
         <Text style={styles.errorText}>{t('pharmacyProductList.errors.loadFailed')}</Text>
       ) : filtered.length === 0 ? (
-        <Text style={styles.emptyText}>{t('pharmacyProductList.empty.noProducts')}</Text>
+          <View style={styles.emptyState}><View style={styles.emptyIcon}><Ionicons name="cube-outline" size={30} color={colors.primary} /></View><Text style={styles.emptyText}>{t('pharmacyProductList.empty.noProducts')}</Text><TouchableOpacity style={styles.emptyAction} onPress={() => navigation.navigate('PharmacyAddProduct')}><Text style={styles.emptyActionText}>Create your first product</Text></TouchableOpacity></View>
       ) : (
         filtered.map((p: any) => {
           const id = p?._id ?? p?.id;
@@ -99,6 +105,7 @@ export function PharmacyProductListScreen() {
                   </View>
                   <View style={styles.productInfo}>
                     <Text style={styles.productName} numberOfLines={2}>{name}</Text>
+                    {p?.requiresPrescription ? <View style={styles.prescriptionLabel}><Ionicons name="document-text-outline" size={12} color="#805B00" /><Text style={styles.prescriptionText}>Prescription</Text></View> : null}
                     <Text style={styles.productMeta}>
                       {t('pharmacyProductList.labels.priceAndStock', { price: Number(price).toFixed(2), stock })}
                     </Text>
@@ -109,11 +116,11 @@ export function PharmacyProductListScreen() {
                     </View>
                   </View>
                   <View style={styles.rowActions}>
-                    <TouchableOpacity onPress={(e) => { e?.stopPropagation?.(); navigation.navigate('PharmacyProductDetails', { productId: String(id) }); }}>
-                      <Text style={styles.viewLink}>{t('common.view')}</Text>
+                    <TouchableOpacity style={styles.iconAction} onPress={(e) => { e?.stopPropagation?.(); navigation.navigate('PharmacyProductDetails', { productId: String(id) }); }}>
+                      <Ionicons name="eye-outline" size={18} color={colors.primary} />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={(e) => { e?.stopPropagation?.(); navigation.navigate('PharmacyEditProduct', { productId: String(id) }); }}>
-                      <Text style={styles.editLink}>{t('common.edit')}</Text>
+                    <TouchableOpacity style={styles.iconAction} onPress={(e) => { e?.stopPropagation?.(); navigation.navigate('PharmacyEditProduct', { productId: String(id) }); }}>
+                      <Ionicons name="create-outline" size={18} color={colors.primary} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -127,17 +134,25 @@ export function PharmacyProductListScreen() {
 }
 
 const styles = StyleSheet.create({
+  overviewRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md },
+  overviewTitle: { ...typography.h2, color: colors.primaryDark },
+  overviewText: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
+  refreshButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 13, backgroundColor: colors.primaryLight + '18' },
   filterRow: { marginBottom: spacing.sm },
   filterTabs: { flexDirection: 'row', gap: 8, marginTop: spacing.sm },
   filterTab: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: colors.backgroundSecondary },
   filterTabActive: { backgroundColor: colors.primary },
   filterTabText: { ...typography.bodySmall },
   filterTabTextActive: { color: colors.textInverse, fontWeight: '600' },
-  addBtn: { alignSelf: 'flex-start', paddingVertical: 10, paddingHorizontal: 16, backgroundColor: colors.primary, borderRadius: 20, marginBottom: spacing.md },
+  addBtn: { alignSelf: 'stretch', flexDirection: 'row', gap: 7, alignItems: 'center', justifyContent: 'center', paddingVertical: 13, paddingHorizontal: 16, backgroundColor: colors.primary, borderRadius: 14, marginBottom: spacing.md },
   addBtnText: { ...typography.body, color: colors.textInverse, fontWeight: '600' },
   loadingRow: { padding: spacing.xl, alignItems: 'center' },
   errorText: { ...typography.body, color: colors.error, padding: spacing.lg },
-  emptyText: { ...typography.body, color: colors.textSecondary, padding: spacing.lg },
+  emptyState: { alignItems: 'center', padding: spacing.xl },
+  emptyIcon: { width: 64, height: 64, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primaryLight + '1C', marginBottom: spacing.sm },
+  emptyText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+  emptyAction: { marginTop: spacing.md, paddingHorizontal: spacing.md, paddingVertical: 10, borderRadius: 10, backgroundColor: colors.primaryLight + '1B' },
+  emptyActionText: { ...typography.bodySmall, color: colors.primaryDark, fontWeight: '800' },
   productCardWrap: { marginBottom: spacing.sm },
   productCard: {},
   productRow: { flexDirection: 'row', alignItems: 'center' },
@@ -145,12 +160,13 @@ const styles = StyleSheet.create({
   thumbImg: { width: 56, height: 56 },
   productInfo: { flex: 1, marginLeft: spacing.sm },
   productName: { ...typography.body, fontWeight: '600' },
+  prescriptionLabel: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingHorizontal: 6, paddingVertical: 3, borderRadius: 7, backgroundColor: colors.warningLight, marginTop: 4 },
+  prescriptionText: { ...typography.caption, color: '#805B00', fontWeight: '800' },
   productMeta: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
   badge: { alignSelf: 'flex-start', marginTop: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: colors.successLight },
   badgeInactive: { backgroundColor: colors.errorLight },
   badgeText: { ...typography.caption, fontWeight: '600', color: colors.success },
   badgeTextInactive: { color: colors.error },
-  rowActions: { flexDirection: 'row', gap: spacing.md },
-  viewLink: { ...typography.body, color: colors.primary, fontWeight: '600' },
-  editLink: { ...typography.body, color: colors.primary, fontWeight: '600' },
+  rowActions: { flexDirection: 'row', gap: spacing.xs },
+  iconAction: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 11, backgroundColor: colors.primaryLight + '16' },
 });

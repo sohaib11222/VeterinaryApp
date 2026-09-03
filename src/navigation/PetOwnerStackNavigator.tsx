@@ -20,6 +20,9 @@ import { PetOwnerInvoiceViewScreen } from '../screens/petowner/PetOwnerInvoiceVi
 import { PetOwnerOrderHistoryScreen } from '../screens/petowner/PetOwnerOrderHistoryScreen';
 import { PetOwnerOrderDetailsScreen } from '../screens/petowner/PetOwnerOrderDetailsScreen';
 import { PetOwnerDocumentsScreen } from '../screens/petowner/PetOwnerDocumentsScreen';
+import { PetOwnerSupportTicketsScreen } from '../screens/petowner/PetOwnerSupportTicketsScreen';
+import { PetOwnerCreateSupportTicketScreen } from '../screens/petowner/PetOwnerCreateSupportTicketScreen';
+import { PetOwnerSupportTicketDetailScreen } from '../screens/petowner/PetOwnerSupportTicketDetailScreen';
 import { PetOwnerNotificationsScreen } from '../screens/petowner/PetOwnerNotificationsScreen';
 import { PetOwnerChatDetailScreen } from '../screens/petowner/PetOwnerChatDetailScreen';
 import { PetOwnerClinicMapScreen } from '../screens/petowner/PetOwnerClinicMapScreen';
@@ -45,11 +48,18 @@ import { LanguageScreen } from '../screens/shared/LanguageScreen';
 
 const Stack = createNativeStackNavigator<PetOwnerStackParamList>();
 
+const STATIC_HEADERS: Record<string, { title: string; subtitle?: string }> = {
+  PetOwnerSupportTickets: { title: 'Support Center', subtitle: 'Tickets & replies' },
+  PetOwnerCreateSupportTicket: { title: 'New support ticket', subtitle: 'We are here to help' },
+  PetOwnerSupportTicketDetail: { title: 'Support ticket', subtitle: 'Secure conversation' },
+};
+
 function PetOwnerStackHeader({ navigation, route }: { navigation: any; route: { name: string; params?: any } }) {
   const rightActionCtx = useVetHeaderRightAction();
   const { t } = useTranslation();
-  const title = route.params?.title ?? t(`petOwnerStack.${route.name}.title`, { defaultValue: route.name });
-  const subtitle = route.params?.subtitle ?? t(`petOwnerStack.${route.name}.subtitle`, { defaultValue: '' });
+  const staticHeader = STATIC_HEADERS[route.name];
+  const title = route.params?.title ?? staticHeader?.title ?? t(`petOwnerStack.${route.name}.title`, { defaultValue: route.name });
+  const subtitle = route.params?.subtitle ?? staticHeader?.subtitle ?? t(`petOwnerStack.${route.name}.subtitle`, { defaultValue: '' });
   return (
     <VetHeader
       title={title}
@@ -90,6 +100,9 @@ export function PetOwnerStackNavigator() {
         <Stack.Screen name="PetOwnerOrderHistory" component={PetOwnerOrderHistoryScreen} />
         <Stack.Screen name="PetOwnerOrderDetails" component={PetOwnerOrderDetailsScreen} />
         <Stack.Screen name="PetOwnerDocuments" component={PetOwnerDocumentsScreen} />
+        <Stack.Screen name="PetOwnerSupportTickets" component={PetOwnerSupportTicketsScreen} />
+        <Stack.Screen name="PetOwnerCreateSupportTicket" component={PetOwnerCreateSupportTicketScreen} />
+        <Stack.Screen name="PetOwnerSupportTicketDetail" component={PetOwnerSupportTicketDetailScreen} />
         <Stack.Screen name="PetOwnerNotifications" component={PetOwnerNotificationsScreen} />
         <Stack.Screen name="PetOwnerChatDetail" component={PetOwnerChatDetailScreen} />
         <Stack.Screen name="PetOwnerClinicMap" component={PetOwnerClinicMapScreen} />

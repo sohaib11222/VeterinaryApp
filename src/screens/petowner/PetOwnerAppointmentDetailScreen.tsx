@@ -15,6 +15,7 @@ import type { PetOwnerStackParamList } from '../../navigation/types';
 import Toast from 'react-native-toast-message';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
+import { AppointmentStatusPill } from '../../components/common/AppointmentStatusPill';
 import { Button } from '../../components/common/Button';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
@@ -31,15 +32,6 @@ import { useTranslation } from 'react-i18next';
 
 type Route = RouteProp<PetOwnerStackParamList, 'PetOwnerAppointmentDetails'>;
 
-const STATUS_COLORS: Record<string, string> = {
-  CONFIRMED: colors.info,
-  PENDING: colors.warning,
-  COMPLETED: colors.success,
-  CANCELLED: colors.error,
-  REJECTED: colors.error,
-  NO_SHOW: colors.textSecondary,
-};
-
 export function PetOwnerAppointmentDetailScreen() {
   const route = useRoute<Route>();
   const navigation = useNavigation<any>();
@@ -51,11 +43,17 @@ export function PetOwnerAppointmentDetailScreen() {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewText, setReviewText] = useState('');
 
-  const { data: appointmentResponse, isLoading, refetch } = useAppointment(appointmentId);
+  const { data: appointmentResponse, isLoading, refetch } = useAppointment(
+    appointmentId,
+    { refetchInterval: 7_500, refetchIntervalInBackground: true }
+  );
   const cancelAppointment = useCancelAppointment();
   const getOrCreateConversation = useGetOrCreateConversation();
   const createReview = useCreateReview();
-  const eligibleRescheduleQuery = useEligibleRescheduleAppointments();
+  const eligibleRescheduleQuery = useEligibleRescheduleAppointments({
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: true,
+  });
   const { data: myReviewRes } = useMyAppointmentReview(appointmentId, {
     enabled: !!appointmentId,
   });
@@ -95,8 +93,11 @@ export function PetOwnerAppointmentDetailScreen() {
       })
     : '';
   const timeStr = (appointment?.appointmentTime as string) || '';
+  const consultationFeeValue = Number(appointment?.consultationFee);
+  const consultationFeeLabel = Number.isFinite(consultationFeeValue) && consultationFeeValue >= 0
+    ? `€${consultationFeeValue.toFixed(2)}`
+    : t('common.na');
   const vetImage = getImageUrl((vet.profileImage as string) || undefined);
-  const statusColor = STATUS_COLORS[status] || colors.warning;
 
   const canCancel = ['PENDING', 'CONFIRMED'].includes(status);
   const canJoinVideo =
@@ -106,16 +107,9 @@ export function PetOwnerAppointmentDetailScreen() {
     if (!appointmentId || !appointment) return false;
     if (status !== 'CONFIRMED') return false;
     if ((appointment?.bookingType as string) !== 'ONLINE') return false;
-    if (!appointment?.appointmentDate || !appointment?.appointmentTime) return false;
-
-    const dt = new Date(appointment.appointmentDate as string);
-    const [h, m] = String(appointment.appointmentTime || '00:00')
-      .split(':')
-      .map(Number);
-    dt.setHours(h || 0, m || 0, 0, 0);
-    const hasPassed = dt.getTime() < Date.now();
-    if (!hasPassed) return false;
-
+    // The server evaluates the appointment's stored IANA timezone and
+    // duration. Keeping this client-side gate to the server-provided list
+    // avoids hiding a valid reschedule action on devices in another timezone.
     return eligibleAppointmentIds.has(String(appointmentId));
   }, [appointment, appointmentId, eligibleAppointmentIds, status]);
   const vetId = (vet as { _id?: string })?._id ?? (appointment?.veterinarianId as string) ?? '';
@@ -223,9 +217,7 @@ export function PetOwnerAppointmentDetailScreen() {
           <Text style={styles.appointmentNumber}>
             {(appointment.appointmentNumber as string) || (appointment._id as string)}
           </Text>
-          <View style={[styles.statusBadge, { backgroundColor: statusColor + '25' }]}>
-            <Text style={[styles.statusText, { color: statusColor }]}>{status}</Text>
-          </View>
+          <AppointmentStatusPill status={status} />
 
           <View style={styles.vetRow}>
             {vetImage ? (
@@ -274,7 +266,7 @@ export function PetOwnerAppointmentDetailScreen() {
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.label}>{t('petOwnerAppointmentDetail.labels.consultationFee')}</Text>
-            <Text style={styles.value}>€50</Text>
+            <Text style={styles.value}>{consultationFeeLabel}</Text>
           </View>
           {(appointment.petSymptoms as string) && (
             <View style={styles.detailRow}>

@@ -9,6 +9,7 @@ import {
   Pressable,
   ActivityIndicator,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
@@ -94,14 +95,18 @@ export function VetSubscriptionScreen() {
   return (
     <ScreenContainer scroll padded>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Card style={styles.currentCard}>
+        <View style={styles.hero}>
+          <View style={styles.heroIcon}><Ionicons name="sparkles-outline" size={23} color={colors.primaryDark} /></View>
+          <View style={styles.heroCopy}><Text style={styles.heroTitle}>{t('vetSubscription.title')}</Text><Text style={styles.heroText}>{t('vetSubscription.subtitle')}</Text></View>
+        </View>
+        <Card style={[styles.currentCard, hasActiveSubscription ? styles.currentCardActive : styles.currentCardInactive]}>
           <View style={styles.currentRow}>
-            <View>
-              <Text style={styles.currentLabel}>
+            <View style={styles.currentCopy}>
+              <View style={styles.currentHeading}><View style={[styles.currentIcon, hasActiveSubscription && styles.currentIconActive]}><Ionicons name={hasActiveSubscription ? 'shield-checkmark-outline' : 'alert-circle-outline'} size={19} color={hasActiveSubscription ? colors.success : colors.textSecondary} /></View><Text style={styles.currentLabel}>
                 {hasActiveSubscription
                   ? t('vetSubscription.currentPlan', { plan: (mySubscription?.subscriptionPlan as { name?: string })?.name ?? '—' })
                   : t('vetSubscription.noActivePlan')}
-              </Text>
+              </Text></View>
               <Text style={styles.currentSub}>
                 {hasActiveSubscription && expiresAt
                   ? t('vetSubscription.renewsOn', { date: new Date(expiresAt).toLocaleDateString(locale) })
@@ -148,15 +153,16 @@ export function VetSubscriptionScreen() {
                   <Text style={styles.currentBadgeText}>{t('vetSubscription.badges.currentPlan')}</Text>
                 </View>
               )}
-              <Text style={styles.planName}>{t('vetSubscription.planName', { name: plan?.name ?? t('vetSubscription.planFallback') })}</Text>
+              <View style={styles.planTop}><View style={[styles.planIcon, popular && styles.planIconPopular]}><Ionicons name={popular ? 'rocket-outline' : 'paw-outline'} size={19} color={popular ? colors.textInverse : colors.primary} /></View><Text style={styles.planName}>{t('vetSubscription.planName', { name: plan?.name ?? t('vetSubscription.planFallback') })}</Text></View>
               <View style={styles.priceRow}>
                 <Text style={styles.price}>€{Number(plan?.price ?? 0)}</Text>
                 <Text style={styles.perMonth}>{t('vetSubscription.perMonth')}</Text>
               </View>
+              {plan.durationInDays ? <Text style={styles.durationText}>{t('vetSubscription.duration', { count: plan.durationInDays })}</Text> : null}
               {(plan?.features?.length ?? 0) > 0 && (
                 <View style={styles.features}>
                   {(plan.features ?? []).map((f: string, idx: number) => (
-                    <Text key={idx} style={styles.featureItem}>✓ {f}</Text>
+                    <View key={idx} style={styles.featureRow}><Ionicons name="checkmark-circle" size={16} color={colors.success} /><Text style={styles.featureItem}>{f}</Text></View>
                   ))}
                 </View>
               )}
@@ -212,9 +218,11 @@ export function VetSubscriptionScreen() {
 const styles = StyleSheet.create({
   scroll: { paddingBottom: spacing.xxl },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
-  currentCard: { marginBottom: spacing.md },
+  hero: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: 18, backgroundColor: colors.successLight, borderWidth: 1, borderColor: colors.primaryLight + '25', marginBottom: spacing.md },
+  heroIcon: { width: 48, height: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.secondaryLight, marginRight: spacing.md }, heroCopy: { flex: 1 }, heroTitle: { ...typography.h3, color: colors.primaryDark }, heroText: { ...typography.caption, color: colors.primaryDark, opacity: 0.72, marginTop: 3 },
+  currentCard: { marginBottom: spacing.md, borderWidth: 1 }, currentCardActive: { borderColor: colors.primaryLight + '40' }, currentCardInactive: { borderColor: colors.borderLight },
   currentRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  currentLabel: { ...typography.h3, marginBottom: 4 },
+  currentCopy: { flex: 1, minWidth: 0, paddingRight: spacing.sm }, currentHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 4 }, currentIcon: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.backgroundSecondary }, currentIconActive: { backgroundColor: colors.successLight }, currentLabel: { ...typography.h3, flex: 1 },
   currentSub: { ...typography.bodySmall, color: colors.textSecondary },
   usageText: { ...typography.caption, color: colors.textSecondary, marginTop: 8 },
   badge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
@@ -222,19 +230,18 @@ const styles = StyleSheet.create({
   badgeInactive: { backgroundColor: colors.backgroundTertiary },
   badgeText: { ...typography.label, fontWeight: '600' },
   sectionTitle: { ...typography.h3, marginBottom: spacing.sm },
-  planCard: { marginBottom: spacing.sm, position: 'relative' },
+  planCard: { marginBottom: spacing.sm, position: 'relative', borderWidth: 1, borderColor: colors.borderLight },
   planCardPopular: { borderWidth: 2, borderColor: colors.primary },
   planCardCurrent: { borderWidth: 2, borderColor: colors.success },
   popularBadge: { position: 'absolute', top: spacing.sm, right: spacing.sm, backgroundColor: colors.primary, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   popularBadgeText: { ...typography.caption, color: colors.textInverse, fontWeight: '600' },
   currentBadge: { position: 'absolute', top: spacing.sm, right: spacing.sm, backgroundColor: colors.success, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   currentBadgeText: { ...typography.caption, color: colors.textInverse, fontWeight: '600' },
-  planName: { ...typography.h3, textAlign: 'center', marginBottom: spacing.sm },
+  planTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm, paddingRight: spacing.lg }, planIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primaryLight + '17', marginRight: spacing.sm }, planIconPopular: { backgroundColor: colors.primary }, planName: { ...typography.h3, flexShrink: 1 },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', marginBottom: spacing.sm },
   price: { ...typography.h1, color: colors.primary },
   perMonth: { ...typography.bodySmall, color: colors.textSecondary, marginLeft: 4 },
-  features: { marginBottom: spacing.md },
-  featureItem: { ...typography.bodySmall, marginTop: 4 },
+  durationText: { ...typography.caption, color: colors.textSecondary, textAlign: 'center', marginTop: -spacing.xs, marginBottom: spacing.sm }, features: { marginBottom: spacing.md, gap: 7 }, featureRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 7 }, featureItem: { ...typography.bodySmall, flex: 1 },
   planBtn: { marginTop: spacing.xs },
   planBtnPrimary: {},
   infoBox: { marginTop: spacing.lg, padding: spacing.md, backgroundColor: colors.primaryLight + '20', borderRadius: 12 },

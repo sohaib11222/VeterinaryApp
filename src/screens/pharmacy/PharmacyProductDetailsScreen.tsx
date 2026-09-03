@@ -32,6 +32,17 @@ function formatDate(val: string | Date | null | undefined): string {
   return isNaN(d.getTime()) ? String(val) : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+function valueOrDash(value: unknown): string {
+  if (value === null || value === undefined || value === '') return '—';
+  if (Array.isArray(value)) return value.length ? value.join(', ') : '—';
+  return String(value);
+}
+
+function variantLabel(variant: any, index: number): string {
+  if (variant?.name) return variant.name;
+  return [variant?.strengthValue ? `${variant.strengthValue} ${variant?.strengthUnit ?? ''}`.trim() : '', variant?.dosageForm, variant?.unitsPerPack ? `${variant.unitsPerPack} ${variant?.unitLabel ?? 'units'}` : ''].filter(Boolean).join(' · ') || `Variant ${index + 1}`;
+}
+
 export function PharmacyProductDetailsScreen() {
   const { t } = useTranslation();
   const route = useRoute<Route>();
@@ -87,6 +98,10 @@ export function PharmacyProductDetailsScreen() {
   const displayPrice = Number(product?.discountPrice ?? product?.price ?? 0);
   const originalPrice = product?.discountPrice != null && Number(product?.price) > Number(product?.discountPrice) ? Number(product.price) : null;
   const createdAt = product?.createdAt ? formatDate(product.createdAt) : t('common.na');
+  const isMedicine = product?.productType === 'PHARMACY_MEDICINE' || product?.sellerType === 'PET_STORE';
+  const variants = Array.isArray(product?.variants) ? product.variants : [];
+  const medicine = product?.medicineDetails ?? {};
+  const parapharmacy = product?.parapharmacyDetails ?? {};
 
   return (
     <ScreenContainer scroll padded>
@@ -129,6 +144,18 @@ export function PharmacyProductDetailsScreen() {
           <Text style={styles.detailValue}>{product?.category ?? t('common.na')}</Text>
         </View>
         <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Product type</Text>
+          <Text style={styles.detailValue}>{isMedicine ? 'Pharmacy medicine' : 'Parapharmacy product'}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Brand / manufacturer</Text>
+          <Text style={styles.detailValue} numberOfLines={1}>{valueOrDash(product?.brand || product?.manufacturer)}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Target species</Text>
+          <Text style={styles.detailValue} numberOfLines={1}>{valueOrDash(product?.petType)}</Text>
+        </View>
+        <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>{t('pharmacyProductDetails.labels.stock')}</Text>
           <Text style={styles.detailValue}>{t('pharmacyProductDetails.labels.stockUnits', { count: product?.stock ?? 0 })}</Text>
         </View>
@@ -144,6 +171,33 @@ export function PharmacyProductDetailsScreen() {
           <Text style={styles.description}>{product.description}</Text>
         </Card>
       ) : null}
+
+      <Card style={styles.section}>
+        <Text style={styles.sectionTitle}>Variants & availability</Text>
+        {variants.length ? variants.map((variant: any, index: number) => {
+          const price = Number(variant?.discountPrice ?? variant?.price ?? 0);
+          const regularPrice = variant?.discountPrice != null ? Number(variant?.price ?? 0) : null;
+          return <View key={String(variant?._id ?? index)} style={[styles.variantItem, index > 0 && styles.variantDivider]}>
+            <View style={styles.variantTopRow}><View style={styles.variantCopy}><Text style={styles.variantName}>{variantLabel(variant, index)}</Text><Text style={styles.variantMeta}>{[variant?.strengthValue ? `${variant.strengthValue} ${variant?.strengthUnit ?? ''}`.trim() : '', variant?.dosageForm, variant?.packageType, variant?.unitsPerPack ? `${variant.unitsPerPack} ${variant?.unitLabel ?? 'units'}` : ''].filter(Boolean).join(' · ') || 'Standard product option'}</Text></View><View style={styles.variantPriceWrap}><Text style={styles.variantPrice}>€{price.toFixed(2)}</Text>{regularPrice != null && regularPrice > price ? <Text style={styles.variantOldPrice}>€{regularPrice.toFixed(2)}</Text> : null}</View></View><View style={styles.variantBottomRow}><Text style={[styles.variantAvailability, Number(variant?.stock ?? 0) <= 0 && styles.variantOutOfStock]}>{Number(variant?.stock ?? 0)} in stock{variant?.isActive === false ? ' · Hidden' : ''}</Text>{variant?.isDefault ? <Text style={styles.defaultBadge}>Default</Text> : null}</View>{variant?.packageDescription ? <Text style={styles.packDescription}>{variant.packageDescription}</Text> : null}</View>;
+        }) : <Text style={styles.description}>No variants have been added yet.</Text>}
+      </Card>
+
+      <Card style={styles.section}>
+        <Text style={styles.sectionTitle}>{isMedicine ? 'Medicine information' : 'Product information'}</Text>
+        {isMedicine ? <>
+          <View style={styles.detailRow}><Text style={styles.detailLabel}>Active ingredient(s)</Text><Text style={styles.detailValue}>{valueOrDash(medicine.activeIngredients)}</Text></View>
+          <View style={styles.detailRow}><Text style={styles.detailLabel}>Administration route</Text><Text style={styles.detailValue}>{valueOrDash(medicine.administrationRoute)}</Text></View>
+          <View style={styles.detailRow}><Text style={styles.detailLabel}>Prescription</Text><Text style={styles.detailValue}>{product?.requiresPrescription ? 'Required' : 'Not required'}</Text></View>
+          <View style={styles.detailBlock}><Text style={styles.detailLabel}>Indications</Text><Text style={styles.blockValue}>{valueOrDash(medicine.indications)}</Text></View>
+          <View style={styles.detailBlock}><Text style={styles.detailLabel}>Dosage notes</Text><Text style={styles.blockValue}>{valueOrDash(medicine.dosageInstructions)}</Text></View>
+          <View style={styles.detailBlock}><Text style={styles.detailLabel}>Warnings & storage</Text><Text style={styles.blockValue}>{[medicine.warnings, medicine.storageInstructions].filter(Boolean).join('\n') || '—'}</Text></View>
+        </> : <>
+          <View style={styles.detailRow}><Text style={styles.detailLabel}>Product class</Text><Text style={styles.detailValue}>{valueOrDash(parapharmacy.productClass)}</Text></View>
+          <View style={styles.detailRow}><Text style={styles.detailLabel}>Life stage</Text><Text style={styles.detailValue}>{valueOrDash(parapharmacy.lifeStage)}</Text></View>
+          <View style={styles.detailBlock}><Text style={styles.detailLabel}>Ingredients & allergens</Text><Text style={styles.blockValue}>{[parapharmacy.ingredients, parapharmacy.allergens].filter(Boolean).join('\n') || '—'}</Text></View>
+          <View style={styles.detailBlock}><Text style={styles.detailLabel}>Usage, warnings & storage</Text><Text style={styles.blockValue}>{[parapharmacy.usageInstructions, parapharmacy.warnings, parapharmacy.storageInstructions].filter(Boolean).join('\n') || '—'}</Text></View>
+        </>}
+      </Card>
 
       <View style={styles.actions}>
         <Button
@@ -194,6 +248,22 @@ const styles = StyleSheet.create({
   detailLabel: { ...typography.bodySmall, color: colors.textSecondary },
   detailValue: { ...typography.body, fontWeight: '500' },
   description: { ...typography.body, color: colors.textSecondary },
+  variantItem: { paddingVertical: spacing.sm },
+  variantDivider: { borderTopWidth: 1, borderTopColor: colors.borderLight },
+  variantTopRow: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm },
+  variantCopy: { flex: 1, minWidth: 0 },
+  variantName: { ...typography.label, color: colors.text },
+  variantMeta: { ...typography.caption, color: colors.textSecondary, marginTop: 3 },
+  variantPriceWrap: { alignItems: 'flex-end' },
+  variantPrice: { ...typography.label, color: colors.primaryDark },
+  variantOldPrice: { ...typography.caption, color: colors.textLight, textDecorationLine: 'line-through', marginTop: 2 },
+  variantBottomRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 6 },
+  variantAvailability: { ...typography.caption, color: colors.success, fontWeight: '700' },
+  variantOutOfStock: { color: colors.error },
+  defaultBadge: { ...typography.caption, color: colors.primaryDark, backgroundColor: colors.primaryLight + '20', borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2, fontWeight: '800' },
+  packDescription: { ...typography.caption, color: colors.textSecondary, marginTop: 4 },
+  detailBlock: { paddingTop: spacing.sm, marginTop: spacing.xs, borderTopWidth: 1, borderTopColor: colors.borderLight },
+  blockValue: { ...typography.bodySmall, color: colors.text, marginTop: 4, lineHeight: 20 },
   actions: { marginTop: spacing.md },
   actionBtn: { marginBottom: spacing.sm },
   deleteBtn: { paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: colors.error, borderRadius: 12 },

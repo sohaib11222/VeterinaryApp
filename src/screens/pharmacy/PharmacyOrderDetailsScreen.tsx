@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { getImageUrl } from '../../config/api';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
@@ -67,7 +68,7 @@ export function PharmacyOrderDetailsScreen() {
   const route = useRoute<Route>();
   const navigation = useNavigation<any>();
   const orderId = route.params?.orderId ?? '';
-  const { data, isLoading, isError, error } = useOrder(orderId);
+  const { data, isLoading, isError, error } = useOrder(orderId, { refetchInterval: 15_000, refetchIntervalInBackground: true });
   const updateStatus = useUpdateOrderStatus();
   const updateShipping = useUpdateShippingFee();
   const order = extractOrder(data);
@@ -168,25 +169,25 @@ export function PharmacyOrderDetailsScreen() {
       </View>
 
       <Card style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('pharmacyOrderDetails.labels.customerInformation')}</Text>
+        <View style={styles.sectionHeader}><View style={styles.sectionIcon}><Ionicons name="person-outline" size={18} color={colors.primary} /></View><Text style={styles.sectionTitle}>{t('pharmacyOrderDetails.labels.customerInformation')}</Text></View>
         <View style={styles.infoRow}>
-          <Text style={styles.infoIcon}>👤</Text>
+          <Ionicons name="person-outline" size={17} color={colors.primary} style={styles.infoIcon} />
           <Text style={styles.infoText}>{customerName}</Text>
         </View>
 
         <View style={styles.infoRow}>
-          <Text style={styles.infoIcon}>✉</Text>
+          <Ionicons name="mail-outline" size={17} color={colors.primary} style={styles.infoIcon} />
           <Text style={styles.infoText}>{customerEmail}</Text>
         </View>
         <View style={styles.infoRow}>
-          <Text style={styles.infoIcon}>📞</Text>
+          <Ionicons name="call-outline" size={17} color={colors.primary} style={styles.infoIcon} />
           <Text style={styles.infoText}>{customerPhone}</Text>
         </View>
       </Card>
 
       {shippingAddress && (shippingAddress.line1 || shippingAddress.city) && (
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('pharmacyOrderDetails.labels.shippingAddress')}</Text>
+          <View style={styles.sectionHeader}><View style={styles.sectionIcon}><Ionicons name="location-outline" size={18} color={colors.primary} /></View><Text style={styles.sectionTitle}>{t('pharmacyOrderDetails.labels.shippingAddress')}</Text></View>
           {shippingAddress.line1 ? <Text style={styles.addressLine}>{shippingAddress.line1}</Text> : null}
           {shippingAddress.line2 ? <Text style={styles.addressLine}>{shippingAddress.line2}</Text> : null}
           <Text style={styles.addressLine}>
@@ -198,7 +199,7 @@ export function PharmacyOrderDetailsScreen() {
       )}
 
       <Card style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('pharmacyOrderDetails.labels.orderItems', { count: items.length })}</Text>
+        <View style={styles.sectionHeader}><View style={styles.sectionIcon}><Ionicons name="bag-handle-outline" size={18} color={colors.primary} /></View><Text style={styles.sectionTitle}>{t('pharmacyOrderDetails.labels.orderItems', { count: items.length })}</Text></View>
         {items.map((item: any, idx: number) => {
           const itemId = item?._id ?? item?.id ?? idx;
           const product = item?.productId;
@@ -225,7 +226,7 @@ export function PharmacyOrderDetailsScreen() {
       </Card>
 
       <Card style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('pharmacyOrderDetails.summary.title')}</Text>
+        <View style={styles.sectionHeader}><View style={styles.sectionIcon}><Ionicons name="receipt-outline" size={18} color={colors.primary} /></View><Text style={styles.sectionTitle}>{t('pharmacyOrderDetails.summary.title')}</Text></View>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>{t('pharmacyOrderDetails.summary.subtotal')}</Text>
           <Text style={styles.summaryValue}>€{Number(subtotal).toFixed(2)}</Text>
@@ -323,14 +324,7 @@ export function PharmacyOrderDetailsScreen() {
 const styles = StyleSheet.create({
   loadingRow: { padding: spacing.xl, alignItems: 'center' },
   errorText: { ...typography.body, color: colors.error, marginBottom: spacing.md },
-  headerCard: {
-    marginBottom: spacing.sm,
-    padding: spacing.sm,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-  },
+  headerCard: { marginBottom: spacing.sm, padding: spacing.md, borderRadius: 16, borderWidth: 1, borderColor: colors.primaryLight + '3D', backgroundColor: colors.primaryLight + '0D' },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   label: { ...typography.bodySmall, color: colors.textSecondary },
   orderNumber: { ...typography.h3, marginTop: 2 },
@@ -346,9 +340,11 @@ const styles = StyleSheet.create({
   paymentPaidText: { fontSize: 12, fontWeight: '600', color: colors.success },
   paymentPendingText: { fontSize: 12, fontWeight: '600', color: colors.warning },
   section: { marginBottom: spacing.sm },
-  sectionTitle: { ...typography.h3, marginBottom: spacing.sm },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.sm },
+  sectionIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primaryLight + '16' },
+  sectionTitle: { ...typography.h3 },
   infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  infoIcon: { marginRight: 8, fontSize: 16 },
+  infoIcon: { marginRight: 8, width: 18 },
   infoText: { ...typography.body },
   addressLine: { ...typography.body, marginBottom: 2 },
   itemRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.borderLight },

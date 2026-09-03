@@ -13,6 +13,7 @@ import { useOrder } from '../../queries/orderQueries';
 import { usePayForOrder, useCancelOrder } from '../../mutations/orderMutations';
 import { getImageUrl } from '../../config/api';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 
 type Route = RouteProp<PetOwnerStackParamList, 'PetOwnerOrderDetails'>;
 
@@ -84,6 +85,8 @@ export function PetOwnerOrderDetailsScreen() {
     total?: number;
   }>) ?? [];
   const shippingAddress = order.shippingAddress as { line1?: string; line2?: string; city?: string; state?: string; zip?: string; country?: string } | undefined;
+  const pharmacy = order.petStoreId as { name?: string; phone?: string; email?: string; storeType?: string } | undefined;
+  const transaction = order.transactionId as { _id?: string; provider?: string; status?: string } | undefined;
 
   const canPay = paymentStatus === 'UNPAID' && shippingSet && (status === 'PENDING' || status === 'CONFIRMED');
   const canCancel = paymentStatus !== 'PAID' && (status === 'PENDING' || status === 'CONFIRMED');
@@ -126,7 +129,8 @@ export function PetOwnerOrderDetailsScreen() {
 
       <Card style={styles.summaryCard}>
         <View style={styles.summaryRow}>
-          <View>
+          <View style={styles.summaryCopy}>
+            <View style={styles.orderIcon}><Ionicons name="receipt-outline" size={22} color={colors.primaryDark} /></View>
             <Text style={styles.label}>{t('petOwnerOrders.details.summary.orderNumber')}</Text>
             <Text style={styles.orderNo}>#{orderNumber}</Text>
             <Text style={styles.orderDate}>{t('petOwnerOrders.details.summary.orderDate', { date: createdAt })}</Text>
@@ -135,31 +139,33 @@ export function PetOwnerOrderDetailsScreen() {
             <View style={[styles.badge, { backgroundColor: statusStyle.bg }]}>
               <Text style={[styles.badgeText, { color: statusStyle.text }]}>{status}</Text>
             </View>
-            <Text style={styles.paymentStatus}>{t('petOwnerOrders.labels.payment', { status: paymentStatus })}</Text>
+            <View style={styles.paymentStatusRow}><Ionicons name={paymentStatus === 'PAID' ? 'checkmark-circle-outline' : 'card-outline'} size={13} color={paymentStatus === 'PAID' ? colors.success : colors.textSecondary} /><Text style={styles.paymentStatus}>{t('petOwnerOrders.labels.payment', { status: paymentStatus })}</Text></View>
           </View>
         </View>
       </Card>
 
       {paymentStatus === 'UNPAID' && !shippingSet && (
         <Card style={[styles.alert, styles.alertInfo]}>
-          <Text style={styles.alertText}>{t('petOwnerOrders.details.alerts.waitingShippingFee')}</Text>
+          <Ionicons name="time-outline" size={19} color={colors.info} /><Text style={styles.alertText}>{t('petOwnerOrders.details.alerts.waitingShippingFee')}</Text>
         </Card>
       )}
       {paymentStatus === 'UNPAID' && shippingSet && (
         <Card style={[styles.alert, styles.alertWarning]}>
-          <Text style={styles.alertText}>{t('petOwnerOrders.details.alerts.shippingFeeSet')}</Text>
+          <Ionicons name="card-outline" size={19} color={colors.warning} /><Text style={styles.alertText}>{t('petOwnerOrders.details.alerts.shippingFeeSet')}</Text>
         </Card>
       )}
       {paymentStatus === 'PAID' && (
         <Card style={[styles.alert, styles.alertSuccess]}>
-          <Text style={styles.alertText}>{t('petOwnerOrders.details.alerts.paymentCompleted')}</Text>
+          <Ionicons name="checkmark-circle-outline" size={19} color={colors.success} /><Text style={styles.alertText}>{t('petOwnerOrders.details.alerts.paymentCompleted')}</Text>
         </Card>
       )}
 
-      <Card>
+      {pharmacy?.name ? <Card style={styles.infoCard}><View style={styles.infoHeading}><View style={styles.infoIcon}><Ionicons name="storefront-outline" size={19} color={colors.primary} /></View><View><Text style={styles.cardTitle}>{t('petOwnerOrders.details.sections.pharmacy')}</Text><Text style={styles.infoSubtext}>{pharmacy.name}</Text></View></View>{pharmacy.phone ? <Text style={styles.infoLine}>{pharmacy.phone}</Text> : null}{pharmacy.email ? <Text style={styles.infoLine}>{pharmacy.email}</Text> : null}</Card> : null}
+
+      <Card style={styles.infoCard}>
         <Text style={styles.cardTitle}>{t('petOwnerOrders.details.sections.items')}</Text>
         {items.map((item, idx) => {
-          const product = item.productId as { name?: string; images?: string[] } | undefined;
+          const product = item.productId as { name?: string; images?: string[]; requiresPrescription?: boolean } | undefined;
           const name = product?.name ?? t('petOwnerOrders.details.defaults.product');
           const qty = item.quantity ?? 0;
           const price = item.price ?? 0;
@@ -176,6 +182,8 @@ export function PetOwnerOrderDetailsScreen() {
                 <Text style={styles.itemName}>{name}</Text>
                 <Text style={styles.itemMeta}>{t('petOwnerOrders.details.item.quantity', { qty })}</Text>
                 <Text style={styles.itemMeta}>{t('petOwnerOrders.details.item.eachPrice', { price: Number(price).toFixed(2) })}</Text>
+                {(item as { variantName?: string }).variantName ? <Text style={styles.itemVariant}>{(item as { variantName?: string }).variantName}</Text> : null}
+                {product?.requiresPrescription ? <View style={styles.itemPrescription}><Ionicons name="document-text-outline" size={12} color="#805B00" /><Text style={styles.itemPrescriptionText}>{t('petOwnerOrders.details.item.prescription')}</Text></View> : null}
               </View>
               <Text style={styles.itemTotal}>€{Number(lineTotal).toFixed(2)}</Text>
             </View>
@@ -183,9 +191,14 @@ export function PetOwnerOrderDetailsScreen() {
         })}
       </Card>
 
+      <Card style={styles.infoCard}>
+        <View style={styles.infoHeading}><View style={styles.infoIcon}><Ionicons name="card-outline" size={19} color={colors.primary} /></View><View><Text style={styles.cardTitle}>{t('petOwnerOrders.details.sections.payment')}</Text><Text style={styles.infoSubtext}>{t('petOwnerOrders.labels.payment', { status: paymentStatus })}</Text></View></View>
+        <View style={styles.paymentGrid}><View><Text style={styles.paymentLabel}>{t('petOwnerOrders.details.payment.method')}</Text><Text style={styles.paymentValue}>{String(order.paymentMethod ?? transaction?.provider ?? 'STRIPE')}</Text></View>{transaction?._id ? <View style={styles.paymentGridRight}><Text style={styles.paymentLabel}>{t('petOwnerOrders.details.payment.transaction')}</Text><Text style={styles.paymentValue} numberOfLines={1}>{transaction._id}</Text></View> : null}</View>
+      </Card>
+
       {shippingAddress && (shippingAddress.line1 || shippingAddress.city) && (
-        <Card>
-          <Text style={styles.cardTitle}>{t('petOwnerOrders.details.sections.shippingAddress')}</Text>
+        <Card style={styles.infoCard}>
+          <View style={styles.infoHeading}><View style={styles.infoIcon}><Ionicons name="location-outline" size={19} color={colors.primary} /></View><View><Text style={styles.cardTitle}>{t('petOwnerOrders.details.sections.shippingAddress')}</Text><Text style={styles.infoSubtext}>{t('petOwnerOrders.details.shipping.status', { status })}</Text></View></View>
           {shippingAddress.line1 ? <Text style={styles.addressLine}>{shippingAddress.line1}</Text> : null}
           {shippingAddress.line2 ? <Text style={styles.addressLine}>{shippingAddress.line2}</Text> : null}
           <Text style={styles.addressLine}>
@@ -195,7 +208,7 @@ export function PetOwnerOrderDetailsScreen() {
         </Card>
       )}
 
-      <Card>
+      <Card style={styles.totalCard}>
         <Text style={styles.cardTitle}>{t('petOwnerOrders.details.sections.summary')}</Text>
         <View style={styles.totalRow}>
           <Text>{t('petOwnerOrders.details.totals.subtotal')}</Text>
@@ -213,7 +226,7 @@ export function PetOwnerOrderDetailsScreen() {
       </Card>
 
       {(canPay || canCancel) && (
-        <Card>
+        <Card style={styles.actionsCard}>
           <View style={styles.actionsRow}>
             {canPay && (
               <Button
@@ -260,33 +273,49 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
   pageTitle: { ...typography.h2 },
   backLink: { ...typography.body, color: colors.primary },
-  summaryCard: { marginBottom: spacing.md },
+  summaryCard: { marginBottom: spacing.md, backgroundColor: colors.primaryDark, borderWidth: 0 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  label: { ...typography.bodySmall, color: colors.textSecondary },
-  orderNo: { ...typography.h3, marginTop: 2 },
-  orderDate: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 4 },
+  summaryCopy: { flex: 1 },
+  orderIcon: { width: 40, height: 40, borderRadius: 13, backgroundColor: colors.secondaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm },
+  label: { ...typography.bodySmall, color: 'rgba(255,255,255,0.68)' },
+  orderNo: { ...typography.h3, color: colors.textInverse, marginTop: 2 },
+  orderDate: { ...typography.bodySmall, color: 'rgba(255,255,255,0.72)', marginTop: 4 },
   summaryRight: { alignItems: 'flex-end' },
   badge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
   badgeText: { ...typography.caption, fontWeight: '600' },
-  paymentStatus: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 4 },
-  alert: { marginBottom: spacing.md },
+  paymentStatusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: 7 },
+  paymentStatus: { ...typography.bodySmall, color: 'rgba(255,255,255,0.78)' },
+  alert: { marginBottom: spacing.md, flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   alertInfo: { backgroundColor: colors.infoLight },
   alertWarning: { backgroundColor: colors.warningLight },
   alertSuccess: { backgroundColor: colors.successLight },
-  alertText: { ...typography.body },
+  alertText: { ...typography.bodySmall, flex: 1, lineHeight: 20 },
+  infoCard: { marginBottom: spacing.md, borderWidth: 1, borderColor: colors.borderLight },
+  infoHeading: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
+  infoIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: colors.primaryLight + '18', alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm },
+  infoSubtext: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  infoLine: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 3 },
   cardTitle: { ...typography.h3, marginBottom: spacing.sm },
   itemRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
   itemImage: { width: 80, height: 80, backgroundColor: colors.backgroundTertiary, borderRadius: 8, marginRight: spacing.sm },
   itemInfo: { flex: 1 },
   itemName: { ...typography.body, fontWeight: '600' },
   itemMeta: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
+  itemVariant: { ...typography.caption, color: colors.primary, fontWeight: '700', marginTop: 3 },
+  itemPrescription: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', backgroundColor: colors.warningLight, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 7, marginTop: 5 },
+  itemPrescriptionText: { ...typography.caption, color: '#805B00', fontWeight: '700' },
   itemTotal: { ...typography.h3 },
   addressLine: { ...typography.body, marginBottom: 2 },
+  paymentGrid: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.borderLight },
+  paymentGridRight: { alignItems: 'flex-end', maxWidth: '55%' },
+  paymentLabel: { ...typography.caption, color: colors.textSecondary, marginBottom: 3 }, paymentValue: { ...typography.bodySmall, color: colors.text, fontWeight: '700' },
+  totalCard: { marginBottom: spacing.md, backgroundColor: colors.primaryLight + '10', borderWidth: 1, borderColor: colors.primaryLight + '28' },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.xs },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm },
   totalFinal: { marginBottom: 0 },
   totalLabel: { ...typography.body, fontWeight: '700' },
   totalValue: { ...typography.h3, color: colors.primary },
+  actionsCard: { marginBottom: spacing.lg },
   actionsRow: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
   modalContent: { backgroundColor: colors.background, borderRadius: 12, padding: spacing.lg, width: '100%', maxWidth: 400 },

@@ -40,17 +40,18 @@ export function usePetStore(petStoreId: string | null | undefined) {
 }
 
 /** Current user's pet store (pharmacy/parapharmacy). */
-export function useMyPetStore(options?: { enabled?: boolean }) {
+export function useMyPetStore(options?: { enabled?: boolean; refetchInterval?: number }) {
   return useQuery({
     queryKey: ['pet-store', 'me'],
     queryFn: () =>
       api.get<{ success: boolean; data?: unknown }>(API_ROUTES.PET_STORES.ME),
     enabled: options?.enabled !== false,
+    refetchInterval: options?.refetchInterval,
   });
 }
 
 /** Current user's pet store subscription (PET_STORE only). */
-export function useMyPetStoreSubscription(options?: { enabled?: boolean }) {
+export function useMyPetStoreSubscription(options?: { enabled?: boolean; refetchInterval?: number }) {
   return useQuery({
     queryKey: ['pet-store', 'my-subscription'],
     queryFn: () =>
@@ -58,5 +59,6 @@ export function useMyPetStoreSubscription(options?: { enabled?: boolean }) {
         API_ROUTES.PET_STORES.MY_SUBSCRIPTION
       ),
     enabled: options?.enabled !== false,
+    refetchInterval: options?.refetchInterval,
   });
 }

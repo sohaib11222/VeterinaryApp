@@ -10,6 +10,8 @@ import { PetOwnerStackNavigator } from './PetOwnerStackNavigator';
 import { PharmacyTabNavigator } from './PharmacyTabNavigator';
 import { RootStackParamList } from './types';
 import { colors } from '../theme/colors';
+import { rootNavigationRef } from './navigationRef';
+import { IncomingCallNotifier } from '../components/video/IncomingCallNotifier';
 
 const PENDING_STATUSES = ['PENDING', 'REJECTED', 'BLOCKED'] as const;
 
@@ -29,7 +31,8 @@ export function RootNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={rootNavigationRef}>
+      <>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!user ? (
           <Stack.Screen name="Auth" component={AuthNavigator} />
@@ -45,6 +48,8 @@ export function RootNavigator() {
           <Stack.Screen name="Auth" component={AuthNavigator} />
         )}
       </Stack.Navigator>
+      <IncomingCallNotifier />
+      </>
     </NavigationContainer>
   );
 }

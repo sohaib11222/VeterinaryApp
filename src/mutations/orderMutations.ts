@@ -6,7 +6,7 @@ import { api } from '../api/api';
 import { API_ROUTES } from '../api/apiConfig';
 
 export interface CreateOrderPayload {
-  items: { productId: string; quantity: number }[];
+  items: { productId: string; variantId?: string | null; quantity: number }[];
   shippingAddress?: {
     line1: string;
     line2?: string;

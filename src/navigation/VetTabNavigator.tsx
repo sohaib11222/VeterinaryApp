@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { VetTabParamList } from './types';
 import { VetHeaderSearchProvider } from '../contexts/VetHeaderSearchContext';
 import { VetHeaderRightActionProvider, useVetHeaderRightAction } from '../contexts/VetHeaderRightActionContext';
@@ -11,8 +12,10 @@ import { VetAppointmentsScreen } from '../screens/vet/VetAppointmentsScreen';
 import { VetMessagesScreen } from '../screens/vet/VetMessagesScreen';
 import { VetMoreScreen } from '../screens/vet/VetMoreScreen';
 import { colors } from '../theme/colors';
-import { typography } from '../theme/typography';
 import { useTranslation } from 'react-i18next';
+import { useNotifications, useUnreadNotificationsCount } from '../queries/notificationQueries';
+import { useUnreadChatCount } from '../queries/chatQueries';
+import { TabBadgeIcon } from '../components/common/TabBadgeIcon';
 
 const Tab = createBottomTabNavigator<VetTabParamList>();
 
@@ -23,18 +26,23 @@ const TAB_HEADERS: Record<string, { titleKey: string; subtitle?: string }> = {
   VetMore: { titleKey: 'tabs.more', subtitle: 'Account & settings' },
 };
 
-function TabIcon({ name, focused }: { name: string; focused: boolean }) {
+function getCount(payload: unknown): number {
+  const outer = (payload as { data?: unknown })?.data ?? payload;
+  const inner = (outer as { data?: unknown })?.data ?? outer;
+  const value = (inner as { unreadCount?: unknown; pagination?: { total?: unknown } })?.unreadCount
+    ?? (inner as { pagination?: { total?: unknown } })?.pagination?.total;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function TabIcon({ name, focused, badge }: { name: string; focused: boolean; badge?: number }) {
   const icons: Record<string, string> = {
-    VetDashboard: '🏠',
-    VetAppointments: '📅',
-    VetMessages: '💬',
-    VetMore: '⋯',
+    VetDashboard: 'home-outline',
+    VetAppointments: 'calendar-outline',
+    VetMessages: 'chatbubbles-outline',
+    VetMore: 'grid-outline',
   };
-  return (
-    <Text style={[styles.tabIcon, { color: focused ? colors.tabActive : colors.tabInactive }, focused && styles.tabIconActive]}>
-      {icons[name] || '•'}
-    </Text>
-  );
+  return <TabBadgeIcon name={(icons[name] || 'ellipse-outline') as keyof typeof Ionicons.glyphMap} focused={focused} badge={badge} />;
 }
 
 function VetTabHeader({ route }: { route: { name: string } }) {
@@ -56,6 +64,12 @@ function VetTabHeader({ route }: { route: { name: string } }) {
 
 export function VetTabNavigator() {
   const { t } = useTranslation();
+  const appointmentNotifications = useNotifications({ type: 'APPOINTMENT', unreadOnly: true, page: 1, limit: 50 }, { refetchInterval: 30_000 });
+  const unreadMessages = useUnreadChatCount({ refetchInterval: 30_000 });
+  const unreadNotifications = useUnreadNotificationsCount({ refetchInterval: 30_000 });
+  const appointmentBadge = getCount(appointmentNotifications.data);
+  const messageBadge = getCount(unreadMessages.data);
+  const moreBadge = getCount(unreadNotifications.data);
   return (
     <VetHeaderSearchProvider>
     <VetHeaderRightActionProvider>
@@ -67,7 +81,7 @@ export function VetTabNavigator() {
           tabBarActiveTintColor: colors.tabActive,
           tabBarInactiveTintColor: colors.tabInactive,
           tabBarLabelStyle: styles.tabLabel,
-          tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} badge={route.name === 'VetAppointments' ? appointmentBadge : route.name === 'VetMessages' ? messageBadge : route.name === 'VetMore' ? moreBadge : 0} />,
         };
       }}
     >
@@ -108,12 +122,5 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 12,
     fontWeight: '600',
-  },
-  tabIcon: {
-    fontSize: 20,
-    opacity: 0.7,
-  },
-  tabIconActive: {
-    opacity: 1,
   },
 });

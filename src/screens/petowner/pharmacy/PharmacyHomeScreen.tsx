@@ -9,6 +9,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { VetHeader } from '../../../components/common/VetHeader';
@@ -19,6 +20,7 @@ import { useProducts } from '../../../queries/productQueries';
 import { useCart } from '../../../contexts/CartContext';
 import { getImageUrl } from '../../../config/api';
 import { useTranslation } from 'react-i18next';
+import Toast from 'react-native-toast-message';
 
 type Nav = NativeStackNavigationProp<PetOwnerPharmacyStackParamList>;
 
@@ -42,7 +44,7 @@ export function PharmacyHomeScreen() {
         roundedBottom={false}
         rightAction={
           <TouchableOpacity style={styles.cartBtn} onPress={() => navigation.navigate('Cart')}>
-            <Text style={styles.cartIcon}>🛒</Text>
+            <Ionicons name="bag-handle-outline" size={23} color={colors.textInverse} />
             {cartCount > 0 && (
               <View style={styles.cartBadge}>
                 <Text style={styles.cartBadgeText}>{cartCount > 99 ? '99+' : cartCount}</Text>
@@ -70,7 +72,7 @@ export function PharmacyHomeScreen() {
                 style={styles.searchPharmaciesButton}
                 onPress={() => navigation.navigate('PharmacySearch')}
               >
-                <Text style={styles.searchIcon}>🔍</Text>
+                <Ionicons name="search-outline" size={17} color={colors.textInverse} />
                 <Text style={styles.searchPharmaciesText}>{t('petOwnerPharmacyHome.actions.findPharmacies')}</Text>
               </TouchableOpacity>
             </View>
@@ -97,6 +99,7 @@ export function PharmacyHomeScreen() {
                 const originalPrice = typeof p.price === 'number' ? p.price : undefined;
                 const images = p.images as string[] | undefined;
                 const imageUri = getImageUrl(Array.isArray(images) && images[0] ? images[0] : undefined);
+                const requiresPrescription = Boolean(p.requiresPrescription);
                 return (
                   <TouchableOpacity
                     key={id}
@@ -124,10 +127,15 @@ export function PharmacyHomeScreen() {
                           style={styles.cartButton}
                           onPress={(e) => {
                             e?.stopPropagation?.();
+                            if (requiresPrescription) {
+                              Toast.show({ type: 'info', text1: 'Prescription required', text2: 'Open this medicine to upload a prescription before adding it to cart.' });
+                              navigation.navigate('ProductDetails', { productId: id });
+                              return;
+                            }
                             addToCart(p, 1);
                           }}
                         >
-                          <Text style={styles.cartButtonIcon}>🛒</Text>
+                          <Ionicons name="cart-outline" size={18} color={colors.primaryDark} />
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -148,7 +156,6 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: spacing.xxl },
   cartBtn: { position: 'relative', padding: 8 },
-  cartIcon: { fontSize: 22 },
   cartBadge: {
     position: 'absolute',
     top: 0,
@@ -208,7 +215,6 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     gap: 6,
   },
-  searchIcon: { fontSize: 16 },
   searchPharmaciesText: { fontSize: 16, fontWeight: '600', color: colors.textInverse },
   section: { paddingHorizontal: spacing.md, marginBottom: spacing.lg },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
@@ -257,7 +263,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cartButtonIcon: { fontSize: 18 },
   bottomSpacer: { height: spacing.xl },
   emptyText: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginVertical: spacing.md },
 });

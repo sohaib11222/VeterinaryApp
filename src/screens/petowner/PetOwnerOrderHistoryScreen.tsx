@@ -9,7 +9,9 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  TextInput,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
@@ -42,6 +44,7 @@ export function PetOwnerOrderHistoryScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
   const [statusFilter, setStatusFilter] = useState<StatusType>('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const statusParam = statusFilter ? statusFilter.toUpperCase() : undefined;
   const { data: ordersRes, isLoading } = useOrders(statusParam ? { status: statusParam } : {});
@@ -51,6 +54,17 @@ export function PetOwnerOrderHistoryScreen() {
 
   const payload: any = ordersRes?.data ?? (ordersRes as any)?.data ?? ordersRes ?? {};
   const orders = Array.isArray(payload?.orders) ? payload.orders : [];
+  const filteredOrders = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return orders;
+    return orders.filter((order: Record<string, unknown>) => {
+      const store = order.petStoreId as { name?: string } | undefined;
+      const itemNames = (order.items as Array<{ productId?: { name?: string } }> | undefined) ?? [];
+      return [order.orderNumber, order._id, store?.name, ...itemNames.map((item) => item.productId?.name)]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query));
+    });
+  }, [orders, searchQuery]);
 
   const statusCounts = useMemo(() => {
     const all: any = allOrdersRes?.data ?? (allOrdersRes as any)?.data ?? allOrdersRes ?? {};
@@ -139,7 +153,7 @@ export function PetOwnerOrderHistoryScreen() {
       <View style={styles.orderCard}>
         <View style={styles.orderHeader}>
           <View style={styles.orderInfo}>
-            <Text style={styles.orderNumber}>#{orderNumber}</Text>
+            <View style={styles.orderNumberRow}><Ionicons name="receipt-outline" size={16} color={colors.primary} /><Text style={styles.orderNumber}>#{orderNumber}</Text></View>
             <Text style={styles.pharmacyName}>{pharmacyName}</Text>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg + 'CC' }]}>
@@ -152,14 +166,14 @@ export function PetOwnerOrderHistoryScreen() {
           {imageUri ? (
             <Image source={{ uri: imageUri }} style={styles.productImage} resizeMode="cover" />
           ) : (
-            <View style={styles.productImage} />
+            <View style={[styles.productImage, styles.productImageFallback]}><Ionicons name="cube-outline" size={24} color={colors.textLight} /></View>
           )}
           <View style={styles.orderDetails}>
             <Text style={styles.itemsCount}>
               {t('petOwnerOrders.itemsCount', { count: itemCount })}
             </Text>
             <Text style={styles.orderDate}>{t('petOwnerOrders.labels.orderedOn', { date: createdAt })}</Text>
-            <Text style={styles.paymentStatusText}>{t('petOwnerOrders.labels.payment', { status: paymentStatus })}</Text>
+            <View style={styles.paymentRow}><Ionicons name={paymentStatus === 'PAID' ? 'checkmark-circle-outline' : 'card-outline'} size={13} color={paymentStatus === 'PAID' ? colors.success : colors.textSecondary} /><Text style={styles.paymentStatusText}>{t('petOwnerOrders.labels.payment', { status: paymentStatus })}</Text></View>
           </View>
           <Text style={styles.orderTotal}>€{total.toFixed(2)}</Text>
         </View>
@@ -168,7 +182,7 @@ export function PetOwnerOrderHistoryScreen() {
             style={styles.actionButton}
             onPress={() => navigation.navigate('PetOwnerOrderDetails', { orderId: id })}
           >
-            <Text style={styles.actionButtonText}>{t('petOwnerOrders.actions.viewDetails')}</Text>
+            <Ionicons name="eye-outline" size={16} color={colors.primary} /><Text style={styles.actionButtonText}>{t('petOwnerOrders.actions.viewDetails')}</Text>
           </TouchableOpacity>
           {canPay && (
             <TouchableOpacity
@@ -176,7 +190,7 @@ export function PetOwnerOrderHistoryScreen() {
               onPress={() => handlePay(id)}
               disabled={payMutation.isPending}
             >
-              <Text style={[styles.actionButtonText, styles.payButtonText]}>{t('petOwnerOrders.actions.payNow')}</Text>
+              <Ionicons name="card-outline" size={16} color={colors.textInverse} /><Text style={[styles.actionButtonText, styles.payButtonText]}>{t('petOwnerOrders.actions.payNow')}</Text>
             </TouchableOpacity>
           )}
           {canCancel && (
@@ -200,7 +214,11 @@ export function PetOwnerOrderHistoryScreen() {
 
   return (
     <ScreenContainer padded>
-      {/* Status filter – mydoctor-app style */}
+      <View style={styles.hero}>
+        <View style={styles.heroIcon}><Ionicons name="bag-check-outline" size={24} color={colors.primaryDark} /></View>
+        <View style={styles.heroCopy}><Text style={styles.heroTitle}>{t('petOwnerOrders.title')}</Text><Text style={styles.heroText}>{t('petOwnerOrders.subtitle')}</Text></View>
+      </View>
+      <View style={styles.searchBar}><Ionicons name="search-outline" size={19} color={colors.textSecondary} /><TextInput value={searchQuery} onChangeText={setSearchQuery} placeholder={t('petOwnerOrders.searchPlaceholder')} placeholderTextColor={colors.textLight} style={styles.searchInput} /></View>
       <View style={styles.filterContainer}>
         <Text style={styles.filterLabel}>{t('petOwnerOrders.labels.status')}</Text>
         <ScrollView
@@ -262,7 +280,7 @@ export function PetOwnerOrderHistoryScreen() {
 
       {isLoading ? (
         <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: spacing.xxl }} />
-      ) : orders.length === 0 ? (
+      ) : filteredOrders.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyIcon}>🧾</Text>
           <Text style={styles.emptyText}>{t('petOwnerOrders.empty')}</Text>
@@ -279,7 +297,7 @@ export function PetOwnerOrderHistoryScreen() {
         </View>
       ) : (
         <FlatList
-          data={orders}
+          data={filteredOrders}
           keyExtractor={(item) => String((item as Record<string, unknown>)._id ?? (item as Record<string, unknown>).id ?? '')}
           renderItem={renderOrderCard}
           contentContainerStyle={styles.listContent}
@@ -291,9 +309,12 @@ export function PetOwnerOrderHistoryScreen() {
 }
 
 const styles = StyleSheet.create({
+  hero: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.successLight, borderRadius: 18, padding: spacing.md, marginBottom: spacing.md },
+  heroIcon: { width: 46, height: 46, borderRadius: 15, backgroundColor: colors.secondaryLight, alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm },
+  heroCopy: { flex: 1 }, heroTitle: { ...typography.h3, color: colors.primaryDark }, heroText: { ...typography.caption, color: colors.textSecondary, marginTop: 3 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, minHeight: 50, paddingHorizontal: spacing.md, gap: spacing.sm, marginBottom: spacing.sm },
+  searchInput: { flex: 1, ...typography.bodySmall, color: colors.text, paddingVertical: 0 },
   filterContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingVertical: spacing.sm,
     marginBottom: spacing.sm,
     borderBottomWidth: 1,
@@ -348,8 +369,8 @@ const styles = StyleSheet.create({
   listContent: { paddingBottom: spacing.xxl },
   orderCard: {
     backgroundColor: colors.background,
-    borderRadius: 12,
-    padding: spacing.sm,
+    borderRadius: 16,
+    padding: spacing.md,
     marginBottom: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
@@ -361,11 +382,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   orderInfo: { flex: 1 },
+  orderNumberRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4 },
   orderNumber: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: 4,
   },
   pharmacyName: {
     fontSize: 14,
@@ -392,6 +413,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
     backgroundColor: colors.backgroundTertiary,
   },
+  productImageFallback: { alignItems: 'center', justifyContent: 'center' },
   orderDetails: { flex: 1 },
   itemsCount: {
     fontSize: 14,
@@ -403,10 +425,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
   },
+  paymentRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   paymentStatusText: {
     fontSize: 12,
     color: colors.textSecondary,
-    marginTop: 2,
   },
   orderTotal: {
     fontSize: 18,
@@ -424,7 +446,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: colors.primaryLight + '40',
+    backgroundColor: colors.primaryLight + '28',
+    flexDirection: 'row',
+    gap: 5,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   actionButtonText: {

@@ -9,6 +9,7 @@ import {
   TextInput,
   Image,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useVetHeaderSearch } from '../../contexts/VetHeaderSearchContext';
 import { NotificationBell } from './NotificationBell';
@@ -55,11 +56,11 @@ export function VetHeader({
             style={styles.backBtn}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            <Text style={styles.backIcon}>‹</Text>
+            <Ionicons name="chevron-back" size={23} color={colors.textInverse} />
           </TouchableOpacity>
         ) : (
           <View style={styles.logoBadge}>
-            <Text style={styles.logoIcon}>🐾</Text>
+            <Ionicons name="paw" size={19} color={colors.textInverse} />
           </View>
         )}
         {avatarUri ? (
@@ -81,7 +82,7 @@ export function VetHeader({
       {searchConfig ? (
         <View style={styles.searchWrap}>
           <View style={styles.searchBar}>
-            <Text style={styles.searchIcon}>🔍</Text>
+            <Ionicons name="search-outline" size={18} color="rgba(255,255,255,0.78)" style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
               placeholder={searchConfig.placeholder}
@@ -98,8 +99,8 @@ export function VetHeader({
 
 const styles = StyleSheet.create({
   wrapper: {
-    backgroundColor: colors.primary,
-    paddingBottom: spacing.md,
+    backgroundColor: colors.primaryDark,
+    paddingBottom: spacing.md + 2,
     paddingHorizontal: spacing.md,
     overflow: 'hidden',
   },
@@ -120,18 +121,18 @@ const styles = StyleSheet.create({
   },
   gradientInner: {
     flex: 1,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primaryDark,
     opacity: 0.98,
   },
   gradientAccent: {
     position: 'absolute',
     bottom: -40,
     right: -40,
-    width: 140,
-    height: 140,
-    borderRadius: 70,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
     backgroundColor: colors.primaryLight,
-    opacity: 0.2,
+    opacity: 0.28,
   },
   content: {
     flexDirection: 'row',
@@ -142,28 +143,23 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,
-  },
-  backIcon: {
-    fontSize: 28,
-    color: colors.textInverse,
-    fontWeight: '300',
-    marginTop: -2,
   },
   logoBadge: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,
-  },
-  logoIcon: {
-    fontSize: 20,
   },
   avatarWrap: {
     width: 40,
@@ -182,10 +178,10 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   title: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: '700',
     color: colors.textInverse,
-    letterSpacing: 0.3,
+    letterSpacing: 0.1,
   },
   subtitle: {
     fontSize: 13,
@@ -206,15 +202,15 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.13)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
     paddingHorizontal: spacing.sm,
     minHeight: 44,
   },
   searchIcon: {
-    fontSize: 16,
     marginRight: spacing.sm,
-    opacity: 0.9,
   },
   searchInput: {
     flex: 1,

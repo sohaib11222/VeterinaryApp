@@ -26,6 +26,8 @@ export const colors = {
   backgroundSecondary: '#F8F9FA',
   backgroundTertiary: '#E9ECEF',
   backgroundCard: '#FFFFFF',
+  // Auth experience – a softened clinical canvas for the first-use journey
+  authBackground: '#F3F8F5',
 
   // Status
   success: '#2D6A4F',

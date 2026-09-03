@@ -20,6 +20,7 @@ import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { getImageUrl } from '../../config/api';
 import { API_BASE_URL } from '../../config/api';
 import { useMessages } from '../../queries/chatQueries';
@@ -76,7 +77,20 @@ function isImageAttachment(att: { type?: string; mimeType?: string; url?: string
 export function VetAdminChatScreen() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const navigation = useNavigation<any>();
   const currentUserId = (user as { id?: string })?.id ?? (user as { _id?: string })?._id ?? '';
+  const isBusinessSupport = user?.role === 'PET_STORE' || user?.role === 'PARAPHARMACY';
+  const supportParticipant = isBusinessSupport ? { businessId: currentUserId } : { veterinarianId: currentUserId };
+
+  // Pharmacy/Parapharmacy support is pushed inside the More tab. It is a full
+  // conversation screen, so keep the composer clear of the tab bar and restore
+  // the standard tab appearance as soon as the user leaves it.
+  useFocusEffect(React.useCallback(() => {
+    if (!isBusinessSupport) return undefined;
+    const tabNavigator = navigation.getParent?.();
+    tabNavigator?.setOptions({ tabBarStyle: { display: 'none' } });
+    return () => tabNavigator?.setOptions({ tabBarStyle: undefined });
+  }, [isBusinessSupport, navigation]));
 
   const [message, setMessage] = useState('');
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -102,7 +116,11 @@ export function VetAdminChatScreen() {
   }, []);
 
   const getOrCreate = useGetOrCreateConversation();
-  const { data: messagesResponse, isLoading: messagesLoading } = useMessages(conversationId);
+  const { data: messagesResponse, isLoading: messagesLoading } = useMessages(
+    conversationId,
+    { limit: 100 },
+    { refetchInterval: conversationId ? 3_000 : false, refetchIntervalInBackground: true }
+  );
   const sendMessage = useSendMessage();
   const markRead = useMarkConversationRead();
   const uploadChatFile = useUploadChatFile();
@@ -110,7 +128,7 @@ export function VetAdminChatScreen() {
   useEffect(() => {
     if (!currentUserId) return;
     getOrCreate.mutate(
-      { veterinarianId: currentUserId },
+      supportParticipant,
       {
         onSuccess: (res) => {
           const payload = res as { _id?: string; data?: { _id?: string; adminId?: { _id?: string } | string } };
@@ -125,7 +143,7 @@ export function VetAdminChatScreen() {
         },
       }
     );
-  }, [currentUserId]);
+  }, [currentUserId, isBusinessSupport]);
 
   useEffect(() => {
     if (!conversationId || lastMarkedReadRef.current === conversationId) return;
@@ -160,7 +178,7 @@ export function VetAdminChatScreen() {
           }
           await sendMessage.mutateAsync({
             conversationId,
-            veterinarianId: currentUserId,
+            ...supportParticipant,
             adminId,
             fileUrl: url,
             fileName: pendingAttachment.name ?? 'File',
@@ -180,7 +198,7 @@ export function VetAdminChatScreen() {
 
       await sendMessage.mutateAsync({
         conversationId,
-        veterinarianId: currentUserId,
+        ...supportParticipant,
         adminId,
         message: text,
         type: 'TEXT',

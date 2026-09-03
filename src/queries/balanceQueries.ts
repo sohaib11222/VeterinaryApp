@@ -6,11 +6,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/api';
 import { API_ROUTES } from '../api/apiConfig';
 
-export function useBalance() {
+export function useBalance(queryOptions: Record<string, unknown> = {}) {
   return useQuery({
     queryKey: ['balance'],
     queryFn: () =>
       api.get<{ success?: boolean; data?: { balance?: number } }>(API_ROUTES.BALANCE.GET),
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    ...queryOptions,
   });
 }
 
@@ -29,7 +32,7 @@ export interface WithdrawalRequestItem {
   [key: string]: unknown;
 }
 
-export function useWithdrawalRequests(params: { page?: number; limit?: number; status?: string } = {}) {
+export function useWithdrawalRequests(params: { page?: number; limit?: number; status?: string } = {}, queryOptions: Record<string, unknown> = {}) {
   return useQuery({
     queryKey: ['balance', 'withdrawal-requests', params],
     queryFn: () =>
@@ -39,6 +42,9 @@ export function useWithdrawalRequests(params: { page?: number; limit?: number; s
       }>(API_ROUTES.BALANCE.WITHDRAW_REQUESTS, {
         params: { page: params.page ?? 1, limit: params.limit ?? 20, ...(params.status ? { status: params.status } : {}) },
       }),
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    ...queryOptions,
   });
 }
 

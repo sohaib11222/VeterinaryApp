@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Image } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
 import { colors } from '../../theme/colors';
@@ -9,6 +9,7 @@ import { usePets } from '../../queries/petsQueries';
 import { useWeightRecords, type WeightRecordItem } from '../../queries/medicalQueries';
 import { getImageUrl } from '../../config/api';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 
 export function PetOwnerWeightRecordsScreen() {
   const { t, i18n } = useTranslation();
@@ -52,8 +53,13 @@ export function PetOwnerWeightRecordsScreen() {
 
   return (
     <ScreenContainer scroll padded>
-      <Text style={styles.title}>{t('petOwnerWeightRecords.title')}</Text>
-      <Text style={styles.subtitle}>{t('petOwnerWeightRecords.subtitle')}</Text>
+      <View style={styles.hero}>
+        <View style={styles.heroIcon}><Ionicons name="analytics" size={23} color={colors.primaryDark} /></View>
+        <View style={styles.heroCopy}>
+          <Text style={styles.title}>{t('petOwnerWeightRecords.title')}</Text>
+          <Text style={styles.subtitle}>{t('petOwnerWeightRecords.subtitle')}</Text>
+        </View>
+      </View>
 
       {pets.length > 0 && (
         <View style={styles.filterRow}>
@@ -72,15 +78,23 @@ export function PetOwnerWeightRecordsScreen() {
       )}
 
       <Card style={styles.latestCard}>
-        <Text style={styles.latestTitle}>{t('petOwnerWeightRecords.latest.title')}</Text>
+        <View style={styles.cardHeader}>
+          <View style={styles.cardHeaderIcon}><Ionicons name="pulse-outline" size={18} color={colors.primary} /></View>
+          <Text style={styles.latestTitle}>{t('petOwnerWeightRecords.latest.title')}</Text>
+        </View>
         {latest ? (
           <View style={styles.latestRow}>
-            {latest.petId?.photo ? (
-              <View style={styles.latestPetPhoto} />
+            {getImageUrl(latest.petId?.photo) ? (
+              <Image source={{ uri: getImageUrl(latest.petId?.photo) as string }} style={styles.latestPetPhoto} />
             ) : null}
-            <Text style={styles.latestPetName}>{latest.petId?.name || t('petOwnerWeightRecords.defaults.pet')}</Text>
-            <Text style={styles.latestValue}>{formatWeight(latest.weight)}</Text>
-            <Text style={styles.latestDate}>{formatDate(latest.date)}</Text>
+            <View style={styles.latestCopy}>
+              <Text style={styles.latestPetName}>{latest.petId?.name || t('petOwnerWeightRecords.defaults.pet')}</Text>
+              <Text style={styles.latestDate}>{formatDate(latest.date)}</Text>
+            </View>
+            <View style={styles.latestValueWrap}>
+              <Text style={styles.latestValue}>{formatWeight(latest.weight)}</Text>
+              <Text style={styles.latestValueCaption}>{t('petOwnerWeightRecords.latest.title')}</Text>
+            </View>
           </View>
         ) : (
           <Text style={styles.muted}>{t('petOwnerWeightRecords.empty.latest')}</Text>
@@ -88,7 +102,10 @@ export function PetOwnerWeightRecordsScreen() {
       </Card>
 
       <Card>
-        <Text style={styles.sectionTitle}>{t('petOwnerWeightRecords.history.title')}</Text>
+        <View style={styles.cardHeader}>
+          <View style={styles.cardHeaderIcon}><Ionicons name="time-outline" size={18} color={colors.primary} /></View>
+          <Text style={styles.sectionTitle}>{t('petOwnerWeightRecords.history.title')}</Text>
+        </View>
         {isLoading ? (
           <View style={styles.loading}>
             <ActivityIndicator size="large" color={colors.primary} />
@@ -102,12 +119,19 @@ export function PetOwnerWeightRecordsScreen() {
             scrollEnabled={false}
             renderItem={({ item }) => (
               <View style={styles.recordRow}>
-                <Text style={styles.recordId}>#{String(item._id).slice(-6).toUpperCase()}</Text>
-                <Text style={styles.recordPet}>{item.petId?.name || t('common.na')}</Text>
-                <Text style={styles.recordWeight}>{formatWeight(item.weight)}</Text>
-                <Text style={styles.recordDate}>{formatDate(item.date)}</Text>
-                <Text style={styles.recordBy}>{item.recordedBy?.name || t('common.na')}</Text>
-                <Text style={styles.recordNotes}>{item.notes || t('common.na')}</Text>
+                <View style={styles.timelineDot}><Ionicons name="analytics-outline" size={15} color={colors.primary} /></View>
+                <View style={styles.recordMain}>
+                  <View style={styles.recordTop}>
+                    <Text style={styles.recordPet}>{item.petId?.name || t('common.na')}</Text>
+                    <Text style={styles.recordWeight}>{formatWeight(item.weight)}</Text>
+                  </View>
+                  <View style={styles.recordMeta}>
+                    <Text style={styles.recordDate}>{formatDate(item.date)}</Text>
+                    <Text style={styles.recordId}>#{String(item._id).slice(-6).toUpperCase()}</Text>
+                  </View>
+                  <Text style={styles.recordBy}>{item.recordedBy?.name || t('common.na')}</Text>
+                  {item.notes ? <Text style={styles.recordNotes}>{item.notes}</Text> : null}
+                </View>
               </View>
             )}
           />
@@ -123,8 +147,11 @@ export function PetOwnerWeightRecordsScreen() {
 }
 
 const styles = StyleSheet.create({
-  title: { ...typography.h3, marginBottom: spacing.xs },
-  subtitle: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.md },
+  hero: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.successLight, borderRadius: 18, padding: spacing.md, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.primaryLight + '28' },
+  heroIcon: { width: 48, height: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.secondaryLight, marginRight: spacing.md },
+  heroCopy: { flex: 1 },
+  title: { ...typography.h3, color: colors.primaryDark },
+  subtitle: { ...typography.caption, color: colors.primaryDark, opacity: 0.72, marginTop: 3 },
   filterRow: { marginBottom: spacing.md },
   filterLabel: { ...typography.label, marginBottom: spacing.xs },
   petChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -132,21 +159,30 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: colors.primary },
   chipText: { ...typography.bodySmall },
   chipTextActive: { color: colors.textInverse, fontWeight: '600' },
-  latestCard: { marginBottom: spacing.md },
-  latestTitle: { ...typography.body, fontWeight: '600', marginBottom: spacing.sm },
-  latestRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
-  latestPetPhoto: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.backgroundTertiary },
-  latestPetName: { ...typography.body, fontWeight: '600' },
-  latestValue: { ...typography.h3, color: colors.primary },
-  latestDate: { ...typography.caption, color: colors.textSecondary },
-  sectionTitle: { ...typography.body, fontWeight: '600', marginBottom: spacing.sm },
-  recordRow: { paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  recordId: { ...typography.caption, width: 70 },
-  recordPet: { flex: 1, minWidth: 60, ...typography.bodySmall },
-  recordWeight: { ...typography.bodySmall, fontWeight: '600' },
-  recordDate: { ...typography.caption },
-  recordBy: { ...typography.caption, color: colors.textSecondary },
-  recordNotes: { ...typography.caption, color: colors.textLight, flexBasis: '100%' },
+  latestCard: { marginBottom: spacing.md, borderWidth: 1, borderColor: colors.borderLight },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
+  cardHeaderIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primaryLight + '18', marginRight: spacing.sm },
+  latestTitle: { ...typography.label, color: colors.text },
+  latestRow: { flexDirection: 'row', alignItems: 'center' },
+  latestPetPhoto: { width: 44, height: 44, borderRadius: 14, backgroundColor: colors.backgroundTertiary, marginRight: spacing.sm },
+  latestCopy: { flex: 1 },
+  latestPetName: { ...typography.label, color: colors.text },
+  latestValueWrap: { alignItems: 'flex-end', paddingLeft: spacing.sm },
+  latestValue: { ...typography.h3, color: colors.primaryDark },
+  latestValueCaption: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  latestDate: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  sectionTitle: { ...typography.label, color: colors.text },
+  recordRow: { paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.borderLight, flexDirection: 'row' },
+  timelineDot: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primaryLight + '18', marginRight: spacing.sm },
+  recordMain: { flex: 1, minWidth: 0 },
+  recordTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  recordMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 3 },
+  recordId: { ...typography.caption, color: colors.textLight },
+  recordPet: { ...typography.label, color: colors.text, flex: 1 },
+  recordWeight: { ...typography.label, color: colors.primaryDark },
+  recordDate: { ...typography.caption, color: colors.textSecondary },
+  recordBy: { ...typography.caption, color: colors.textSecondary, marginTop: 3 },
+  recordNotes: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 5 },
   loading: { paddingVertical: spacing.xl, alignItems: 'center' },
   muted: { ...typography.body, color: colors.textSecondary },
   pagination: { marginTop: spacing.sm },

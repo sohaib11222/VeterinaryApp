@@ -5,8 +5,11 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ViewStyle,
+  type KeyboardTypeOptions,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { spacing, borderRadius } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -19,11 +22,14 @@ interface InputProps {
   onBlur?: () => void;
   secureTextEntry?: boolean;
   error?: string;
-  keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad' | 'decimal-pad';
+  keyboardType?: KeyboardTypeOptions;
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   editable?: boolean;
   maxLength?: number;
+  leftIcon?: React.ReactNode;
+  helperText?: string;
+  multiline?: boolean;
 }
 
 export function Input({
@@ -39,6 +45,9 @@ export function Input({
   style,
   editable = true,
   maxLength,
+  leftIcon,
+  helperText,
+  multiline = false,
 }: InputProps) {
   const [focused, setFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -55,8 +64,9 @@ export function Input({
           !editable && styles.inputDisabled,
         ]}
       >
+        {leftIcon ? <View style={styles.leftIcon}>{leftIcon}</View> : null}
         <TextInput
-          style={styles.input}
+          style={[styles.input, multiline && styles.inputMultiline]}
           placeholder={placeholder}
           placeholderTextColor={colors.textLight}
           value={value}
@@ -71,6 +81,8 @@ export function Input({
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
           editable={editable}
+          multiline={multiline}
+          textAlignVertical={multiline ? 'top' : 'center'}
         />
         {isPassword ? (
           <TouchableOpacity
@@ -78,11 +90,15 @@ export function Input({
             style={styles.eye}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Text style={styles.eyeText}>{showPassword ? 'Hide' : 'Show'}</Text>
+            <Ionicons
+              name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+              size={20}
+              color={focused ? colors.primary : colors.textSecondary}
+            />
           </TouchableOpacity>
         ) : null}
       </View>
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? <Text style={styles.errorText}>{error}</Text> : helperText ? <Text style={styles.helperText}>{helperText}</Text> : null}
     </View>
   );
 }
@@ -93,21 +109,23 @@ const styles = StyleSheet.create({
   },
   label: {
     ...typography.label,
-    marginBottom: spacing.xs,
+    color: colors.primaryDark,
+    marginBottom: 6,
   },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.backgroundSecondary,
-    borderWidth: 1.5,
-    borderColor: colors.border,
+    backgroundColor: '#FBFDFC',
+    borderWidth: 1,
+    borderColor: '#D9E5DE',
     borderRadius: borderRadius.md,
     paddingHorizontal: spacing.md,
-    minHeight: 48,
+    minHeight: 56,
   },
   inputFocused: {
     borderColor: colors.primary,
     backgroundColor: colors.background,
+    borderWidth: 1.5,
   },
   inputError: {
     borderColor: colors.error,
@@ -119,20 +137,29 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     ...typography.body,
-    paddingVertical: spacing.sm,
+    paddingVertical: 11,
     paddingRight: spacing.sm,
+  },
+  inputMultiline: {
+    minHeight: 82,
   },
   eye: {
     padding: spacing.xs,
   },
-  eyeText: {
-    ...typography.caption,
-    color: colors.primary,
-    fontWeight: '600',
+  leftIcon: {
+    width: 24,
+    alignItems: 'flex-start',
+    marginRight: spacing.sm,
   },
   errorText: {
     ...typography.caption,
     color: colors.error,
+    marginTop: spacing.xs,
+    marginLeft: spacing.xs,
+  },
+  helperText: {
+    ...typography.caption,
+    color: colors.textSecondary,
     marginTop: spacing.xs,
     marginLeft: spacing.xs,
   },

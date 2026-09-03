@@ -8,9 +8,11 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
+import { AppointmentStatusPill } from '../../components/common/AppointmentStatusPill';
 import { useVetHeaderSearch } from '../../contexts/VetHeaderSearchContext';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
@@ -106,7 +108,7 @@ export function PetOwnerAppointmentsScreen() {
     error,
     refetch,
     isFetching,
-  } = useAppointments({ limit: 50 });
+  } = useAppointments({ limit: 50 }, { refetchInterval: 10_000, refetchIntervalInBackground: true });
   const getOrCreateConversation = useGetOrCreateConversation();
 
   const appointments = useMemo(
@@ -221,19 +223,11 @@ export function PetOwnerAppointmentsScreen() {
               <Text style={styles.petLabel}>{t('appointments.labels.pet')}: {item.pet}</Text>
             </View>
           </View>
-          <View
-            style={[
-              styles.statusBadge,
-              item.status === 'COMPLETED' && styles.badgeCompleted,
-              (item.status === 'CANCELLED' || item.status === 'REJECTED' || item.status === 'NO_SHOW') &&
-                styles.badgeCancelled,
-            ]}
-          >
-            <Text style={styles.statusText}>{item.status}</Text>
-          </View>
+          <AppointmentStatusPill status={item.status} compact />
         </View>
         <View style={styles.dateTimeRow}>
-          <Text style={styles.dateTimeText}>🕐 {item.date}</Text>
+          <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+          <Text style={styles.dateTimeText}>{item.date}</Text>
         </View>
         <View style={styles.badgeRow}>
           <View style={styles.badgeReason}>
@@ -245,12 +239,13 @@ export function PetOwnerAppointmentsScreen() {
               item.bookingType === 'ONLINE' ? styles.typeVideo : styles.typeVisit,
             ]}
           >
+            <Ionicons name={item.bookingType === 'ONLINE' ? 'videocam-outline' : 'business-outline'} size={14} color={colors.textSecondary} />
             <Text style={styles.badgeTextSmall}>{item.bookingTypeLabel}</Text>
           </View>
         </View>
         <View style={styles.contactRow}>
-          <Text style={styles.contactText}>✉ {item.email}</Text>
-          <Text style={styles.contactText}>📞 {item.phone}</Text>
+          {item.email ? <View style={styles.contactItem}><Ionicons name="mail-outline" size={13} color={colors.textLight} /><Text style={styles.contactText}>{item.email}</Text></View> : null}
+          {item.phone ? <View style={styles.contactItem}><Ionicons name="call-outline" size={13} color={colors.textLight} /><Text style={styles.contactText}>{item.phone}</Text></View> : null}
         </View>
         <View style={styles.actionRow}>
           {item.status === 'CONFIRMED' && (
@@ -262,12 +257,13 @@ export function PetOwnerAppointmentsScreen() {
               }}
               disabled={getOrCreateConversation.isPending}
             >
-              {/* <Text style={styles.chatBtnIcon}>💬</Text> */}
+              <Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.textInverse} />
               <Text style={styles.viewBtnText}>{t('appointments.actions.chat')}</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={styles.viewBtn} onPress={() => openDetail(item.appointmentId)}>
-            <Text style={styles.viewBtnText}>{t('appointments.actions.view')}</Text>
+          <TouchableOpacity style={[styles.viewBtn, styles.detailBtn]} onPress={() => openDetail(item.appointmentId)}>
+            <Ionicons name="eye-outline" size={16} color={colors.primary} />
+            <Text style={[styles.viewBtnText, styles.detailBtnText]}>{t('appointments.actions.view')}</Text>
           </TouchableOpacity>
         </View>
       </Card>
@@ -327,7 +323,7 @@ export function PetOwnerAppointmentsScreen() {
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Text style={styles.emptyIcon}>📅</Text>
+              <View style={styles.emptyIcon}><Ionicons name="calendar-clear-outline" size={32} color={colors.primary} /></View>
               <Text style={styles.emptyText}>{emptyMessages[activeTab]}</Text>
             </View>
           }
@@ -403,6 +399,9 @@ const styles = StyleSheet.create({
   badgeCancelled: { backgroundColor: colors.errorLight },
   statusText: { ...typography.caption, fontWeight: '600', fontSize: 11 },
   dateTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     marginTop: spacing.sm,
     paddingTop: spacing.sm,
     borderTopWidth: 1,
@@ -416,23 +415,28 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: colors.primaryLight + '25',
   },
-  typeBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  typeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   typeVideo: { backgroundColor: colors.info + '25' },
   typeVisit: { backgroundColor: colors.success + '25' },
   badgeTextSmall: { fontSize: 12, fontWeight: '600', color: colors.text },
-  contactRow: { marginTop: spacing.sm, gap: 2 },
+  contactRow: { marginTop: spacing.sm, gap: 4 },
+  contactItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   contactText: { ...typography.caption, color: colors.textSecondary },
   actionRow: { marginTop: spacing.sm, flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm },
-  chatBtn: { marginRight: 0 },
-  chatBtnIcon: { marginRight: 4 },
+  chatBtn: { backgroundColor: colors.primary },
   viewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingVertical: 8,
     paddingHorizontal: 16,
     backgroundColor: colors.primary,
     borderRadius: 20,
   },
   viewBtnText: { ...typography.bodySmall, color: colors.textInverse, fontWeight: '600' },
+  detailBtn: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.primary },
+  detailBtnText: { color: colors.primary },
   empty: { paddingVertical: spacing.xxl, alignItems: 'center' },
-  emptyIcon: { fontSize: 48, marginBottom: spacing.sm },
+  emptyIcon: { width: 64, height: 64, borderRadius: 22, backgroundColor: colors.primaryLight + '1A', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm },
   emptyText: { ...typography.bodySmall, color: colors.textSecondary },
 });

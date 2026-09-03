@@ -14,10 +14,13 @@ import { Input } from '../../../components/common/Input';
 import { Button } from '../../../components/common/Button';
 import { colors } from '../../../theme/colors';
 import { spacing } from '../../../theme/spacing';
+import { typography } from '../../../theme/typography';
+import { Ionicons } from '@expo/vector-icons';
 import { useCart } from '../../../contexts/CartContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useCreateOrder } from '../../../mutations/orderMutations';
 import { useTranslation } from 'react-i18next';
+import { useUserById } from '../../../queries/userQueries';
 
 export function PharmacyCheckoutScreen() {
   const navigation = useNavigation<any>();
@@ -25,6 +28,13 @@ export function PharmacyCheckoutScreen() {
   const { t } = useTranslation();
   const { cartItems, getCartTotal, clearCart } = useCart();
   const createOrderMutation = useCreateOrder();
+  const userId = (user as { id?: string; _id?: string } | null)?.id ?? (user as { _id?: string } | null)?._id;
+  const profileQuery = useUserById(userId, { enabled: !!userId });
+  const profilePayload = (profileQuery.data as { data?: Record<string, unknown> } | undefined)?.data;
+  const profileUser = profilePayload ?? user;
+  const savedAddress = (profileUser as { address?: { line1?: string; line2?: string; city?: string; state?: string; country?: string; zip?: string } } | null)?.address;
+  const savedCountry = savedAddress?.country || 'Italy';
+  const hasSavedAddress = Boolean(savedAddress?.line1 && savedAddress?.city && savedAddress?.state && savedAddress?.zip);
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -90,6 +100,7 @@ export function PharmacyCheckoutScreen() {
       .filter((item) => (item.quantity || 0) > 0)
       .map((item) => ({
         productId: String(item._id),
+        variantId: item.variantId ?? undefined,
         quantity: item.quantity || 1,
       }));
     if (orderItems.length === 0) {
@@ -115,6 +126,9 @@ export function PharmacyCheckoutScreen() {
         country: formData.shippingCountry?.trim() || 'Italy',
         zip: formData.shippingZip.trim(),
       };
+    } else if (!hasSavedAddress) {
+      Toast.show({ type: 'error', text1: 'A delivery address is required', text2: 'Add an address in Account Settings or choose a different delivery address.' });
+      return;
     }
     try {
       await createOrderMutation.mutateAsync({ items: orderItems, shippingAddress });
@@ -182,6 +196,15 @@ export function PharmacyCheckoutScreen() {
           />
 
           <Text style={styles.subSectionTitle}>{t('petOwnerPharmacyCheckout.sections.shippingDetails')}</Text>
+          {!formData.shipToDifferentAddress ? (
+            <View style={[styles.savedAddressCard, !hasSavedAddress && styles.savedAddressCardWarning]}>
+              <View style={styles.savedAddressIcon}><Ionicons name="home-outline" size={19} color={colors.primaryDark} /></View>
+              <View style={styles.savedAddressCopy}>
+                <Text style={styles.savedAddressTitle}>{hasSavedAddress ? 'Saved delivery address' : 'No saved delivery address'}</Text>
+                <Text style={styles.savedAddressText}>{hasSavedAddress ? [savedAddress?.line1, savedAddress?.line2, savedAddress?.city, savedAddress?.state, savedAddress?.zip, savedCountry].filter(Boolean).join(', ') : 'Save a complete address in Account Settings, or enter another delivery address below.'}</Text>
+              </View>
+            </View>
+          ) : null}
           <TouchableOpacity
             style={styles.checkboxContainer}
             onPress={() =>
@@ -311,6 +334,7 @@ export function PharmacyCheckoutScreen() {
                     {item.name}{' '}
                     <Text style={styles.orderItemQuantity}>x{item.quantity}</Text>
                   </Text>
+                  {item.variantName ? <Text style={styles.orderItemVariant}>{item.variantName}</Text> : null}
                   <Text style={styles.orderItemTotal}>€{lineTotal.toFixed(2)}</Text>
                 </View>
               );
@@ -487,6 +511,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
   },
+  savedAddressCard: { flexDirection: 'row', alignItems: 'flex-start', padding: spacing.sm, borderRadius: 13, backgroundColor: colors.primaryLight + '16', borderWidth: 1, borderColor: colors.primaryLight + '33', marginBottom: spacing.md },
+  savedAddressCardWarning: { backgroundColor: colors.warningLight, borderColor: colors.warning + '55' },
+  savedAddressIcon: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background, marginRight: spacing.sm },
+  savedAddressCopy: { flex: 1 },
+  savedAddressTitle: { ...typography.label, color: colors.primaryDark },
+  savedAddressText: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 3, lineHeight: 19 },
+  orderItemVariant: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
   orderItemTotal: {
     fontSize: 14,
     fontWeight: '600',

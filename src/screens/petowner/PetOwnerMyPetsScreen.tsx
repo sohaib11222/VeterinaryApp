@@ -11,6 +11,7 @@ import { usePets } from '../../queries/petsQueries';
 import { useDeletePet } from '../../mutations/petsMutations';
 import { getImageUrl } from '../../config/api';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 
 type PetItem = {
   _id: string;
@@ -96,6 +97,13 @@ export function PetOwnerMyPetsScreen() {
     const img = getImageUrl(item.photo);
     return (
       <Card style={styles.card}>
+        <View style={styles.cardTopRow}>
+          <View style={styles.statusPill}>
+            <Ionicons name="heart-outline" size={13} color={colors.primary} />
+            <Text style={styles.statusText}>{item.isActive === false ? t('common.na') : t('common.active', { defaultValue: 'Active' })}</Text>
+          </View>
+          {item.microchipNumber ? <Ionicons name="hardware-chip-outline" size={17} color={colors.textLight} /> : null}
+        </View>
         <View style={styles.row}>
           <View style={styles.avatar}>
             {img ? (
@@ -107,19 +115,24 @@ export function PetOwnerMyPetsScreen() {
           <View style={styles.info}>
             <Text style={styles.name}>{item.name || t('common.na')}</Text>
             <View style={styles.detailRow}>
+              <Ionicons name="paw-outline" size={14} color={colors.primary} />
               <Text style={styles.detail}>{speciesLabel(item.species)}</Text>
               <Text style={styles.detail}> · {genderLabel(item.gender)}</Text>
               <Text style={styles.detail}> · {ageLabel(item.age)}</Text>
             </View>
-            <Text style={styles.breed}>{t('petOwnerMyPets.labels.breed')}: {item.breed || t('common.na')}</Text>
-            {item.microchipNumber ? <Text style={styles.microchip}>{t('petOwnerMyPets.labels.microchip')}: {item.microchipNumber}</Text> : null}
+            <View style={styles.metaRow}>
+              <Text style={styles.breed}>{t('petOwnerMyPets.labels.breed')}: {item.breed || t('common.na')}</Text>
+              {item.microchipNumber ? <Text style={styles.microchip}>{t('petOwnerMyPets.labels.microchip')}: {item.microchipNumber}</Text> : null}
+            </View>
           </View>
         </View>
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('PetOwnerEditPet', { petId: item._id })}>
+          <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('PetOwnerEditPet', { petId: item._id })} accessibilityRole="button">
+            <Ionicons name="create-outline" size={16} color={colors.primary} />
             <Text style={styles.editBtnText}>{t('common.edit')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item)} disabled={deletePet.isPending}>
+          <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item)} disabled={deletePet.isPending} accessibilityRole="button">
+            <Ionicons name="trash-outline" size={16} color={colors.error} />
             <Text style={styles.deleteBtnText}>{t('common.delete')}</Text>
           </TouchableOpacity>
         </View>
@@ -139,8 +152,16 @@ export function PetOwnerMyPetsScreen() {
 
   return (
     <ScreenContainer padded>
+      <View style={styles.introCard}>
+        <View style={styles.introIcon}><Ionicons name="paw" size={22} color={colors.primaryDark} /></View>
+        <View style={styles.introCopy}>
+          <Text style={styles.introTitle}>{t('menu.myPets')}</Text>
+          <Text style={styles.introText}>{t('petOwnerMyPets.empty')}</Text>
+        </View>
+        <View style={styles.petCount}><Text style={styles.petCountText}>{pets.length}</Text></View>
+      </View>
       <View style={styles.searchWrap}>
-        <Text style={styles.searchIcon}>🔍</Text>
+        <Ionicons name="search-outline" size={19} color={colors.textSecondary} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder={t('petOwnerMyPets.searchPlaceholder')}
@@ -149,41 +170,57 @@ export function PetOwnerMyPetsScreen() {
           onChangeText={setSearchQuery}
         />
       </View>
-      <Button title={t('petOwnerMyPets.actions.addPet')} onPress={() => navigation.navigate('PetOwnerAddPet')} style={styles.addBtn} />
+      <Button
+        title={t('petOwnerMyPets.actions.addPet')}
+        onPress={() => navigation.navigate('PetOwnerAddPet')}
+        icon={<Ionicons name="add-circle-outline" size={19} color={colors.textInverse} />}
+        style={styles.addBtn}
+      />
       <FlatList
         data={filtered}
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.list}
         renderItem={renderItem}
-        ListEmptyComponent={<View style={styles.empty}><Text style={styles.emptyText}>{t('petOwnerMyPets.empty')}</Text></View>}
+        ListEmptyComponent={<View style={styles.empty}><Ionicons name="paw-outline" size={34} color={colors.textLight} /><Text style={styles.emptyText}>{t('petOwnerMyPets.empty')}</Text></View>}
       />
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.backgroundTertiary, borderRadius: 12, paddingHorizontal: spacing.sm, marginBottom: spacing.sm, minHeight: 44 },
-  searchIcon: { marginRight: spacing.sm, fontSize: 16 },
+  introCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.successLight, borderRadius: 18, padding: spacing.md, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.primaryLight + '24' },
+  introIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: colors.secondaryLight, alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm },
+  introCopy: { flex: 1, minWidth: 0 },
+  introTitle: { ...typography.h3, color: colors.primaryDark },
+  introText: { ...typography.caption, color: colors.primaryDark, opacity: 0.72, marginTop: 2 },
+  petCount: { minWidth: 34, height: 34, borderRadius: 17, backgroundColor: colors.primaryDark, alignItems: 'center', justifyContent: 'center', marginLeft: spacing.sm },
+  petCountText: { ...typography.label, color: colors.textInverse },
+  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, borderRadius: 14, paddingHorizontal: spacing.md, marginBottom: spacing.sm, minHeight: 52, borderWidth: 1, borderColor: colors.border },
+  searchIcon: { marginRight: spacing.sm },
   searchInput: { flex: 1, ...typography.body, paddingVertical: spacing.sm },
   addBtn: { marginBottom: spacing.md },
   list: { paddingBottom: spacing.xxl },
-  card: { marginBottom: spacing.sm },
+  card: { marginBottom: spacing.md, padding: spacing.md, borderWidth: 1, borderColor: colors.borderLight },
+  cardTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
+  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, backgroundColor: colors.successLight },
+  statusText: { ...typography.caption, color: colors.primaryDark, fontWeight: '700' },
   row: { flexDirection: 'row', alignItems: 'flex-start' },
-  avatar: { width: 56, height: 56, borderRadius: 14, backgroundColor: colors.primaryLight + '40', alignItems: 'center', justifyContent: 'center', marginRight: spacing.md, overflow: 'hidden' },
-  avatarImage: { width: 56, height: 56, borderRadius: 14 },
+  avatar: { width: 66, height: 66, borderRadius: 18, backgroundColor: colors.primaryLight + '22', alignItems: 'center', justifyContent: 'center', marginRight: spacing.md, overflow: 'hidden' },
+  avatarImage: { width: 66, height: 66, borderRadius: 18 },
   avatarText: { ...typography.h2, color: colors.primary },
   info: { flex: 1, minWidth: 0 },
   name: { ...typography.h3 },
-  detailRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 2 },
+  detailRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 3, marginTop: 4 },
   detail: { ...typography.bodySmall, color: colors.textSecondary },
-  breed: { ...typography.caption, color: colors.textSecondary, marginTop: 4 },
+  metaRow: { marginTop: 5 },
+  breed: { ...typography.caption, color: colors.textSecondary },
   microchip: { ...typography.caption, color: colors.textLight, marginTop: 2 },
-  actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
-  editBtn: { paddingVertical: 8, paddingHorizontal: 16, backgroundColor: colors.primary, borderRadius: 20 },
-  editBtnText: { ...typography.bodySmall, color: colors.textInverse, fontWeight: '600' },
-  deleteBtn: { paddingVertical: 8, paddingHorizontal: 16, backgroundColor: colors.errorLight, borderRadius: 20 },
-  deleteBtnText: { ...typography.bodySmall, color: colors.error, fontWeight: '600' },
-  empty: { paddingVertical: spacing.xxl, alignItems: 'center' },
+  actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.borderLight },
+  editBtn: { minHeight: 40, flex: 1, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primaryLight + '18', borderRadius: 12, borderWidth: 1, borderColor: colors.primaryLight + '45' },
+  editBtnText: { ...typography.bodySmall, color: colors.primary, fontWeight: '700' },
+  deleteBtn: { minHeight: 40, flex: 1, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.errorLight + '70', borderRadius: 12, borderWidth: 1, borderColor: colors.error + '25' },
+  deleteBtnText: { ...typography.bodySmall, color: colors.error, fontWeight: '700' },
+  empty: { paddingVertical: spacing.xxl, alignItems: 'center', gap: spacing.sm },
   emptyText: { ...typography.bodySmall, color: colors.textSecondary },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 });

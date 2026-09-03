@@ -8,6 +8,10 @@ import { API_ROUTES } from '../api/apiConfig';
 export interface CreateProductPayload {
   name: string;
   description?: string;
+  productType?: 'PHARMACY_MEDICINE' | 'PARAPHARMACY_PRODUCT' | 'GENERAL_PRODUCT';
+  brand?: string;
+  manufacturer?: string;
+  barcode?: string;
   sku?: string;
   price: number;
   discountPrice?: number;
@@ -15,6 +19,11 @@ export interface CreateProductPayload {
   category?: string;
   tags?: string[] | string;
   requiresPrescription?: boolean;
+  subCategory?: string;
+  petType?: string[];
+  medicineDetails?: Record<string, unknown>;
+  parapharmacyDetails?: Record<string, unknown>;
+  variants?: Record<string, unknown>[];
   isActive?: boolean;
   images?: string[];
 }

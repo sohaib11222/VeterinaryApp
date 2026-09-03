@@ -7,6 +7,7 @@ import {
   TextInput,
   TouchableOpacity,
   Platform,
+  Alert,
   ActivityIndicator,
   Image,
   Modal,
@@ -14,6 +15,7 @@ import {
   Linking,
   Keyboard,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import { VetStackParamList } from '../../navigation/types';
@@ -24,8 +26,8 @@ import { typography } from '../../theme/typography';
 import { useAuth } from '../../contexts/AuthContext';
 import { getImageUrl } from '../../config/api';
 import { API_BASE_URL } from '../../config/api';
-import { useMessages } from '../../queries/chatQueries';
-import { useSendMessage, useMarkConversationRead } from '../../mutations/chatMutations';
+import { useConversations, useMessages } from '../../queries/chatQueries';
+import { useMarkConversationComplete, useSendMessage, useMarkConversationRead } from '../../mutations/chatMutations';
 import { useUploadChatFile } from '../../mutations/uploadMutations';
 import { copyToCacheUri, deleteCacheFiles, getExtensionFromMime } from '../../utils/fileUpload';
 import Toast from 'react-native-toast-message';
@@ -103,9 +105,18 @@ export function VetChatDetailScreen() {
     };
   }, []);
 
-  const { data: messagesResponse, isLoading: messagesLoading } = useMessages(conversationId);
+  const { data: messagesResponse, isLoading: messagesLoading } = useMessages(
+    conversationId,
+    {},
+    { refetchInterval: 2_500, refetchIntervalInBackground: true }
+  );
+  const { data: conversationsResponse } = useConversations(
+    { limit: 100 },
+    { refetchInterval: 5_000, refetchIntervalInBackground: true }
+  );
   const sendMessage = useSendMessage();
   const markRead = useMarkConversationRead();
+  const markConversationComplete = useMarkConversationComplete();
   const uploadChatFile = useUploadChatFile();
 
   const messages = (() => {
@@ -114,17 +125,31 @@ export function VetChatDetailScreen() {
     return Array.isArray(list) ? list : [];
   })();
 
+  const selectedConversation = (() => {
+    const payload = conversationsResponse as { data?: { conversations?: Array<{ _id?: string; status?: string; conversationType?: string }> }; conversations?: Array<{ _id?: string; status?: string; conversationType?: string }> } | undefined;
+    const list = payload?.data?.conversations ?? payload?.conversations ?? [];
+    return Array.isArray(list) ? list.find((item) => String(item?._id ?? '') === String(conversationId ?? '')) ?? null : null;
+  })();
+  const isAppointmentChat = (selectedConversation?.conversationType ?? conversationType) === 'VETERINARIAN_PET_OWNER';
+  const isConversationCompleted = isAppointmentChat && String(selectedConversation?.status ?? '').toUpperCase() === 'COMPLETED';
+
   useEffect(() => {
-    if (!conversationId || lastMarkedReadRef.current === conversationId) return;
-    lastMarkedReadRef.current = conversationId;
+    const lastMessageId = String(messages[messages.length - 1]?._id ?? '');
+    const readKey = `${conversationId}:${lastMessageId}`;
+    if (!conversationId || !lastMessageId || lastMarkedReadRef.current === readKey) return;
+    lastMarkedReadRef.current = readKey;
     markRead.mutate(conversationId);
-  }, [conversationId, markRead]);
+  }, [conversationId, markRead, messages]);
 
   useEffect(() => {
     if (messages.length > 0) setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
   }, [messages.length]);
 
   const handleSend = async () => {
+    if (isConversationCompleted) {
+      Toast.show({ type: 'info', text1: t('chatExperience.completedTitle'), text2: t('chatExperience.completedDescription') });
+      return;
+    }
     const text = (message ?? '').trim();
     if (!text) return;
     if (!conversationId || !currentUserId) {
@@ -166,6 +191,10 @@ export function VetChatDetailScreen() {
 
   const handleAttach = async () => {
     try {
+      if (isConversationCompleted) {
+        Toast.show({ type: 'info', text1: t('chatExperience.completedTitle'), text2: t('chatExperience.completedDescription') });
+        return;
+      }
       if (!conversationId || !currentUserId) {
         Toast.show({ type: 'error', text1: t('vetChatDetail.errors.invalidConversation') });
         return;
@@ -241,6 +270,25 @@ export function VetChatDetailScreen() {
     return id ? String(id) === String(currentUserId) : false;
   };
 
+  const handleMarkConversationComplete = () => {
+    if (!conversationId || !isAppointmentChat || isConversationCompleted) return;
+    Alert.alert(t('chatExperience.confirmTitle'), t('chatExperience.confirmBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('chatExperience.confirmAction'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await markConversationComplete.mutateAsync(conversationId);
+            Toast.show({ type: 'success', text1: t('chatExperience.completedSuccess') });
+          } catch (completeError: unknown) {
+            Toast.show({ type: 'error', text1: (completeError as { message?: string })?.message ?? t('chatExperience.completeFailed') });
+          }
+        },
+      },
+    ]);
+  };
+
   if (!conversationId) {
     return (
       <ScreenContainer padded>
@@ -258,6 +306,24 @@ export function VetChatDetailScreen() {
         }}
         padded={false}
       >
+          {isConversationCompleted ? (
+            <View style={styles.completedBanner}>
+              <Ionicons name="lock-closed-outline" size={18} color={colors.warning} />
+              <View style={styles.completedBannerCopy}>
+                <Text style={styles.completedBannerTitle}>{t('chatExperience.completedTitle')}</Text>
+                <Text style={styles.completedBannerText}>{t('chatExperience.completedDescription')}</Text>
+              </View>
+            </View>
+          ) : isAppointmentChat ? (
+            <TouchableOpacity
+              style={styles.completeChatAction}
+              onPress={handleMarkConversationComplete}
+              disabled={markConversationComplete.isPending}
+            >
+              {markConversationComplete.isPending ? <ActivityIndicator size="small" color={colors.primary} /> : <Ionicons name="checkmark-done-outline" size={18} color={colors.primary} />}
+              <Text style={styles.completeChatActionText}>{t('chatExperience.completeButton')}</Text>
+            </TouchableOpacity>
+          ) : null}
           {messagesLoading ? (
             <View style={styles.centered}>
               <ActivityIndicator size="large" color={colors.primary} />
@@ -325,28 +391,30 @@ export function VetChatDetailScreen() {
           )}
           <View style={styles.inputRow}>
             <TouchableOpacity
-              style={styles.attachBtn}
+              style={[styles.attachBtn, isConversationCompleted && styles.attachBtnDisabled]}
               onPress={handleAttach}
-              disabled={uploadChatFile.isPending || sendMessage.isPending}
+              disabled={isConversationCompleted || uploadChatFile.isPending || sendMessage.isPending}
             >
-              <Text style={styles.attachIcon}>📎</Text>
+              <Ionicons name="attach-outline" size={22} color={isConversationCompleted ? colors.textLight : colors.primary} />
             </TouchableOpacity>
             <TextInput
-              style={styles.input}
-              placeholder={t('vetChatDetail.placeholders.message')}
+              style={[styles.input, isConversationCompleted && styles.inputDisabled]}
+              placeholder={isConversationCompleted ? t('chatExperience.readOnlyPlaceholder') : t('vetChatDetail.placeholders.message')}
               placeholderTextColor={colors.textLight}
               value={message}
               onChangeText={setMessage}
               multiline
+              submitBehavior="submit"
+              onSubmitEditing={() => { void handleSend(); }}
               maxLength={2000}
-              editable={!sendMessage.isPending}
+              editable={!isConversationCompleted && !sendMessage.isPending}
             />
             <TouchableOpacity
-              style={[styles.sendBtn, sendMessage.isPending && styles.sendBtnDisabled]}
+              style={[styles.sendBtn, (sendMessage.isPending || isConversationCompleted) && styles.sendBtnDisabled]}
               onPress={handleSend}
-              disabled={sendMessage.isPending || !(message ?? '').trim()}
+              disabled={isConversationCompleted || sendMessage.isPending || !(message ?? '').trim()}
             >
-              <Text style={styles.sendText}>{t('common.send')}</Text>
+              <Ionicons name="send" size={18} color={colors.textInverse} />
             </TouchableOpacity>
           </View>
       </ScreenContainer>
@@ -369,6 +437,12 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   screenWrap: { flex: 1 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  completedBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, margin: spacing.md, padding: spacing.md, borderRadius: 14, backgroundColor: colors.warningLight, borderWidth: 1, borderColor: colors.warning + '66' },
+  completedBannerCopy: { flex: 1 },
+  completedBannerTitle: { ...typography.label, color: colors.primaryDark, marginBottom: 3 },
+  completedBannerText: { ...typography.caption, color: colors.textSecondary, lineHeight: 17 },
+  completeChatAction: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, marginHorizontal: spacing.md, marginTop: spacing.md, marginBottom: spacing.xs, minHeight: 42, borderRadius: 13, borderWidth: 1, borderColor: colors.primaryLight + '80', backgroundColor: colors.primaryLight + '12' },
+  completeChatActionText: { ...typography.bodySmall, color: colors.primary, fontWeight: '800' },
   errorText: { ...typography.body, color: colors.error },
   messagesList: { paddingVertical: spacing.md, paddingHorizontal: spacing.md, paddingBottom: spacing.lg, flexGrow: 1 },
   empty: { paddingVertical: spacing.xl, alignItems: 'center' },
@@ -398,7 +472,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   attachBtn: { padding: spacing.sm, justifyContent: 'center' },
-  attachIcon: { fontSize: 20 },
+  attachBtnDisabled: { opacity: 0.55 },
   input: {
     flex: 1,
     borderWidth: 1,
@@ -409,6 +483,7 @@ const styles = StyleSheet.create({
     maxHeight: 100,
     ...typography.body,
   },
+  inputDisabled: { backgroundColor: colors.backgroundTertiary, color: colors.textSecondary },
   sendBtn: { backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: 24, justifyContent: 'center' },
   sendBtnDisabled: { opacity: 0.6 },
   sendText: { ...typography.label, color: colors.textInverse },

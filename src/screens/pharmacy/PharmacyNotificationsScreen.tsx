@@ -11,7 +11,8 @@ import { useNotifications } from '../../queries/notificationQueries';
 import { useMarkAllNotificationsRead, useMarkNotificationRead } from '../../mutations/notificationMutations';
 import { getErrorMessage } from '../../utils/errorUtils';
 import { useTranslation } from 'react-i18next';
-import i18n from '../../i18n/appI18n';
+import { Ionicons } from '@expo/vector-icons';
+import { formatNotificationDateTime } from '../../utils/dateTime';
 
 type Filter = 'all' | 'unread' | 'read';
 
@@ -44,17 +45,13 @@ function normalizeNotifications(response: unknown): NotificationItem[] {
     : [];
 }
 
-function formatTimeAgo(dateString: string | undefined, t: (key: string, opts?: any) => string): string {
-  if (!dateString) return t('pharmacyNotifications.time.justNow');
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-  if (diffInSeconds < 60) return t('pharmacyNotifications.time.justNow');
-  if (diffInSeconds < 3600) return t('pharmacyNotifications.time.minutesAgo', { count: Math.floor(diffInSeconds / 60) });
-  if (diffInSeconds < 86400) return t('pharmacyNotifications.time.hoursAgo', { count: Math.floor(diffInSeconds / 3600) });
-  if (diffInSeconds < 604800) return t('pharmacyNotifications.time.daysAgo', { count: Math.floor(diffInSeconds / 86400) });
-  const locale = i18n.language?.startsWith('it') ? 'it-IT' : 'en-GB';
-  return date.toLocaleDateString(locale);
+function notificationIcon(type?: string): keyof typeof Ionicons.glyphMap {
+  const normalized = String(type ?? '').toUpperCase();
+  if (normalized.includes('PAYMENT') || normalized.includes('PAYOUT')) return 'card-outline';
+  if (normalized.includes('PRESCRIPTION')) return 'document-text-outline';
+  if (normalized.includes('ORDER')) return 'bag-handle-outline';
+  if (normalized.includes('MESSAGE') || normalized.includes('CHAT')) return 'chatbubble-ellipses-outline';
+  return 'notifications-outline';
 }
 
 export function PharmacyNotificationsScreen() {
@@ -157,15 +154,15 @@ export function PharmacyNotificationsScreen() {
                 }
               }}
             >
-              <Card
-                style={{
-                  ...styles.itemCard,
-                  ...(!item.isRead ? styles.unread : {}),
-                }}
-              >
-                <Text style={styles.itemTitle}>{item.title || t('pharmacyNotifications.fallbackTitle')}</Text>
-                {item.body ? <Text style={styles.itemBody}>{item.body}</Text> : null}
-                <Text style={styles.itemTime}>{formatTimeAgo(item.createdAt, t)}</Text>
+              <Card style={[styles.itemCard, !item.isRead && styles.unread]}>
+                <View style={styles.itemRow}>
+                  <View style={[styles.typeIcon, !item.isRead && styles.typeIconUnread]}><Ionicons name={notificationIcon(item.type)} size={19} color={colors.primary} /></View>
+                  <View style={styles.itemCopy}>
+                    <View style={styles.titleRow}><Text style={[styles.itemTitle, !item.isRead && styles.itemTitleUnread]}>{item.title || t('pharmacyNotifications.fallbackTitle')}</Text>{!item.isRead ? <View style={styles.unreadDot} /> : null}</View>
+                    {item.body ? <Text style={styles.itemBody}>{item.body}</Text> : null}
+                    <Text style={styles.itemTime}>{formatNotificationDateTime(item.createdAt)}</Text>
+                  </View>
+                </View>
               </Card>
             </TouchableOpacity>
           )}
@@ -188,9 +185,11 @@ const styles = StyleSheet.create({
   center: { paddingVertical: spacing.xxl, alignItems: 'center' },
   emptyText: { ...typography.bodySmall, color: colors.textSecondary },
   list: { paddingBottom: spacing.xxl },
-  itemCard: { marginBottom: spacing.sm },
-  unread: { backgroundColor: colors.primaryLight + '12' },
+  itemCard: { marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.borderLight },
+  unread: { backgroundColor: colors.primaryLight + '10', borderColor: colors.primaryLight + '38' },
+  itemRow: { flexDirection: 'row', alignItems: 'flex-start' }, typeIcon: { width: 40, height: 40, borderRadius: 13, backgroundColor: colors.backgroundSecondary, alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm }, typeIconUnread: { backgroundColor: colors.primaryLight + '22' }, itemCopy: { flex: 1 }, titleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 }, unreadDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.primary },
   itemTitle: { ...typography.label },
+  itemTitleUnread: { color: colors.primaryDark, fontWeight: '800' },
   itemBody: { ...typography.bodySmall, marginTop: 4 },
   itemTime: { ...typography.caption, color: colors.textSecondary, marginTop: 6 },
 });

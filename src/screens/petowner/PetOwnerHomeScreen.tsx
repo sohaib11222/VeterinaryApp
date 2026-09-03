@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
@@ -24,9 +25,12 @@ export function PetOwnerHomeScreen() {
   const { t } = useTranslation();
   const userId = (user as { id?: string })?.id ?? (user as { _id?: string })?._id ?? null;
 
-  const dashboardQuery = usePetOwnerDashboard({ enabled: !!userId });
+  const dashboardQuery = usePetOwnerDashboard({ enabled: !!userId, refetchInterval: 15_000, refetchIntervalInBackground: true });
   const { data: favoritesData } = useFavorites(userId, { limit: 10 });
-  const { data: appointmentsResponse } = useAppointments({ limit: 20 });
+  const { data: appointmentsResponse } = useAppointments(
+    { limit: 20 },
+    { refetchInterval: 15_000, refetchIntervalInBackground: true }
+  );
 
   const dashboard = useMemo(() => {
     const outer = (dashboardQuery.data as { data?: unknown })?.data ?? dashboardQuery.data;
@@ -108,7 +112,7 @@ export function PetOwnerHomeScreen() {
 
         {unreadNotificationsCount > 0 ? (
           <TouchableOpacity style={styles.noticeBanner} onPress={() => stackNav?.navigate('PetOwnerNotifications')} activeOpacity={0.8}>
-            <Text style={styles.noticeIcon}>🔔</Text>
+            <View style={styles.noticeIconWrap}><Ionicons name="notifications-outline" size={19} color={colors.secondaryDark} /></View>
             <View style={{ flex: 1 }}>
               <Text style={styles.noticeTitle}>
                 {t('petOwnerHome.notifications.title', { count: unreadNotificationsCount })}
@@ -121,33 +125,33 @@ export function PetOwnerHomeScreen() {
 
         <TouchableOpacity style={styles.bookCta} onPress={() => stackNav?.navigate('PetOwnerSearch')} activeOpacity={0.85}>
           <View style={styles.bookCtaIconWrap}>
-            <Text style={styles.bookCtaIcon}>📅</Text>
+            <Ionicons name="calendar-outline" size={23} color={colors.textInverse} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.bookCtaTitle}>{t('petOwnerHome.cta.bookAppointmentTitle')}</Text>
             <Text style={styles.bookCtaSub}>{t('petOwnerHome.cta.bookAppointmentSubtitle')}</Text>
           </View>
-          <Text style={styles.bookCtaChevron}>›</Text>
+            <Ionicons name="arrow-forward" size={21} color="rgba(255,255,255,0.9)" />
         </TouchableOpacity>
 
         <View style={styles.statsGrid}>
           <View style={[styles.statTile, { backgroundColor: colors.primary + '10' }]}>
-            <Text style={styles.statTileIcon}>🐾</Text>
+            <Ionicons name="paw-outline" size={20} color={colors.primary} style={styles.statTileIcon} />
             <Text style={styles.statTileValue}>{petsCount}</Text>
             <Text style={styles.statTileLabel}>{t('menu.myPets')}</Text>
           </View>
           <View style={[styles.statTile, { backgroundColor: colors.secondary + '18' }]}>
-            <Text style={styles.statTileIcon}>📅</Text>
+            <Ionicons name="calendar-outline" size={20} color={colors.secondaryDark} style={styles.statTileIcon} />
             <Text style={styles.statTileValue}>{upcomingCount}</Text>
             <Text style={styles.statTileLabel}>{t('appointments.tabs.upcoming')}</Text>
           </View>
           <View style={[styles.statTile, { backgroundColor: colors.accent + '14' }]}>
-            <Text style={styles.statTileIcon}>⭐</Text>
+            <Ionicons name="star-outline" size={20} color={colors.primary} style={styles.statTileIcon} />
             <Text style={styles.statTileValue}>{favoriteVeterinariansCount}</Text>
             <Text style={styles.statTileLabel}>{t('menu.favoriteVets')}</Text>
           </View>
           <View style={[styles.statTile, { backgroundColor: colors.info + '12' }]}>
-            <Text style={styles.statTileIcon}>🏥</Text>
+            <Ionicons name="medical-outline" size={20} color={colors.info} style={styles.statTileIcon} />
             <Text style={styles.statTileValue}>{totalVeterinariansVisited}</Text>
             <Text style={styles.statTileLabel}>{t('petOwnerHome.stats.clinicsVisited')}</Text>
           </View>
@@ -185,7 +189,7 @@ export function PetOwnerHomeScreen() {
                   <Text style={styles.vetTitle}>{v.title}</Text>
                 </View>
                 <TouchableOpacity onPress={() => stackNav?.navigate('PetOwnerBooking', { vetId: v.id })}>
-                  <Text style={styles.calIcon}>📅</Text>
+                  <Ionicons name="calendar-outline" size={21} color={colors.primary} />
                 </TouchableOpacity>
               </TouchableOpacity>
             ))
@@ -225,7 +229,7 @@ export function PetOwnerHomeScreen() {
                   <Text style={styles.aptVet}>{a.vet}</Text>
                   <Text style={styles.aptPet}>{a.pet}</Text>
                 </View>
-                <Text style={styles.chevron}>›</Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.textLight} />
               </TouchableOpacity>
             ))
           )}
@@ -253,19 +257,19 @@ export function PetOwnerHomeScreen() {
 
         <View style={styles.quickGrid}>
           <TouchableOpacity style={styles.quickItem} onPress={() => stackNav?.navigate('PetOwnerMyPets')}>
-            <Text style={styles.quickIcon}>🐾</Text>
+            <Ionicons name="paw-outline" size={25} color={colors.primary} style={styles.quickIcon} />
             <Text style={styles.quickLabel}>{t('menu.myPets')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.quickItem} onPress={() => stackNav?.navigate('PetOwnerMedicalRecords')}>
-            <Text style={styles.quickIcon}>📋</Text>
+            <Ionicons name="document-text-outline" size={25} color={colors.primary} style={styles.quickIcon} />
             <Text style={styles.quickLabel}>{t('menu.petMedicalRecords')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.quickItem} onPress={() => stackNav?.navigate('PetOwnerOrderHistory')}>
-            <Text style={styles.quickIcon}>🛒</Text>
+            <Ionicons name="bag-handle-outline" size={25} color={colors.primary} style={styles.quickIcon} />
             <Text style={styles.quickLabel}>{t('menu.petSupplyOrders')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.quickItem} onPress={() => stackNav?.navigate('PetOwnerClinicMap')}>
-            <Text style={styles.quickIcon}>📍</Text>
+            <Ionicons name="location-outline" size={25} color={colors.primary} style={styles.quickIcon} />
             <Text style={styles.quickLabel}>{t('menu.nearbyClinics')}</Text>
           </TouchableOpacity>
         </View>
@@ -291,7 +295,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.secondary + '40',
   },
-  noticeIcon: { fontSize: 18, marginRight: spacing.sm },
+  noticeIconWrap: { width: 34, height: 34, borderRadius: 12, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm },
   noticeTitle: { ...typography.label, color: colors.text },
   noticeSub: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
   noticeChevron: { ...typography.h3, color: colors.textSecondary, marginLeft: spacing.sm },
@@ -312,10 +316,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: spacing.md,
   },
-  bookCtaIcon: { fontSize: 22 },
   bookCtaTitle: { ...typography.h3, color: colors.textInverse },
   bookCtaSub: { ...typography.caption, color: 'rgba(255,255,255,0.92)', marginTop: 2 },
-  bookCtaChevron: { ...typography.h2, color: 'rgba(255,255,255,0.85)', marginLeft: spacing.sm },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -329,7 +331,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderLight,
   },
-  statTileIcon: { fontSize: 18, marginBottom: spacing.xs },
+  statTileIcon: { marginBottom: spacing.xs },
   statTileValue: { ...typography.h2, fontWeight: '800', color: colors.text },
   statTileLabel: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
   loadingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.lg },
@@ -343,7 +345,6 @@ const styles = StyleSheet.create({
   vetInfo: { flex: 1 },
   vetName: { ...typography.body, fontWeight: '600' },
   vetTitle: { ...typography.caption, color: colors.textSecondary },
-  calIcon: { fontSize: 20 },
   aptRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
   aptTime: { marginRight: spacing.md, minWidth: 56, alignItems: 'center' },
   aptTimeText: { ...typography.h3, color: colors.primary },
@@ -351,11 +352,10 @@ const styles = StyleSheet.create({
   aptInfo: { flex: 1 },
   aptVet: { ...typography.body, fontWeight: '600' },
   aptPet: { ...typography.bodySmall, color: colors.textSecondary },
-  chevron: { ...typography.h2, color: colors.textLight },
   empty: { ...typography.bodySmall, color: colors.textSecondary, textAlign: 'center', paddingVertical: spacing.md },
   quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.lg },
   quickItem: { width: '48%', backgroundColor: colors.background, borderRadius: 12, padding: spacing.md, alignItems: 'center', minHeight: 88 },
-  quickIcon: { fontSize: 28, marginBottom: spacing.xs },
+  quickIcon: { marginBottom: spacing.xs },
   quickLabel: { ...typography.caption, color: colors.text, textAlign: 'center' },
   bottomSpacer: { height: spacing.xl },
   insightsCard: { marginTop: spacing.sm },

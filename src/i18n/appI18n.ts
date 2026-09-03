@@ -47,6 +47,51 @@ const resources = {
           passwordsMustMatch: 'Passwords must match',
         },
       },
+      authExperience: {
+        login: {
+          welcomeBack: 'Welcome back',
+          continueCare: 'Sign in to continue caring for every pet.',
+          secureAccess: 'Secure access to your pet care network',
+        },
+        register: {
+          createAccount: 'Create your care account',
+          protectedInfo: 'Your information is protected with secure medical-grade care.',
+          professionals: 'Join as a professional',
+          professionalsDescription: 'Set up a verified practice, pharmacy or parapharmacy account.',
+        },
+        password: {
+          recovery: 'Password recovery',
+          recoveryDescription: 'We will send a secure reset link to your email address.',
+          resetSent: 'Your reset link is on its way.',
+          checkInbox: 'Check your inbox',
+          checkInboxDescription: 'Open the reset message and follow the secure link to choose a new password.',
+        },
+        phone: {
+          securityNotice: 'A quick verification keeps your professional account secure.',
+          codeHint: 'Enter the verification code sent to your phone.',
+          noCode: 'Did not receive a code?',
+          nextTitle: 'Next: document verification',
+          nextDescription: 'Once your phone is verified, upload your business documents for review.',
+        },
+        documents: {
+          professionalIntro: 'Submit clear professional documents so the care team can verify your credentials.',
+          pharmacyIntro: 'Upload clear, current copies. Your documents are reviewed securely before approval.',
+          uploadTitle: 'Upload documents',
+          doctorUploadTitle: 'Upload your credentials',
+          allRequired: 'Each document is required for verification.',
+          requiredMarked: 'Required documents are marked clearly below.',
+          requiredForVerification: 'Required for verification',
+          optionalSupporting: 'Optional supporting document',
+          required: 'REQUIRED',
+          selectFile: 'Select a file to upload',
+          supportedFiles: 'PDF, image or supported document',
+          readyToSubmit: 'Ready to submit',
+        },
+        pending: {
+          checkingDescription: 'Checking the latest status of your professional account.',
+          progress: 'Verification progress',
+        },
+      },
       authLogin: {
         title: 'PetCare Login',
         subtitle: 'Access your pet health dashboard',
@@ -245,6 +290,14 @@ const resources = {
         },
       },
       vetClinicHours: {
+        title: 'Clinic Hours',
+        subtitle: 'Set clear booking windows for pet owners.',
+        scheduleTitle: 'Weekly availability',
+        scheduleSummary: '{{count}} of 7 days have availability',
+        open: 'Open',
+        closed: 'Closed',
+        available: 'Available',
+        removeSlot: 'Remove time slot',
         loading: 'Loading clinic hours...',
         addSlot: 'Add slot',
         noSlots: 'No slots. Add slots to set availability.',
@@ -267,6 +320,7 @@ const resources = {
           endLabel: 'End time (e.g. 17:00)',
           startPlaceholder: '09:00',
           endPlaceholder: '17:00',
+          invalidRange: 'Enter a valid time range. The end time must be after the start time.',
           saving: 'Saving...',
           save: 'Save slot',
         },
@@ -304,10 +358,18 @@ const resources = {
         },
       },
       vetInvoices: {
+        subtitle: 'Payment records for your completed appointments.',
         searchPlaceholder: 'Search by invoice #, pet or owner...',
         filters: {
           all: 'All',
+          status: 'Payment status',
+          period: 'Period',
+          reset: 'Reset',
         },
+        ranges: { ALL: 'All time', '30_DAYS': 'Last 30 days', '90_DAYS': 'Last 90 days', THIS_YEAR: 'This year' },
+        status: { SUCCESS: 'Paid', PENDING: 'Pending', FAILED: 'Failed', REFUNDED: 'Refunded' },
+        actions: { downloadPdf: 'PDF', preparing: 'Preparing…' },
+        pagination: { previous: 'Previous', next: 'Next', pageOf: 'Page {{page}} of {{pages}}' },
         labels: {
           consultation: 'Consultation',
           pet: 'Pet',
@@ -316,11 +378,19 @@ const resources = {
         empty: 'No invoices match',
         errors: {
           loadFailed: 'Failed to load invoices',
+          downloadFailed: 'Unable to download the invoice',
         },
       },
       vetInvoiceView: {
         notFound: 'Invoice not found',
         labels: {
+          invoice: 'Veterinary invoice',
+          issued: 'Issued',
+          paymentMethod: 'Payment method',
+          transactionId: 'Transaction ID',
+          parties: 'Billed to',
+          consultationTotal: 'Consultation total',
+          paymentInformation: 'Payment information',
           invoiceTransaction: 'Invoice / Transaction',
           amount: 'Amount',
           status: 'Status',
@@ -331,6 +401,8 @@ const resources = {
         },
       },
       vetPaymentSettings: {
+        title: 'Payment settings',
+        subtitle: 'Manage your balance and payout requests.',
         status: {
           approved: 'Approved',
           pending: 'Pending',
@@ -427,6 +499,9 @@ const resources = {
         },
       },
       vetVaccinations: {
+        recordCount_one: '{{count}} vaccination record',
+        recordCount_other: '{{count}} vaccination records',
+        batch: 'Batch: {{value}}',
         searchPlaceholder: 'Search by pet or owner...',
         filters: {
           all: 'All',
@@ -449,6 +524,7 @@ const resources = {
         },
       },
       vetReviews: {
+        noWrittenFeedback: 'No written feedback was provided.',
         searchPlaceholder: 'Search by owner or pet...',
         count_one: '{{count}} review',
         count_other: '{{count}} reviews',
@@ -557,6 +633,7 @@ const resources = {
         },
       },
       vetProfileSettings: {
+        subtitle: 'Manage your professional profile',
         loading: 'Loading profile...',
         tabs: {
           basicDetails: 'Basic Details',
@@ -630,6 +707,19 @@ const resources = {
           couldNotOpenFile: 'Could not open file',
         },
       },
+      chatExperience: {
+        completedTitle: 'Chat completed',
+        completedDescription: 'The veterinarian marked this appointment chat as completed. Previous messages remain available, but new messages and files cannot be sent.',
+        completeButton: 'Mark chat as completed',
+        confirmTitle: 'Complete this chat?',
+        confirmBody: 'This closes messaging for the current appointment. A future confirmed appointment with this pet owner can reopen the same conversation.',
+        confirmAction: 'Mark completed',
+        completedSuccess: 'Chat marked as completed',
+        completeFailed: 'Unable to mark chat as completed',
+        readOnlyPlaceholder: 'This chat has been marked as completed',
+        emptyTitle: 'No messages yet',
+        emptyDescription: 'Messages from this appointment will appear here.',
+      },
       vetAdminChat: {
         loading: 'Opening admin chat...',
         empty: 'No messages yet. Say hello to support.',
@@ -692,6 +782,10 @@ const resources = {
         },
       },
       vetSubscription: {
+        title: 'Your subscription',
+        subtitle: 'Choose the plan that fits your practice.',
+        duration_one: '{{count}} day coverage',
+        duration_other: '{{count}} days coverage',
         sectionTitle: 'Subscription Plans',
         currentPlan: 'Current Plan: {{plan}}',
         noActivePlan: 'No active plan',
@@ -1071,6 +1165,8 @@ const resources = {
         },
       },
       pets: {
+        count_one: '{{count}} pet in your care',
+        count_other: '{{count}} pets in your care',
         searchPlaceholder: 'Search by pet or owner name...',
         tabs: {
           active: 'Active',
@@ -1317,6 +1413,7 @@ const resources = {
         requestReschedule: {
           title: 'Request Reschedule',
           subtitle: 'Select a missed online appointment and submit your request.',
+          selectedAppointment: 'Selected missed appointment',
           loadingEligible: 'Loading eligible appointments...',
           empty: 'No appointments are eligible for reschedule.',
           fields: {
@@ -1998,7 +2095,26 @@ const resources = {
       },
       petOwnerInvoices: {
         searchPlaceholder: 'Search invoices...',
+        subtitle: 'Payment records for your veterinary appointments',
         empty: 'No invoices found',
+        filters: {
+          status: 'Payment status',
+          period: 'Date range',
+          reset: 'Reset',
+        },
+        ranges: {
+          ALL: 'All time',
+          '30_DAYS': 'Last 30 days',
+          '90_DAYS': 'Last 90 days',
+          THIS_YEAR: 'This year',
+        },
+        actions: {
+          downloadPdf: 'Download PDF',
+          preparing: 'Preparing',
+        },
+        errors: {
+          downloadFailed: 'Unable to download this invoice',
+        },
         defaults: {
           appointment: 'Appointment',
         },
@@ -2012,6 +2128,7 @@ const resources = {
           date: 'Date',
           appointment: 'Appointment',
           veterinarian: 'Veterinarian',
+          total: 'Total',
         },
         pagination: {
           prev: 'Prev',
@@ -2025,6 +2142,8 @@ const resources = {
         meta: {
           order: 'Order:',
           issued: 'Issued:',
+          transactionId: 'Transaction ID',
+          paymentStatus: 'Payment status',
         },
         sections: {
           from: 'Invoice From',
@@ -2113,6 +2232,9 @@ const resources = {
         },
       },
       petOwnerOrders: {
+        title: 'Your orders',
+        subtitle: 'Track purchases, delivery and payment updates',
+        searchPlaceholder: 'Search an order, pharmacy or product',
         defaults: {
           pharmacy: 'Pharmacy',
         },
@@ -2169,6 +2291,8 @@ const resources = {
             items: 'Order Items',
             shippingAddress: 'Shipping Address',
             summary: 'Order Summary',
+            pharmacy: 'Pharmacy / seller',
+            payment: 'Payment',
           },
           defaults: {
             product: 'Product',
@@ -2176,6 +2300,14 @@ const resources = {
           item: {
             quantity: 'Quantity: {{qty}}',
             eachPrice: '€{{price}} each',
+            prescription: 'Prescription item',
+          },
+          payment: {
+            method: 'Payment method',
+            transaction: 'Transaction',
+          },
+          shipping: {
+            status: 'Delivery status: {{status}}',
           },
           totals: {
             subtotal: 'Subtotal',
@@ -2202,6 +2334,20 @@ const resources = {
         fromThisPharmacySuffix: ' from this pharmacy',
         results: 'Showing {{count}} products{{suffix}}',
         empty: 'No products found. Try adjusting your search or category.',
+        labels: {
+          categories: 'Categories',
+          sortBy: 'Sort by',
+        },
+        sort: {
+          FEATURED: 'Featured',
+          PRICE_ASC: 'Lowest price',
+          PRICE_DESC: 'Highest price',
+          IN_STOCK: 'Availability',
+        },
+        stock: {
+          available: '{{count}} available',
+          out: 'Out of stock',
+        },
         defaults: {
           product: 'Product',
         },
@@ -2394,26 +2540,56 @@ const resources = {
         soldBy: 'Sold by {{soldByName}}',
         sections: {
           productDetails: 'Product details',
+          selectedVariant: 'Selected variant',
+          availableVariants: 'Available variants',
+          medicineInformation: 'Medicine information',
+          parapharmacyInformation: 'Product information',
         },
         labels: {
           description: 'Description',
           category: 'Category',
           quantity: 'Quantity',
+          chooseVariant: 'Choose a pack or variant',
+          variant: 'Variant',
+          strength: 'Strength',
+          dosageForm: 'Dosage form',
+          productFormat: 'Product format',
+          package: 'Package',
+          units: 'units',
+          medicine: 'Veterinary medicine',
+          parapharmacyProduct: 'Parapharmacy product',
+          activeIngredients: 'Active ingredient(s)',
+          administrationRoute: 'Administration route',
+          targetSpecies: 'Target species',
+          indications: 'Indications',
+          dosageInstructions: 'Dosage and administration',
+          warnings: 'Warnings',
+          storage: 'Storage instructions',
+          manufacturer: 'Manufacturer',
+          productClass: 'Product class',
+          lifeStage: 'Life stage',
+          ingredients: 'Ingredients',
+          allergens: 'Allergen information',
+          usageInstructions: 'Usage instructions',
         },
         actions: {
           addToCart: 'Add to cart',
           buyNow: 'Buy now',
+          uploadPrescription: 'Upload prescription',
+          uploadingPrescription: 'Uploading prescription…',
         },
         defaults: {
           pharmacy: 'Pharmacy',
           product: 'Product',
           noDescription: 'No description.',
+          standardPack: 'Standard pack',
         },
         discountOff: '{{percent}}% off',
         stock: {
           inStock: 'In stock',
           inStockWithCount: 'In stock ({{count}})',
           outOfStock: 'Out of stock',
+          unavailable: 'Unavailable',
         },
         specs: {
           sku: 'SKU',
@@ -2423,6 +2599,22 @@ const resources = {
         },
         errors: {
           notFound: 'Product not found.',
+          prescriptionTooLarge: 'Prescription file must be 15 MB or smaller.',
+          prescriptionSubmitFailed: 'Could not submit your prescription.',
+          uploadFailed: 'Prescription upload failed.',
+        },
+        toasts: {
+          addedToCart: 'Added to cart',
+          prescriptionSubmitted: 'Prescription submitted for pharmacy review.',
+        },
+        prescription: {
+          required: 'Prescription required',
+          title: 'Prescription approval',
+          checking: 'Checking your approval status…',
+          approved: 'Approved — this variant is ready to purchase.',
+          pending: 'Your prescription is under pharmacy review.',
+          rejected: 'Your prescription was not approved. Upload a new file to try again.',
+          help: 'Upload a valid prescription. Purchasing unlocks after pharmacy approval.',
         },
       },
       pharmacyProducts: {
@@ -2985,6 +3177,28 @@ const resources = {
           parapharmacy: 'Parapharmacy',
         },
       },
+      moreMenu: {
+        account: 'Account',
+        pharmacySettings: 'Pharmacy settings',
+        parapharmacySettings: 'Parapharmacy settings',
+        preferences: 'Preferences',
+        descriptions: {
+          petProfiles: 'Profiles, photos and everyday care',
+          medicalRecords: 'Records, vaccines and prescriptions',
+          weightHistory: 'Track your pet’s progress',
+          favouriteVets: 'Veterinarians you have saved',
+          petRequests: 'Patient requests waiting for review',
+          clinicHours: 'Availability and clinic schedule',
+          patientProfiles: 'Your patient profiles',
+          vaccinations: 'Vaccination records and reminders',
+          invoices: 'Appointment invoices and documents',
+          paymentSettings: 'Payout and payment preferences',
+          vetProfile: 'Professional and clinic details',
+          storeProfile: 'Business details, logo and address',
+          subscription: 'Plan and subscription status',
+          payouts: 'Balance and withdrawal history',
+        },
+      },
       menu: {
         myPets: 'My Pets',
         petMedicalRecords: 'Pet Medical Records',
@@ -3071,6 +3285,51 @@ const resources = {
           nameMaxLength: 'Il nome deve essere inferiore a {{count}} caratteri',
           phoneRequired: 'Telefono richiesto',
           passwordsMustMatch: 'Le password devono coincidere',
+        },
+      },
+      authExperience: {
+        login: {
+          welcomeBack: 'Bentornato',
+          continueCare: 'Accedi per continuare a prenderti cura di ogni pet.',
+          secureAccess: 'Accesso sicuro alla tua rete di cura per animali',
+        },
+        register: {
+          createAccount: 'Crea il tuo account di cura',
+          protectedInfo: 'Le tue informazioni sono protette con sicurezza di livello sanitario.',
+          professionals: 'Unisciti come professionista',
+          professionalsDescription: 'Configura un account verificato per studio, farmacia o parafarmacia.',
+        },
+        password: {
+          recovery: 'Recupero password',
+          recoveryDescription: 'Ti invieremo un link sicuro per reimpostare la password.',
+          resetSent: 'Il link per il reset è stato inviato.',
+          checkInbox: 'Controlla la tua casella email',
+          checkInboxDescription: 'Apri il messaggio di reset e segui il link sicuro per scegliere una nuova password.',
+        },
+        phone: {
+          securityNotice: 'Una rapida verifica protegge il tuo account professionale.',
+          codeHint: 'Inserisci il codice di verifica inviato al tuo telefono.',
+          noCode: 'Non hai ricevuto il codice?',
+          nextTitle: 'Successivo: verifica documenti',
+          nextDescription: 'Dopo la verifica del telefono, carica i documenti aziendali per la revisione.',
+        },
+        documents: {
+          professionalIntro: 'Invia documenti professionali chiari affinché il team possa verificare le tue credenziali.',
+          pharmacyIntro: 'Carica copie chiare e aggiornate. I documenti vengono esaminati in sicurezza prima dell’approvazione.',
+          uploadTitle: 'Carica documenti',
+          doctorUploadTitle: 'Carica le tue credenziali',
+          allRequired: 'Ogni documento è necessario per la verifica.',
+          requiredMarked: 'I documenti obbligatori sono indicati chiaramente qui sotto.',
+          requiredForVerification: 'Obbligatorio per la verifica',
+          optionalSupporting: 'Documento di supporto facoltativo',
+          required: 'OBBLIGATORIO',
+          selectFile: 'Seleziona un file da caricare',
+          supportedFiles: 'PDF, immagine o documento supportato',
+          readyToSubmit: 'Pronto per l’invio',
+        },
+        pending: {
+          checkingDescription: 'Stiamo controllando lo stato più recente del tuo account professionale.',
+          progress: 'Avanzamento della verifica',
         },
       },
       authLogin: {
@@ -3271,6 +3530,14 @@ const resources = {
         },
       },
       vetClinicHours: {
+        title: 'Orari della clinica',
+        subtitle: 'Definisci finestre di prenotazione chiare per i proprietari.',
+        scheduleTitle: 'Disponibilità settimanale',
+        scheduleSummary: '{{count}} giorni su 7 con disponibilità',
+        open: 'Aperto',
+        closed: 'Chiuso',
+        available: 'Disponibile',
+        removeSlot: 'Rimuovi fascia oraria',
         loading: 'Caricamento orari clinica...',
         addSlot: 'Aggiungi fascia',
         noSlots: 'Nessuna fascia. Aggiungi fasce per impostare la disponibilità.',
@@ -3293,11 +3560,15 @@ const resources = {
           endLabel: 'Ora fine (es. 17:00)',
           startPlaceholder: '09:00',
           endPlaceholder: '17:00',
+          invalidRange: 'Inserisci un intervallo valido. L’ora di fine deve essere successiva all’ora di inizio.',
           saving: 'Salvataggio...',
           save: 'Salva fascia',
         },
       },
       vetVaccinations: {
+        recordCount_one: '{{count}} record vaccinale',
+        recordCount_other: '{{count}} record vaccinali',
+        batch: 'Lotto: {{value}}',
         searchPlaceholder: 'Cerca per animale o proprietario...',
         filters: {
           all: 'Tutti',
@@ -3320,6 +3591,7 @@ const resources = {
         },
       },
       vetReviews: {
+        noWrittenFeedback: 'Non è stato fornito alcun commento scritto.',
         searchPlaceholder: 'Cerca per proprietario o animale...',
         count_one: '{{count}} recensione',
         count_other: '{{count}} recensioni',
@@ -3370,10 +3642,18 @@ const resources = {
         },
       },
       vetInvoices: {
+        subtitle: 'Registri di pagamento per gli appuntamenti completati.',
         searchPlaceholder: 'Cerca per fattura, animale o proprietario...',
         filters: {
           all: 'Tutti',
+          status: 'Stato del pagamento',
+          period: 'Periodo',
+          reset: 'Reimposta',
         },
+        ranges: { ALL: 'Tutto il periodo', '30_DAYS': 'Ultimi 30 giorni', '90_DAYS': 'Ultimi 90 giorni', THIS_YEAR: 'Quest’anno' },
+        status: { SUCCESS: 'Pagato', PENDING: 'In attesa', FAILED: 'Non riuscito', REFUNDED: 'Rimborsato' },
+        actions: { downloadPdf: 'PDF', preparing: 'Preparazione…' },
+        pagination: { previous: 'Precedente', next: 'Successivo', pageOf: 'Pagina {{page}} di {{pages}}' },
         labels: {
           consultation: 'Consulenza',
           pet: 'Animale',
@@ -3382,11 +3662,19 @@ const resources = {
         empty: 'Nessuna fattura corrisponde',
         errors: {
           loadFailed: 'Impossibile caricare le fatture',
+          downloadFailed: 'Impossibile scaricare la fattura',
         },
       },
       vetInvoiceView: {
         notFound: 'Fattura non trovata',
         labels: {
+          invoice: 'Fattura veterinaria',
+          issued: 'Emessa',
+          paymentMethod: 'Metodo di pagamento',
+          transactionId: 'ID transazione',
+          parties: 'Intestata a',
+          consultationTotal: 'Totale consulenza',
+          paymentInformation: 'Informazioni pagamento',
           invoiceTransaction: 'Fattura / Transazione',
           amount: 'Importo',
           status: 'Stato',
@@ -3397,6 +3685,8 @@ const resources = {
         },
       },
       vetPaymentSettings: {
+        title: 'Impostazioni di pagamento',
+        subtitle: 'Gestisci saldo e richieste di prelievo.',
         status: {
           approved: 'Approvato',
           pending: 'In attesa',
@@ -3583,6 +3873,7 @@ const resources = {
         },
       },
       vetProfileSettings: {
+        subtitle: 'Gestisci il tuo profilo professionale',
         loading: 'Caricamento profilo...',
         tabs: {
           basicDetails: 'Dati di base',
@@ -3656,6 +3947,19 @@ const resources = {
           couldNotOpenFile: 'Impossibile aprire il file',
         },
       },
+      chatExperience: {
+        completedTitle: 'Chat completata',
+        completedDescription: 'Il veterinario ha contrassegnato questa chat dell’appuntamento come completata. I messaggi precedenti restano disponibili, ma non è possibile inviare nuovi messaggi o file.',
+        completeButton: 'Segna chat come completata',
+        confirmTitle: 'Completare questa chat?',
+        confirmBody: 'Questa azione chiude i messaggi per l’appuntamento attuale. Un futuro appuntamento confermato con questo proprietario può riaprire la stessa conversazione.',
+        confirmAction: 'Segna completata',
+        completedSuccess: 'Chat contrassegnata come completata',
+        completeFailed: 'Impossibile contrassegnare la chat come completata',
+        readOnlyPlaceholder: 'Questa chat è stata contrassegnata come completata',
+        emptyTitle: 'Nessun messaggio ancora',
+        emptyDescription: 'Qui appariranno i messaggi di questo appuntamento.',
+      },
       vetAdminChat: {
         loading: 'Apertura chat admin...',
         empty: 'Nessun messaggio. Scrivi al supporto.',
@@ -3718,6 +4022,10 @@ const resources = {
         },
       },
       vetSubscription: {
+        title: 'Il tuo abbonamento',
+        subtitle: 'Scegli il piano più adatto alla tua attività.',
+        duration_one: 'Copertura di {{count}} giorno',
+        duration_other: 'Copertura di {{count}} giorni',
         sectionTitle: 'Piani di abbonamento',
         currentPlan: 'Piano attuale: {{plan}}',
         noActivePlan: 'Nessun piano attivo',
@@ -4097,6 +4405,8 @@ const resources = {
         },
       },
       pets: {
+        count_one: '{{count}} animale in cura',
+        count_other: '{{count}} animali in cura',
         searchPlaceholder: 'Cerca per animale o proprietario...',
         tabs: {
           active: 'Attivi',
@@ -4343,6 +4653,7 @@ const resources = {
         requestReschedule: {
           title: 'Richiedi riprogrammazione',
           subtitle: 'Seleziona un appuntamento online perso e invia la richiesta.',
+          selectedAppointment: 'Appuntamento perso selezionato',
           loadingEligible: 'Caricamento appuntamenti idonei...',
           empty: 'Nessun appuntamento è idoneo alla riprogrammazione.',
           fields: {
@@ -5024,7 +5335,26 @@ const resources = {
       },
       petOwnerInvoices: {
         searchPlaceholder: 'Cerca fatture...',
+        subtitle: 'Registri di pagamento per i tuoi appuntamenti veterinari',
         empty: 'Nessuna fattura trovata',
+        filters: {
+          status: 'Stato del pagamento',
+          period: 'Periodo',
+          reset: 'Reimposta',
+        },
+        ranges: {
+          ALL: 'Tutto il periodo',
+          '30_DAYS': 'Ultimi 30 giorni',
+          '90_DAYS': 'Ultimi 90 giorni',
+          THIS_YEAR: 'Quest’anno',
+        },
+        actions: {
+          downloadPdf: 'Scarica PDF',
+          preparing: 'Preparo',
+        },
+        errors: {
+          downloadFailed: 'Impossibile scaricare questa fattura',
+        },
         defaults: {
           appointment: 'Appuntamento',
         },
@@ -5038,6 +5368,7 @@ const resources = {
           date: 'Data',
           appointment: 'Appuntamento',
           veterinarian: 'Veterinario',
+          total: 'Totale',
         },
         pagination: {
           prev: 'Prec',
@@ -5051,6 +5382,8 @@ const resources = {
         meta: {
           order: 'Ordine:',
           issued: 'Emessa:',
+          transactionId: 'ID transazione',
+          paymentStatus: 'Stato pagamento',
         },
         sections: {
           from: 'Fattura da',
@@ -5139,6 +5472,9 @@ const resources = {
         },
       },
       petOwnerOrders: {
+        title: 'I tuoi ordini',
+        subtitle: 'Segui acquisti, consegne e pagamenti',
+        searchPlaceholder: 'Cerca ordine, farmacia o prodotto',
         defaults: {
           pharmacy: 'Farmacia',
         },
@@ -5195,6 +5531,8 @@ const resources = {
             items: 'Articoli ordine',
             shippingAddress: 'Indirizzo di spedizione',
             summary: 'Riepilogo ordine',
+            pharmacy: 'Farmacia / venditore',
+            payment: 'Pagamento',
           },
           defaults: {
             product: 'Prodotto',
@@ -5202,6 +5540,14 @@ const resources = {
           item: {
             quantity: 'Quantità: {{qty}}',
             eachPrice: '€{{price}} ciascuno',
+            prescription: 'Articolo con prescrizione',
+          },
+          payment: {
+            method: 'Metodo di pagamento',
+            transaction: 'Transazione',
+          },
+          shipping: {
+            status: 'Stato consegna: {{status}}',
           },
           totals: {
             subtotal: 'Subtotale',
@@ -5228,6 +5574,20 @@ const resources = {
         fromThisPharmacySuffix: ' da questa farmacia',
         results: 'Mostrati {{count}} prodotti{{suffix}}',
         empty: 'Nessun prodotto trovato. Prova a modificare la ricerca o la categoria.',
+        labels: {
+          categories: 'Categorie',
+          sortBy: 'Ordina per',
+        },
+        sort: {
+          FEATURED: 'In evidenza',
+          PRICE_ASC: 'Prezzo più basso',
+          PRICE_DESC: 'Prezzo più alto',
+          IN_STOCK: 'Disponibilità',
+        },
+        stock: {
+          available: '{{count}} disponibili',
+          out: 'Esaurito',
+        },
         defaults: {
           product: 'Prodotto',
         },
@@ -5420,26 +5780,56 @@ const resources = {
         soldBy: 'Venduto da {{soldByName}}',
         sections: {
           productDetails: 'Dettagli prodotto',
+          selectedVariant: 'Variante selezionata',
+          availableVariants: 'Varianti disponibili',
+          medicineInformation: 'Informazioni sul medicinale',
+          parapharmacyInformation: 'Informazioni sul prodotto',
         },
         labels: {
           description: 'Descrizione',
           category: 'Categoria',
           quantity: 'Quantità',
+          chooseVariant: 'Scegli confezione o variante',
+          variant: 'Variante',
+          strength: 'Dosaggio',
+          dosageForm: 'Forma farmaceutica',
+          productFormat: 'Formato prodotto',
+          package: 'Confezione',
+          units: 'unità',
+          medicine: 'Medicinale veterinario',
+          parapharmacyProduct: 'Prodotto parafarmaceutico',
+          activeIngredients: 'Principio/i attivo/i',
+          administrationRoute: 'Via di somministrazione',
+          targetSpecies: 'Specie destinatarie',
+          indications: 'Indicazioni',
+          dosageInstructions: 'Dosaggio e somministrazione',
+          warnings: 'Avvertenze',
+          storage: 'Istruzioni di conservazione',
+          manufacturer: 'Produttore',
+          productClass: 'Classe prodotto',
+          lifeStage: 'Fase di vita',
+          ingredients: 'Ingredienti',
+          allergens: 'Informazioni sugli allergeni',
+          usageInstructions: 'Istruzioni d’uso',
         },
         actions: {
           addToCart: 'Aggiungi al carrello',
           buyNow: 'Compra ora',
+          uploadPrescription: 'Carica prescrizione',
+          uploadingPrescription: 'Caricamento prescrizione…',
         },
         defaults: {
           pharmacy: 'Farmacia',
           product: 'Prodotto',
           noDescription: 'Nessuna descrizione.',
+          standardPack: 'Confezione standard',
         },
         discountOff: '{{percent}}% di sconto',
         stock: {
           inStock: 'Disponibile',
           inStockWithCount: 'Disponibile ({{count}})',
           outOfStock: 'Esaurito',
+          unavailable: 'Non disponibile',
         },
         specs: {
           sku: 'SKU',
@@ -5449,6 +5839,22 @@ const resources = {
         },
         errors: {
           notFound: 'Prodotto non trovato.',
+          prescriptionTooLarge: 'Il file della prescrizione deve essere al massimo di 15 MB.',
+          prescriptionSubmitFailed: 'Impossibile inviare la prescrizione.',
+          uploadFailed: 'Caricamento della prescrizione non riuscito.',
+        },
+        toasts: {
+          addedToCart: 'Aggiunto al carrello',
+          prescriptionSubmitted: 'Prescrizione inviata per la revisione della farmacia.',
+        },
+        prescription: {
+          required: 'Prescrizione richiesta',
+          title: 'Approvazione prescrizione',
+          checking: 'Verifica dello stato di approvazione…',
+          approved: 'Approvata — questa variante è pronta per l’acquisto.',
+          pending: 'La prescrizione è in revisione presso la farmacia.',
+          rejected: 'La prescrizione non è stata approvata. Carica un nuovo file per riprovare.',
+          help: 'Carica una prescrizione valida. L’acquisto si sblocca dopo l’approvazione della farmacia.',
         },
       },
       pharmacyProducts: {
@@ -6009,6 +6415,28 @@ const resources = {
         pharmacy: {
           pharmacy: 'Farmacia',
           parapharmacy: 'Parafarmacia',
+        },
+      },
+      moreMenu: {
+        account: 'Account',
+        pharmacySettings: 'Impostazioni farmacia',
+        parapharmacySettings: 'Impostazioni parafarmacia',
+        preferences: 'Preferenze',
+        descriptions: {
+          petProfiles: 'Profili, foto e cure quotidiane',
+          medicalRecords: 'Cartelle, vaccini e prescrizioni',
+          weightHistory: 'Segui i progressi del tuo pet',
+          favouriteVets: 'Veterinari che hai salvato',
+          petRequests: 'Richieste dei pazienti da esaminare',
+          clinicHours: 'Disponibilità e orari della clinica',
+          patientProfiles: 'I profili dei tuoi pazienti',
+          vaccinations: 'Vaccinazioni e promemoria',
+          invoices: 'Fatture e documenti degli appuntamenti',
+          paymentSettings: 'Preferenze di pagamento e payout',
+          vetProfile: 'Dati professionali e della clinica',
+          storeProfile: 'Dati aziendali, logo e indirizzo',
+          subscription: 'Piano e stato dell’abbonamento',
+          payouts: 'Saldo e cronologia dei prelievi',
         },
       },
       menu: {

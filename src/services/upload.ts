@@ -151,6 +151,37 @@ export function uploadProfileImage(file: FileForUpload): Promise<{ success: bool
   });
 }
 
+/** Upload one prescription file for a prescription-only pharmacy product. */
+export function uploadProductPrescription(file: FileForUpload): Promise<{ success: boolean; data?: { url?: string }; message?: string }> {
+  return new Promise((resolve, reject) => {
+    SecureStore.getItemAsync(AUTH_TOKEN_KEY).then((token) => {
+      const url = getFullUrl('/upload/product-prescription');
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', url);
+      xhr.timeout = 60000;
+
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const body = parseXhrJson(xhr.responseText);
+          if (body) resolve(body);
+          else reject(new Error('Invalid response'));
+        } else {
+          reject(buildHttpError(xhr.status, xhr.responseText));
+        }
+      };
+
+      xhr.onerror = () => reject(buildNetworkError(url));
+      xhr.ontimeout = () => reject(new Error('Upload timeout'));
+
+      const formData = new FormData();
+      formData.append('file', { uri: file.uri, type: file.type, name: file.name } as any);
+      xhr.send(formData as any);
+    }).catch(reject);
+  });
+}
+
 export function uploadPetImages(files: FileForUpload[]): Promise<{ success: boolean; data?: { urls?: string[] }; message?: string }> {
   return new Promise((resolve, reject) => {
     SecureStore.getItemAsync(AUTH_TOKEN_KEY).then((token) => {

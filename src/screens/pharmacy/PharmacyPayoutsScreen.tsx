@@ -11,6 +11,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
@@ -84,8 +85,8 @@ export function PharmacyPayoutsScreen() {
   const [payoutDetails, setPayoutDetails] = useState('');
   const [page, setPage] = useState(1);
 
-  const { data: balanceData, isLoading: balanceLoading, refetch: refetchBalance } = useBalance();
-  const { data: requestsData, isLoading: requestsLoading } = useWithdrawalRequests({ page, limit: 20 });
+  const { data: balanceData, isLoading: balanceLoading, refetch: refetchBalance } = useBalance({ refetchInterval: 20_000, refetchIntervalInBackground: true });
+  const { data: requestsData, isLoading: requestsLoading, refetch: refetchRequests } = useWithdrawalRequests({ page, limit: 20 }, { refetchInterval: 20_000, refetchIntervalInBackground: true });
   const requestWithdrawal = useRequestWithdrawal();
 
   const balance = useMemo(() => {
@@ -103,7 +104,7 @@ export function PharmacyPayoutsScreen() {
   const refreshing = balanceLoading || requestsLoading;
 
   const onRefresh = () => {
-    refetchBalance();
+    void Promise.all([refetchBalance(), refetchRequests()]);
   };
 
   const openWithdrawModal = () => {
@@ -146,12 +147,19 @@ export function PharmacyPayoutsScreen() {
     !requestWithdrawal.isPending;
 
   return (
-    <ScreenContainer scroll padded>
+    <ScreenContainer padded>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
       >
+        <View style={styles.hero}>
+          <View style={styles.heroIcon}><Ionicons name="wallet-outline" size={23} color={colors.primaryDark} /></View>
+          <View style={styles.heroCopy}>
+            <Text style={styles.heroTitle}>{t('pharmacyPayouts.title', { defaultValue: 'Payment settings' })}</Text>
+            <Text style={styles.heroText}>Manage your available balance, payout method, and withdrawal history.</Text>
+          </View>
+        </View>
         <Card style={styles.card}>
           <Text style={styles.sectionTitle}>{t('pharmacyPayouts.preferredMethod.title')}</Text>
           <Text style={styles.sectionSubtitle}>
@@ -159,22 +167,27 @@ export function PharmacyPayoutsScreen() {
           </Text>
           <View style={styles.methodRow}>
             <View style={[styles.methodBox, styles.methodBoxActive]}>
-              <Text style={styles.methodIcon}>💳</Text>
+              <View style={styles.methodIcon}><Ionicons name="card-outline" size={22} color={colors.primaryDark} /></View>
               <Text style={styles.methodName}>{t('pharmacyPayouts.paymentMethods.stripe')}</Text>
               <Button title={t('pharmacyPayouts.actions.configure')} variant="outline" onPress={openWithdrawModal} style={styles.configureBtn} />
             </View>
           </View>
 
-          <View style={styles.balanceRow}>
-            <View>
-              <Text style={styles.balanceLabel}>{t('pharmacyPayouts.balance.available')}</Text>
-              <Text style={styles.balanceAmount}>{formatCurrency(balance)}</Text>
+          <View style={styles.balanceCard}>
+            <View style={styles.balanceTopRow}>
+              <View style={styles.balanceIcon}><Ionicons name="cash-outline" size={20} color={colors.primaryDark} /></View>
+              <View style={styles.balanceCopy}>
+                <Text style={styles.balanceLabel}>{t('pharmacyPayouts.balance.available')}</Text>
+                <Text style={styles.balanceAmount}>{formatCurrency(balance)}</Text>
+              </View>
             </View>
             <Button
               title={t('pharmacyPayouts.actions.requestWithdrawal')}
               onPress={openWithdrawModal}
               disabled={balance <= 0}
               style={styles.withdrawBtn}
+              textStyle={styles.withdrawBtnText}
+              icon={<Ionicons name="arrow-up-circle-outline" size={17} color={colors.textInverse} />}
             />
           </View>
         </Card>
@@ -326,7 +339,12 @@ export function PharmacyPayoutsScreen() {
 const styles = StyleSheet.create({
   scroll: { paddingBottom: spacing.xxl },
   loadingRow: { padding: spacing.lg, alignItems: 'center' },
-  card: { marginBottom: spacing.md },
+  hero: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: 18, backgroundColor: colors.successLight, borderWidth: 1, borderColor: colors.primaryLight + '25', marginBottom: spacing.md },
+  heroIcon: { width: 48, height: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.secondaryLight, marginRight: spacing.md },
+  heroCopy: { flex: 1 },
+  heroTitle: { ...typography.h3, color: colors.primaryDark },
+  heroText: { ...typography.caption, color: colors.primaryDark, opacity: 0.72, marginTop: 3 },
+  card: { marginBottom: spacing.md, borderWidth: 1, borderColor: colors.borderLight },
   sectionTitle: { ...typography.h3, marginBottom: 4 },
   sectionSubtitle: { ...typography.bodySmall, color: colors.textSecondary, marginBottom: spacing.md },
   methodRow: { marginBottom: spacing.md },
@@ -340,20 +358,17 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   methodBoxActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight + '15' },
-  methodIcon: { fontSize: 24, marginRight: spacing.sm },
+  methodIcon: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primaryLight + '1B', marginRight: spacing.sm },
   methodName: { ...typography.body, fontWeight: '600', flex: 1 },
-  configureBtn: { minWidth: 100 },
-  balanceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: colors.backgroundTertiary,
-    padding: spacing.md,
-    borderRadius: 12,
-  },
+  configureBtn: { minWidth: 82, minHeight: 40, paddingHorizontal: spacing.sm, paddingVertical: 9 },
+  balanceCard: { backgroundColor: colors.backgroundTertiary, padding: spacing.md, borderRadius: 14 },
+  balanceTopRow: { flexDirection: 'row', alignItems: 'center' },
+  balanceIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.secondaryLight, marginRight: spacing.sm },
+  balanceCopy: { flex: 1 },
   balanceLabel: { ...typography.caption, color: colors.textSecondary },
   balanceAmount: { ...typography.h2, fontWeight: '700' },
-  withdrawBtn: { minWidth: 140 },
+  withdrawBtn: { alignSelf: 'flex-start', minWidth: 0, minHeight: 43, paddingHorizontal: spacing.md, paddingVertical: 10, marginTop: spacing.md },
+  withdrawBtnText: { fontSize: 13 },
   requestCard: { marginBottom: spacing.sm },
   requestHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   requestDate: { ...typography.body, fontWeight: '600' },

@@ -77,7 +77,7 @@ export function PharmacyOrdersListScreen() {
     paymentStatus: paymentFilter || undefined,
   }), [statusFilter, paymentFilter]);
 
-  const { data, isLoading, isError } = useOrders(queryParams);
+  const { data, isLoading, isError } = useOrders(queryParams, { refetchInterval: 15_000, refetchIntervalInBackground: true });
   const updateShipping = useUpdateShippingFee();
   const orders = useMemo(() => extractOrders(data), [data]);
 
@@ -130,7 +130,7 @@ export function PharmacyOrdersListScreen() {
   };
 
   return (
-    <ScreenContainer padded>
+    <ScreenContainer scroll padded contentContainerStyle={styles.screenContent}>
       <View style={styles.searchRow}>
         <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
@@ -278,6 +278,7 @@ export function PharmacyOrdersListScreen() {
 }
 
 const styles = StyleSheet.create({
+  screenContent: { paddingBottom: spacing.xxl },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',

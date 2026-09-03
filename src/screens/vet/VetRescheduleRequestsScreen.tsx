@@ -348,7 +348,10 @@ function TimePickerModal({
 
 export function VetRescheduleRequestsScreen() {
   const { t } = useTranslation();
-  const requestsQuery = useRescheduleRequests({ status: 'PENDING' });
+  const requestsQuery = useRescheduleRequests(
+    { status: 'PENDING' },
+    { refetchInterval: 10_000, refetchIntervalInBackground: true }
+  );
   const approve = useApproveRescheduleRequest();
   const reject = useRejectRescheduleRequest();
 

@@ -1,287 +1,201 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Platform,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import Toast from 'react-native-toast-message';
-import {
-  ParticipantView,
-  StreamCall,
-  StreamVideo,
-  useCallStateHooks,
-} from '@stream-io/video-react-native-sdk';
+import { ActivityIndicator, Alert, Platform, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { ParticipantView, StreamCall, StreamVideo, useCallStateHooks } from '@stream-io/video-react-native-sdk';
+import Toast from 'react-native-toast-message';
 import { useAuth } from '../../contexts/AuthContext';
 import { useVideoCall } from '../../hooks/useVideoCall';
-import { useAppointment } from '../../queries/appointmentQueries';
 import * as videoApi from '../../services/video';
 import { colors } from '../../theme/colors';
+import { spacing } from '../../theme/spacing';
 
-type Params = { appointmentId: string };
-type AnyRoute = RouteProp<Record<string, Params>, string>;
+type VideoRouteParams = { appointmentId?: string; mode?: 'outgoing' | 'answer'; videoCall?: unknown };
+type AnyRoute = RouteProp<Record<string, VideoRouteParams>, string>;
+type Phase = 'preparing' | 'ringing' | 'joining' | 'active' | 'error';
+type ParticipantLike = { userId?: string; name?: string; isLocalParticipant: boolean };
 
-type ParticipantLike = {
-  userId?: string;
-  name?: string;
-  isLocalParticipant: boolean;
-};
-
-function checkAppointmentTime(appointment: Record<string, unknown> | null) {
-  if (!appointment) return { isValid: false, message: 'Appointment not found', startTime: null, endTime: null } as const;
-
-  const tzOffsetMinutes =
-    typeof (appointment as any).timezoneOffset === 'number' && Number.isFinite((appointment as any).timezoneOffset)
-      ? (appointment as any).timezoneOffset
-      : null;
-
-  // If backend didn't provide timezone offset, do not block client-side.
-  if (tzOffsetMinutes === null) {
-    return { isValid: true, message: null, startTime: null, endTime: null } as const;
-  }
-
-  const now = new Date();
-  const appointmentDateUTC = new Date(String((appointment as any).appointmentDate));
-  const appointmentDateInTz = new Date(appointmentDateUTC.getTime() + tzOffsetMinutes * 60 * 1000);
-
-  const year = appointmentDateInTz.getUTCFullYear();
-  const month = appointmentDateInTz.getUTCMonth() + 1;
-  const day = appointmentDateInTz.getUTCDate();
-
-  const [startHours, startMinutes] = String((appointment as any).appointmentTime || '')
-    .split(':')
-    .map(Number);
-
-  const appointmentStartDateTimeUTC = new Date(Date.UTC(year, month - 1, day, startHours, startMinutes, 0, 0));
-  const appointmentStartDateTime = new Date(appointmentStartDateTimeUTC.getTime() - tzOffsetMinutes * 60 * 1000);
-
-  const duration = Number((appointment as any).appointmentDuration || 30);
-  let appointmentEndDateTime: Date;
-
-  if ((appointment as any).appointmentEndTime) {
-    const [endHours, endMinutes] = String((appointment as any).appointmentEndTime || '')
-      .split(':')
-      .map(Number);
-
-    const startTimeMinutes = startHours * 60 + startMinutes;
-    const endTimeMinutes = endHours * 60 + endMinutes;
-    let endYear = year;
-    let endMonth = month - 1;
-    let endDay = day;
-
-    if (endTimeMinutes < startTimeMinutes && startTimeMinutes - endTimeMinutes > 12 * 60) {
-      const nextDay = new Date(Date.UTC(year, month - 1, day + 1));
-      endYear = nextDay.getUTCFullYear();
-      endMonth = nextDay.getUTCMonth();
-      endDay = nextDay.getUTCDate();
-    }
-
-    const appointmentEndDateTimeUTC = new Date(Date.UTC(endYear, endMonth, endDay, endHours, endMinutes, 0, 0));
-    appointmentEndDateTime = new Date(appointmentEndDateTimeUTC.getTime() - tzOffsetMinutes * 60 * 1000);
-  } else {
-    appointmentEndDateTime = new Date(appointmentStartDateTime.getTime() + duration * 60 * 1000);
-  }
-
-  const bufferTime = 2 * 60 * 1000;
-  const earliestAllowedTime = new Date(appointmentStartDateTime.getTime() - bufferTime);
-
-  if (now < earliestAllowedTime) {
-    return {
-      isValid: false,
-      message: `Video call is only available within the appointment window. It will be available 2 minutes before the start time. Your appointment starts at ${appointmentStartDateTime.toLocaleString()}.`,
-      startTime: appointmentStartDateTime,
-      endTime: appointmentEndDateTime,
-    } as const;
-  }
-
-  if (now > appointmentEndDateTime) {
-    return {
-      isValid: false,
-      message: `The appointment time has passed. The appointment window was from ${appointmentStartDateTime.toLocaleString()} to ${appointmentEndDateTime.toLocaleString()}. Video call is no longer available.`,
-      startTime: appointmentStartDateTime,
-      endTime: appointmentEndDateTime,
-    } as const;
-  }
-
-  return { isValid: true, message: null, startTime: appointmentStartDateTime, endTime: appointmentEndDateTime } as const;
+function responseData(value: unknown): any {
+  const first = (value as { data?: unknown })?.data ?? value;
+  return (first as { data?: unknown })?.data ?? first;
 }
 
+function sessionIdFrom(payload: unknown): string {
+  const data = responseData(payload);
+  return String(data?.sessionId || data?.session?._id || '').trim();
+}
+
+function terminalSessionStatus(status: string) {
+  return ['DECLINED', 'MISSED', 'ENDED'].includes(status);
+}
+
+/** Full-screen appointment call room with the same ringing → accepted → joined lifecycle as web. */
 export function VideoCallScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<AnyRoute>();
   const { user } = useAuth();
+  const appointmentId = route.params?.appointmentId ? String(route.params.appointmentId) : '';
+  const mode = route.params?.mode ?? 'outgoing';
+  const acceptedPayload = route.params?.videoCall;
+  const { client, call, loading, error, startCall, getSession, prepareOutgoingCall, joinActiveCall, endCall } = useVideoCall(appointmentId || null);
+  const [phase, setPhase] = useState<Phase>(mode === 'answer' ? 'joining' : 'preparing');
+  const [sessionPayload, setSessionPayload] = useState<unknown>(acceptedPayload ?? null);
+  const [callError, setCallError] = useState<string | null>(null);
+  const didStart = useRef(false);
+  const didJoin = useRef(false);
 
-  const appointmentId = (route.params as any)?.appointmentId as string | undefined;
-  const { data: appointmentRes, isLoading: appointmentLoading } = useAppointment(appointmentId ?? null);
-  const appointment = useMemo(() => {
-    const outer = (appointmentRes as any)?.data ?? appointmentRes;
-    return (outer?.data ?? outer) as Record<string, unknown> | null;
-  }, [appointmentRes]);
-
-  const { client, call, loading, error, startCall, endCall } = useVideoCall(appointmentId ?? null);
-
-  const startCallRef = useRef(false);
-  const errorShownRef = useRef(false);
-  const [timeValidationError, setTimeValidationError] = useState<string | null>(null);
-  const [isCallActive, setIsCallActive] = useState(false);
+  const participantRole = String(user?.role ?? '').toUpperCase();
 
   useEffect(() => {
-    if (!appointment || appointmentLoading || errorShownRef.current) return;
-    const check = checkAppointmentTime(appointment);
-    if (!check.isValid) {
-      errorShownRef.current = true;
-      setTimeValidationError(check.message);
-      Alert.alert('Appointment Time Issue', check.message ?? '', [{ text: 'OK', onPress: () => navigation.goBack() }], {
-        cancelable: false,
-      });
-    }
-  }, [appointment, appointmentLoading, navigation]);
+    if (!appointmentId || didStart.current) return;
+    didStart.current = true;
 
-  useEffect(() => {
-    if (!appointmentId || !user) return;
-    if (startCallRef.current) return;
-    if (loading || appointmentLoading) return;
-    if (timeValidationError) return;
+    const begin = async () => {
+      let callPayload: unknown = mode === 'answer' ? acceptedPayload : null;
+      try {
+        if (mode === 'answer') {
+          if (!acceptedPayload) throw new Error('The call details are unavailable. Ask the caller to try again.');
+          setPhase('joining');
+          await joinActiveCall(acceptedPayload);
+          didJoin.current = true;
+          setPhase('active');
+          return;
+        }
 
-    const check = checkAppointmentTime(appointment);
-    if (!check.isValid) {
-      if (!errorShownRef.current) {
-        errorShownRef.current = true;
-        setTimeValidationError(check.message);
-        Alert.alert('Appointment Time Issue', check.message ?? '', [{ text: 'OK', onPress: () => navigation.goBack() }], {
-          cancelable: false,
-        });
+        setPhase('preparing');
+        const created = await startCall();
+        callPayload = created;
+        setSessionPayload(created);
+        await prepareOutgoingCall(created);
+        setPhase('ringing');
+      } catch (startError: any) {
+        // Never leave the other participant ringing or waiting when this
+        // device cannot prepare/join the shared Stream room.
+        const failedSessionId = sessionIdFrom(callPayload);
+        if (failedSessionId) await videoApi.endVideoSession(failedSessionId).catch(() => {});
+        const message = startError?.response?.data?.message || startError?.message || 'Unable to start the video call.';
+        setCallError(message);
+        setPhase('error');
       }
+    };
+    begin();
+  }, [acceptedPayload, appointmentId, joinActiveCall, mode, prepareOutgoingCall, startCall]);
+
+  useEffect(() => {
+    if (phase !== 'ringing' || !appointmentId || didJoin.current) return;
+    let disposed = false;
+
+    const waitForAnswer = async () => {
+      let latest: unknown = null;
+      try {
+        latest = await getSession();
+        if (disposed) return;
+        const sessionResult = latest as { session?: { status?: string }; status?: string };
+        const status = String(sessionResult?.session?.status ?? sessionResult?.status ?? '').toUpperCase();
+        if (status === 'ACTIVE') {
+          didJoin.current = true;
+          setPhase('joining');
+          await joinActiveCall(latest);
+          if (!disposed) setPhase('active');
+          return;
+        }
+        if (terminalSessionStatus(status)) {
+          setCallError(status === 'DECLINED' ? 'The other participant declined the call.' : 'This call is no longer available.');
+          setPhase('error');
+        }
+      } catch (pollError: any) {
+        const activeSessionId = sessionIdFrom(latest);
+        if (activeSessionId) await videoApi.endVideoSession(activeSessionId).catch(() => {});
+        const message = pollError?.response?.data?.message || pollError?.message || '';
+        if (message && !/not found/i.test(message)) {
+          setCallError(message);
+          setPhase('error');
+        }
+      }
+    };
+
+    waitForAnswer();
+    const timer = setInterval(waitForAnswer, 1_500);
+    return () => {
+      disposed = true;
+      clearInterval(timer);
+    };
+  }, [appointmentId, getSession, joinActiveCall, phase]);
+
+  const endServerSession = async () => {
+    const candidate = sessionIdFrom(sessionPayload);
+    if (candidate) {
+      await videoApi.endVideoSession(candidate).catch(() => {});
       return;
     }
-
-    startCallRef.current = true;
-    startCall()
-      .then(() => {
-        setIsCallActive(true);
-        Toast.show({ type: 'success', text1: 'Video Call Started', text2: 'You are now connected' });
-      })
-      .catch((err: any) => {
-        startCallRef.current = false;
-        setIsCallActive(false);
-        const message = err?.response?.data?.message || err?.message || 'Failed to start video call';
-
-        const looksTimeRelated =
-          message.includes('Communication window') ||
-          message.includes('appointment time') ||
-          message.includes('appointment window') ||
-          message.includes('time window') ||
-          message.includes('not arrived') ||
-          message.includes('expired') ||
-          message.includes('time has passed');
-
-        if (looksTimeRelated) {
-          if (!errorShownRef.current) {
-            errorShownRef.current = true;
-            setTimeValidationError(message);
-            Alert.alert('Appointment Time Issue', message, [{ text: 'OK', onPress: () => navigation.goBack() }], {
-              cancelable: false,
-            });
-          }
-          return;
-        }
-
-        if (String(message).toLowerCase().includes('permission')) {
-          Toast.show({ type: 'error', text1: 'Permission Required', text2: message, visibilityTime: 8000 });
-          return;
-        }
-
-        Toast.show({ type: 'error', text1: 'Error', text2: message });
-      });
-  }, [appointment, appointmentId, appointmentLoading, loading, navigation, startCall, timeValidationError, user]);
-
-  const handleEndCall = async () => {
-    try {
-      setIsCallActive(false);
-      try {
-        if (appointmentId) {
-          const sessionData = await videoApi.getVideoSessionByAppointment(appointmentId);
-          const payload = (sessionData as any)?.data ?? sessionData;
-          const data = payload?.data ?? payload;
-          const sessionId = data?.sessionId;
-          if (sessionId) {
-            await videoApi.endVideoSession(String(sessionId));
-          }
-        }
-      } catch {
-        // ignore
-      }
-      await endCall();
-    } finally {
-      Toast.show({ type: 'success', text1: 'Call Ended' });
-      navigation.goBack();
+    if (appointmentId) {
+      const current = await videoApi.getVideoSessionByAppointment(appointmentId).catch(() => null);
+      const currentSessionId = sessionIdFrom(current);
+      if (currentSessionId) await videoApi.endVideoSession(currentSessionId).catch(() => {});
     }
   };
 
-  // Android back button handling (confirm end)
+  const handleEndCall = async () => {
+    await endServerSession();
+    await endCall();
+    navigation.goBack();
+  };
+
   useEffect(() => {
     if (Platform.OS !== 'android') return;
-    const backHandler = require('react-native').BackHandler;
-    const sub = backHandler.addEventListener('hardwareBackPress', () => {
-      if (isCallActive && call) {
-        Alert.alert('End Call?', 'Are you sure you want to end the call?', [
-          { text: 'Stay in Call', style: 'cancel' },
-          { text: 'End Call', style: 'destructive', onPress: handleEndCall },
+    const BackHandler = require('react-native').BackHandler;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (phase === 'active' || phase === 'ringing') {
+        Alert.alert('Leave video call?', phase === 'ringing' ? 'This will cancel the call.' : 'This will end the call for both participants.', [
+          { text: 'Stay', style: 'cancel' },
+          { text: phase === 'ringing' ? 'Cancel call' : 'End call', style: 'destructive', onPress: handleEndCall },
         ]);
         return true;
       }
       return false;
     });
     return () => sub.remove();
-  }, [call, isCallActive]);
+  }, [phase]);
 
-  if (timeValidationError) {
+  const activeError = callError || error;
+  if (phase === 'error' || activeError) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle" size={64} color={colors.error} />
-          <Text style={styles.errorTitle}>Appointment Time Issue</Text>
-          <Text style={styles.errorText}>{timeValidationError}</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Text style={styles.backButtonText}>Back to Appointments</Text>
-          </TouchableOpacity>
+      <SafeAreaView style={styles.darkScreen}>
+        <View style={styles.feedbackCard}>
+          <View style={[styles.feedbackIcon, styles.feedbackIconError]}><Ionicons name="alert-circle-outline" size={36} color={colors.error} /></View>
+          <Text style={styles.feedbackTitle}>Video call unavailable</Text>
+          <Text style={styles.feedbackCopy}>{activeError || 'Please return to the appointment and try again.'}</Text>
+          <TouchableOpacity style={styles.primaryFeedbackButton} onPress={() => navigation.goBack()}><Text style={styles.primaryFeedbackText}>Back to appointment</Text></TouchableOpacity>
         </View>
       </SafeAreaView>
     );
   }
 
-  if (loading || appointmentLoading || !client || !call) {
+  if (phase === 'ringing') {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Initializing video call...</Text>
-          {appointmentLoading ? <Text style={styles.loadingSubtext}>Loading appointment details...</Text> : null}
-          {!client ? <Text style={styles.loadingSubtext}>Connecting to server...</Text> : null}
-          {!call ? <Text style={styles.loadingSubtext}>Creating call session...</Text> : null}
+      <SafeAreaView style={styles.darkScreen}>
+        <View style={styles.ringingContainer}>
+          <View style={styles.ringingHaloOuter}><View style={styles.ringingHaloInner}><Ionicons name="videocam" size={36} color={colors.textInverse} /></View></View>
+          <Text style={styles.ringingOverline}>VIDEO CONSULTATION</Text>
+          <Text style={styles.ringingTitle}>Calling your appointment participant</Text>
+          <Text style={styles.ringingCopy}>Ringing securely… You will join automatically when they accept.</Text>
+          <View style={styles.ringingDots}><View style={styles.ringingDotActive} /><View style={styles.ringingDot} /><View style={styles.ringingDot} /></View>
         </View>
+        <TouchableOpacity style={styles.cancelCallButton} onPress={handleEndCall}><Ionicons name="call-outline" size={20} color={colors.textInverse} style={styles.cancelCallIcon} /><Text style={styles.cancelCallText}>Cancel call</Text></TouchableOpacity>
       </SafeAreaView>
     );
   }
 
-  if (error) {
+  if (phase !== 'active' || loading || !client || !call) {
+    const joining = mode === 'answer' || phase === 'joining';
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle" size={64} color={colors.error} />
-          <Text style={styles.errorTitle}>Error</Text>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Text style={styles.backButtonText}>Go Back</Text>
-          </TouchableOpacity>
+      <SafeAreaView style={styles.darkScreen}>
+        <View style={styles.ringingContainer}>
+          <ActivityIndicator size="large" color={colors.accent} />
+          <Text style={[styles.ringingTitle, styles.loadingTitle]}>{joining ? 'Joining video call…' : 'Preparing secure call…'}</Text>
+          <Text style={styles.ringingCopy}>{joining ? 'Connecting you to the shared consultation room.' : 'Setting up the appointment call for both participants.'}</Text>
         </View>
+        <TouchableOpacity style={styles.cancelCallButton} onPress={handleEndCall}><Ionicons name="close" size={21} color={colors.textInverse} /><Text style={styles.cancelCallText}>Cancel</Text></TouchableOpacity>
       </SafeAreaView>
     );
   }
@@ -289,237 +203,123 @@ export function VideoCallScreen() {
   return (
     <StreamVideo client={client}>
       <StreamCall call={call}>
-        <VideoCallContent onEndCall={handleEndCall} />
+        <VideoCallContent role={participantRole} onEndCall={handleEndCall} />
       </StreamCall>
     </StreamVideo>
   );
 }
 
-function VideoCallContent({ onEndCall }: { onEndCall: () => void }) {
+function VideoCallContent({ role, onEndCall }: { role: string; onEndCall: () => void }) {
   const { user } = useAuth();
-  const currentUserId = (user as any)?._id ?? (user as any)?.id;
-  const role = String((user as any)?.role ?? '').toUpperCase();
-
+  const currentUserId = String((user as any)?._id ?? (user as any)?.id ?? '');
   const { useCallCallingState, useParticipants, useCameraState, useMicrophoneState } = useCallStateHooks();
   const callingState = useCallCallingState();
   const participants = useParticipants() as unknown as ParticipantLike[];
   const cameraState = useCameraState();
-  const micState = useMicrophoneState();
+  const microphoneState = useMicrophoneState();
+  const endHandledRef = useRef(false);
 
   useEffect(() => {
-    const enableCameraIfNeeded = async () => {
-      try {
-        if (callingState !== 'joined') return;
-        if (!cameraState?.camera?.enabled) {
-          await cameraState?.camera?.enable?.();
-        }
-      } catch {
-        // ignore
-      }
-    };
-    enableCameraIfNeeded();
+    if (callingState !== 'joined' || cameraState?.camera?.enabled) return;
+    cameraState?.camera?.enable?.().catch(() => {});
   }, [callingState, cameraState?.camera?.enabled]);
+
+  useEffect(() => {
+    // When either participant ends the server session, Stream transitions the
+    // other participant out of `joined`. Return both sides to their
+    // appointment instead of leaving the remote participant on a spinner.
+    if (!['left', 'ended'].includes(String(callingState)) || endHandledRef.current) return;
+    endHandledRef.current = true;
+    Toast.show({ type: 'info', text1: 'Video call ended', text2: 'You can call again while the appointment is still active.' });
+    onEndCall();
+  }, [callingState, onEndCall]);
+
+  const localParticipant = useMemo(
+    () => participants.find((participant) => String(participant.userId ?? '') === currentUserId) || participants.find((participant) => participant.isLocalParticipant),
+    [currentUserId, participants]
+  );
+  const remoteParticipant = useMemo(() => participants.find((participant) => !participant.isLocalParticipant), [participants]);
+
+  const toggleMicrophone = async () => {
+    if (microphoneState.microphone.enabled) await microphoneState.microphone.disable().catch(() => {});
+    else await microphoneState.microphone.enable().catch(() => {});
+  };
+  const toggleCamera = async () => {
+    if (cameraState.camera.enabled) await cameraState.camera.disable().catch(() => {});
+    else await cameraState.camera.enable().catch(() => {});
+  };
 
   if (callingState !== 'joined') {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Joining call...</Text>
-          <Text style={styles.loadingSubtext}>State: {callingState}</Text>
-        </View>
-      </SafeAreaView>
+      <SafeAreaView style={styles.darkScreen}><View style={styles.ringingContainer}><ActivityIndicator size="large" color={colors.accent} /><Text style={[styles.ringingTitle, styles.loadingTitle]}>Joining consultation…</Text><Text style={styles.ringingCopy}>Connecting your camera and microphone.</Text></View></SafeAreaView>
     );
   }
 
-  const localParticipant =
-    (currentUserId
-      ? participants.find((p: ParticipantLike) => String(p.userId ?? '') === String(currentUserId))
-      : undefined) || participants.find((p: ParticipantLike) => p.isLocalParticipant);
-
-  const remoteParticipants = participants.filter((p: ParticipantLike) => !p.isLocalParticipant);
-  const uniqueRemoteParticipants: ParticipantLike[] = Array.from(
-    new Map<string, ParticipantLike>(
-      remoteParticipants
-        .map((p: ParticipantLike) => [String(p.userId ?? ''), p] as const)
-        .filter(([k]) => !!k)
-    ).values()
-  );
-
-  const toggleMic = async () => {
-    try {
-      if (micState.microphone.enabled) await micState.microphone.disable();
-      else await micState.microphone.enable();
-    } catch {
-      // ignore
-    }
-  };
-
-  const toggleCamera = async () => {
-    try {
-      if (cameraState.camera.enabled) await cameraState.camera.disable();
-      else await cameraState.camera.enable();
-    } catch {
-      // ignore
-    }
-  };
-
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.videoContainer}>
-        <View style={styles.header}>
-          <Text style={styles.headerText}>Video Consultation</Text>
-          <Text style={styles.participantCount}>
-            {localParticipant && uniqueRemoteParticipants.length > 0 ? '2 participants' : '1 participant'}
-          </Text>
+    <SafeAreaView style={styles.darkScreen}>
+      <View style={styles.callHeader}>
+        <View><Text style={styles.callHeaderTitle}>Video consultation</Text><Text style={styles.callHeaderSub}>{remoteParticipant ? 'Connected securely' : `Waiting for ${role === 'VETERINARIAN' ? 'pet owner' : 'veterinarian'}…`}</Text></View>
+        <View style={[styles.connectionPill, remoteParticipant ? styles.connectionPillActive : undefined]}><View style={styles.connectionDot} /><Text style={styles.connectionPillText}>{remoteParticipant ? 'Live' : 'Waiting'}</Text></View>
+      </View>
+      <View style={styles.videoArea}>
+        <View style={styles.remoteVideo}>
+          {remoteParticipant ? <ParticipantView participant={remoteParticipant as any} supportedReactions={[]} videoZOrder={0} style={styles.participantView} /> : <View style={styles.waitingState}><View style={styles.waitingAvatar}><Ionicons name="person-outline" size={44} color={colors.primaryLight} /></View><Text style={styles.waitingTitle}>Waiting for the other participant</Text><Text style={styles.waitingCopy}>They will appear here as soon as they join.</Text></View>}
+          {remoteParticipant ? <View style={styles.nameBadge}><View style={styles.nameBadgeDot} /><Text style={styles.nameBadgeText} numberOfLines={1}>{remoteParticipant.name || (role === 'VETERINARIAN' ? 'Pet owner' : 'Veterinarian')}</Text></View> : null}
         </View>
-
-        <View style={styles.videoArea}>
-          <View style={styles.remoteVideoContainer}>
-            {uniqueRemoteParticipants.length > 0 ? (
-              <ParticipantView participant={uniqueRemoteParticipants[0] as any} supportedReactions={[]} videoZOrder={0} style={styles.participantView} />
-            ) : (
-              <View style={styles.waitingContainer}>
-                <Ionicons name="person-outline" size={64} color={colors.textSecondary} />
-                <Text style={styles.waitingText}>
-                  {role === 'VETERINARIAN' ? 'Waiting for pet owner...' : 'Waiting for veterinarian...'}
-                </Text>
-              </View>
-            )}
-
-            {uniqueRemoteParticipants.length > 0 ? (
-              <View style={styles.participantLabel}>
-                <View style={[styles.statusDot, { backgroundColor: '#4CAF50' }]} />
-                <Text style={styles.participantLabelText} numberOfLines={1}>
-                  {role === 'VETERINARIAN' ? 'Pet Owner' : 'Veterinarian'}: {uniqueRemoteParticipants[0]?.name || 'User'}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-
-          {localParticipant ? (
-            <View style={styles.localVideoContainer}>
-              <ParticipantView participant={localParticipant as any} supportedReactions={[]} videoZOrder={1} style={styles.participantView} />
-              <View style={styles.participantLabel}>
-                <View style={[styles.statusDot, { backgroundColor: '#2196F3' }]} />
-                <Text style={styles.participantLabelText}>You</Text>
-              </View>
-            </View>
-          ) : null}
-        </View>
-
-        <View style={styles.controlsContainer}>
-          <View style={styles.controlsBar}>
-            <TouchableOpacity
-              onPress={toggleMic}
-              style={[styles.controlButton, { backgroundColor: micState.microphone.enabled ? '#4CAF50' : '#dc3545' }]}
-            >
-              <Text style={styles.controlIcon}>{micState.microphone.enabled ? '🎤' : '🔇'}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={toggleCamera}
-              style={[styles.controlButton, { backgroundColor: cameraState.camera.enabled ? '#4CAF50' : '#dc3545' }]}
-            >
-              <Text style={styles.controlIcon}>{cameraState.camera.enabled ? '📷' : '🚫'}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={onEndCall} style={[styles.controlButton, styles.endCallButton]}>
-              <Text style={styles.controlIcon}>📞</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        {localParticipant ? <View style={styles.localVideo}><ParticipantView participant={localParticipant as any} supportedReactions={[]} videoZOrder={1} style={styles.participantView} /><Text style={styles.localLabel}>You</Text></View> : null}
+      </View>
+      <View style={styles.controlDock}>
+        <TouchableOpacity onPress={toggleMicrophone} style={[styles.controlButton, !microphoneState.microphone.enabled && styles.controlButtonMuted]}><Ionicons name={microphoneState.microphone.enabled ? 'mic-outline' : 'mic-off-outline'} size={23} color={colors.textInverse} /></TouchableOpacity>
+        <TouchableOpacity onPress={toggleCamera} style={[styles.controlButton, !cameraState.camera.enabled && styles.controlButtonMuted]}><Ionicons name={cameraState.camera.enabled ? 'videocam-outline' : 'videocam-off-outline'} size={24} color={colors.textInverse} /></TouchableOpacity>
+        <TouchableOpacity onPress={onEndCall} style={[styles.controlButton, styles.endButton]}><Ionicons name="call-outline" size={25} color={colors.textInverse} style={styles.cancelCallIcon} /></TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' },
-  loadingText: { color: '#fff', fontSize: 18, marginTop: 16, fontWeight: '600' },
-  loadingSubtext: { color: '#999', fontSize: 14, marginTop: 8 },
-  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#000' },
-  errorTitle: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginTop: 16, marginBottom: 8 },
-  errorText: { color: '#999', fontSize: 16, textAlign: 'center', marginBottom: 24 },
-  backButton: { backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
-  backButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  videoContainer: { flex: 1, backgroundColor: '#000' },
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    padding: 16,
-    paddingTop: Platform.OS === 'ios' ? 50 : 16,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  headerText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-  participantCount: { color: '#fff', fontSize: 14 },
-  videoArea: { flex: 1, position: 'relative', overflow: 'visible' },
-  remoteVideoContainer: {
-    flex: 1,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 0,
-    overflow: 'hidden',
-    position: 'relative',
-    zIndex: 1,
-  },
-  localVideoContainer: {
-    width: 120,
-    height: 160,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    overflow: 'hidden',
-    position: 'absolute',
-    right: 12,
-    top: Platform.OS === 'ios' ? 90 : 70,
-    zIndex: 30,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
-  },
+  darkScreen: { flex: 1, backgroundColor: '#08251E' },
+  ringingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 34 },
+  ringingHaloOuter: { width: 142, height: 142, borderRadius: 71, backgroundColor: 'rgba(89, 199, 151, 0.16)', justifyContent: 'center', alignItems: 'center', marginBottom: 30 },
+  ringingHaloInner: { width: 96, height: 96, borderRadius: 48, backgroundColor: colors.success, justifyContent: 'center', alignItems: 'center', shadowColor: colors.success, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.6, shadowRadius: 25, elevation: 8 },
+  ringingOverline: { fontSize: 11, fontWeight: '800', letterSpacing: 1.65, color: colors.accentLight, marginBottom: spacing.sm },
+  ringingTitle: { fontSize: 25, lineHeight: 32, color: colors.textInverse, fontWeight: '800', textAlign: 'center', marginBottom: spacing.sm },
+  loadingTitle: { marginTop: spacing.lg },
+  ringingCopy: { fontSize: 15, lineHeight: 22, color: 'rgba(255,255,255,0.7)', textAlign: 'center', maxWidth: 300 },
+  ringingDots: { flexDirection: 'row', gap: 7, marginTop: 28 },
+  ringingDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.28)' },
+  ringingDotActive: { width: 24, height: 7, borderRadius: 4, backgroundColor: colors.accent },
+  cancelCallButton: { position: 'absolute', left: 24, right: 24, bottom: Platform.OS === 'ios' ? 34 : 25, height: 56, borderRadius: 18, backgroundColor: colors.error, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 },
+  cancelCallIcon: { transform: [{ rotate: '135deg' }] },
+  cancelCallText: { fontSize: 16, fontWeight: '800', color: colors.textInverse },
+  feedbackCard: { marginHorizontal: spacing.lg, backgroundColor: colors.background, borderRadius: 28, padding: spacing.xl, alignItems: 'center' },
+  feedbackIcon: { width: 72, height: 72, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.lg },
+  feedbackIconError: { backgroundColor: colors.errorLight },
+  feedbackTitle: { fontSize: 22, fontWeight: '800', color: colors.primaryDark, marginBottom: spacing.sm, textAlign: 'center' },
+  feedbackCopy: { fontSize: 15, color: colors.textSecondary, lineHeight: 22, textAlign: 'center', marginBottom: spacing.xl },
+  primaryFeedbackButton: { width: '100%', minHeight: 52, backgroundColor: colors.primary, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  primaryFeedbackText: { color: colors.textInverse, fontSize: 15, fontWeight: '800' },
+  callHeader: { position: 'absolute', zIndex: 4, top: Platform.OS === 'ios' ? 16 : 12, left: 18, right: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 18, backgroundColor: 'rgba(4, 15, 12, 0.56)' },
+  callHeaderTitle: { color: colors.textInverse, fontSize: 15, fontWeight: '800' },
+  callHeaderSub: { color: 'rgba(255,255,255,0.66)', fontSize: 11, marginTop: 2 },
+  connectionPill: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 12, paddingHorizontal: 9, paddingVertical: 5 },
+  connectionPillActive: { backgroundColor: 'rgba(79, 202, 139, 0.25)' },
+  connectionDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.accentLight },
+  connectionPillText: { fontSize: 11, color: colors.textInverse, fontWeight: '700' },
+  videoArea: { flex: 1, position: 'relative' },
+  remoteVideo: { flex: 1, overflow: 'hidden', backgroundColor: '#0D342A' },
   participantView: { width: '100%', height: '100%' },
-  waitingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  waitingText: { color: '#fff', fontSize: 16, marginTop: 16 },
-  participantLabel: {
-    position: 'absolute',
-    bottom: 10,
-    left: 10,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    maxWidth: 260,
-  },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
-  participantLabelText: { color: '#fff', fontSize: 14, fontWeight: '500', flexShrink: 1 },
-  controlsContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    padding: 20,
-    backgroundColor: 'rgba(0,0,0,0.9)',
-  },
-  controlsBar: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 15,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    borderRadius: 50,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  controlButton: { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center' },
-  endCallButton: { backgroundColor: '#dc3545' },
-  controlIcon: { fontSize: 20, color: '#fff' },
+  waitingState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
+  waitingAvatar: { width: 86, height: 86, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.lg },
+  waitingTitle: { color: colors.textInverse, fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: 6 },
+  waitingCopy: { color: 'rgba(255,255,255,0.62)', fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  nameBadge: { position: 'absolute', bottom: 130, left: 18, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 14, backgroundColor: 'rgba(3, 13, 10, 0.58)', maxWidth: '65%' },
+  nameBadgeDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.success },
+  nameBadgeText: { flex: 1, color: colors.textInverse, fontSize: 12, fontWeight: '700' },
+  localVideo: { position: 'absolute', width: 112, height: 152, right: 18, top: Platform.OS === 'ios' ? 100 : 82, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)', backgroundColor: '#163F34' },
+  localLabel: { position: 'absolute', left: 8, bottom: 7, color: colors.textInverse, fontWeight: '700', fontSize: 11, backgroundColor: 'rgba(0,0,0,0.4)', overflow: 'hidden', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
+  controlDock: { position: 'absolute', zIndex: 5, left: 18, right: 18, bottom: Platform.OS === 'ios' ? 26 : 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, paddingVertical: 12, borderRadius: 26, backgroundColor: 'rgba(4, 15, 12, 0.76)' },
+  controlButton: { width: 54, height: 54, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.17)', alignItems: 'center', justifyContent: 'center' },
+  controlButtonMuted: { backgroundColor: 'rgba(229, 196, 106, 0.36)' },
+  endButton: { backgroundColor: colors.error },
 });

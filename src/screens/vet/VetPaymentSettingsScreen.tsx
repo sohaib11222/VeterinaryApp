@@ -11,6 +11,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
@@ -142,6 +143,10 @@ export function VetPaymentSettingsScreen() {
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
       >
+        <View style={styles.hero}>
+          <View style={styles.heroIcon}><Ionicons name="wallet-outline" size={23} color={colors.primaryDark} /></View>
+          <View style={styles.heroCopy}><Text style={styles.heroTitle}>{t('vetPaymentSettings.title')}</Text><Text style={styles.heroText}>{t('vetPaymentSettings.subtitle')}</Text></View>
+        </View>
         {/* Preferred payout method – VeterinaryFrontend / mydoctor-app */}
         <Card style={styles.card}>
           <Text style={styles.sectionTitle}>{t('vetPaymentSettings.preferredPayoutMethod.title')}</Text>
@@ -150,23 +155,28 @@ export function VetPaymentSettingsScreen() {
           </Text>
           <View style={styles.methodRow}>
             <View style={[styles.methodBox, styles.methodBoxActive]}>
-              <Text style={styles.methodIcon}>💳</Text>
+              <View style={styles.methodIcon}><Ionicons name="card-outline" size={19} color={colors.primary} /></View>
               <Text style={styles.methodName}>{t('vetPaymentSettings.paymentMethods.stripe')}</Text>
-              <Button title={t('vetPaymentSettings.actions.configure')} variant="outline" onPress={openWithdrawModal} style={styles.configureBtn} />
+              <Button title={t('vetPaymentSettings.actions.configure')} variant="outline" onPress={openWithdrawModal} style={styles.configureBtn} textStyle={styles.configureBtnText} />
             </View>
           </View>
 
           {/* Available Balance + Request Withdrawal */}
-          <View style={styles.balanceRow}>
-            <View>
-              <Text style={styles.balanceLabel}>{t('vetPaymentSettings.availableBalance')}</Text>
-              <Text style={styles.balanceAmount}>{formatCurrency(balance)}</Text>
+          <View style={styles.balanceCard}>
+            <View style={styles.balanceTopRow}>
+              <View style={styles.balanceIcon}><Ionicons name="cash-outline" size={20} color={colors.primaryDark} /></View>
+              <View style={styles.balanceCopy}>
+                <Text style={styles.balanceLabel}>{t('vetPaymentSettings.availableBalance')}</Text>
+                <Text style={styles.balanceAmount}>{formatCurrency(balance)}</Text>
+              </View>
             </View>
             <Button
               title={t('vetPaymentSettings.actions.requestWithdrawal')}
               onPress={openWithdrawModal}
               disabled={balance <= 0}
               style={styles.withdrawBtn}
+              textStyle={styles.withdrawBtnText}
+              icon={<Ionicons name="arrow-up-circle-outline" size={17} color={colors.textInverse} />}
             />
           </View>
         </Card>
@@ -314,7 +324,10 @@ export function VetPaymentSettingsScreen() {
 
 const styles = StyleSheet.create({
   scroll: { paddingBottom: spacing.xxl },
-  card: { marginBottom: spacing.md },
+  hero: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: 18, backgroundColor: colors.successLight, borderWidth: 1, borderColor: colors.primaryLight + '25', marginBottom: spacing.md },
+  heroIcon: { width: 48, height: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.secondaryLight, marginRight: spacing.md },
+  heroCopy: { flex: 1 }, heroTitle: { ...typography.h3, color: colors.primaryDark }, heroText: { ...typography.caption, color: colors.primaryDark, opacity: 0.72, marginTop: 3 },
+  card: { marginBottom: spacing.md, borderWidth: 1, borderColor: colors.borderLight },
   sectionTitle: { ...typography.h3, marginBottom: 4 },
   sectionSubtitle: { ...typography.bodySmall, color: colors.textSecondary, marginBottom: spacing.md },
   methodRow: { marginBottom: spacing.md },
@@ -328,21 +341,23 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   methodBoxActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight + '15' },
-  methodIcon: { fontSize: 24, marginRight: spacing.sm },
+  methodIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: colors.primaryLight + '17', alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm },
   methodName: { ...typography.body, fontWeight: '600', flex: 1 },
-  configureBtn: { minWidth: 100 },
-  balanceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  configureBtn: { minWidth: 82, minHeight: 40, paddingHorizontal: spacing.sm, paddingVertical: 9 },
+  configureBtnText: { fontSize: 12 },
+  balanceCard: {
     backgroundColor: colors.backgroundTertiary,
     padding: spacing.md,
-    borderRadius: 12,
+    borderRadius: 14,
   },
+  balanceTopRow: { flexDirection: 'row', alignItems: 'center' },
+  balanceIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.secondaryLight, marginRight: spacing.sm },
+  balanceCopy: { flex: 1 },
   balanceLabel: { ...typography.caption, color: colors.textSecondary },
-  balanceAmount: { ...typography.h2, fontWeight: '700' },
-  withdrawBtn: { minWidth: 140 },
-  requestCard: { marginBottom: spacing.sm },
+  balanceAmount: { ...typography.h2, color: colors.primaryDark, fontWeight: '800', marginTop: 2 },
+  withdrawBtn: { alignSelf: 'flex-start', minWidth: 0, minHeight: 43, paddingHorizontal: spacing.md, paddingVertical: 10, marginTop: spacing.md },
+  withdrawBtnText: { fontSize: 13 },
+  requestCard: { marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.borderLight },
   requestHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   requestDate: { ...typography.body, fontWeight: '600' },
   requestDetailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },

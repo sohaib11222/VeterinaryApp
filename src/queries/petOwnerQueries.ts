@@ -5,11 +5,17 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../api/api';
 import { API_ROUTES } from '../api/apiConfig';
 
-export function usePetOwnerDashboard(options: { enabled?: boolean } = {}) {
+export function usePetOwnerDashboard(options: {
+  enabled?: boolean;
+  refetchInterval?: number;
+  refetchIntervalInBackground?: boolean;
+} = {}) {
   return useQuery({
     queryKey: ['petOwner', 'dashboard'],
     queryFn: () => api.get<{ success?: boolean; data?: unknown }>(API_ROUTES.PET_OWNER.DASHBOARD),
     enabled: options.enabled !== false,
+    refetchInterval: options.refetchInterval,
+    refetchIntervalInBackground: options.refetchIntervalInBackground,
   });
 }
 
@@ -17,6 +23,7 @@ export interface PetOwnerPaymentsParams {
   status?: string;
   fromDate?: string;
   toDate?: string;
+  search?: string;
   page?: number;
   limit?: number;
 }

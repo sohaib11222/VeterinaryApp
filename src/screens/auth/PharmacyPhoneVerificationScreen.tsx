@@ -1,26 +1,19 @@
 import React, { useMemo, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { PendingStackParamList } from '../../navigation/PendingNavigator';
-import { ScreenContainer } from '../../components/common/ScreenContainer';
+import { AuthInfoRow, AuthLayout } from '../../components/common/AuthLayout';
 import { Input } from '../../components/common/Input';
+import { CountryPhoneInput } from '../../components/common/CountryPhoneInput';
 import { Button } from '../../components/common/Button';
 import { useAuth } from '../../contexts/AuthContext';
 import { sendPhoneOtpApi, verifyPhoneOtpApi } from '../../mutations/authMutations';
 import { getErrorMessage } from '../../utils/errorUtils';
 import Toast from 'react-native-toast-message';
 import { colors } from '../../theme/colors';
-import { spacing } from '../../theme/spacing';
+import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useTranslation } from 'react-i18next';
 
@@ -59,10 +52,7 @@ export function PharmacyPhoneVerificationScreen() {
       const data = await verifyPhoneOtpApi({ code: code.trim(), phone: phoneTrimmed || undefined });
       const verifiedUser = data?.user;
       if (verifiedUser && typeof verifiedUser === 'object') {
-        updateUser({
-          phone: (verifiedUser as { phone?: string }).phone ?? (phoneTrimmed || user?.phone),
-          isPhoneVerified: true,
-        });
+        updateUser({ phone: (verifiedUser as { phone?: string }).phone ?? (phoneTrimmed || user?.phone), isPhoneVerified: true });
       } else {
         updateUser({ isPhoneVerified: true, phone: phoneTrimmed || user?.phone });
       }
@@ -76,74 +66,54 @@ export function PharmacyPhoneVerificationScreen() {
   };
 
   return (
-    <ScreenContainer scroll padded style={styles.bg}>
-      <KeyboardAvoidingView
-        style={styles.keyboard}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={60}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.header}>
-            <Text style={styles.logoIcon}>🐾</Text>
-            <Text style={styles.title}>{t('authPhoneVerification.title')}</Text>
-            <Text style={styles.subtitle}>{t('authPhoneVerification.subtitle')}</Text>
-          </View>
-
-          <View style={styles.form}>
-            <Input
-              label={t('authPhoneVerification.fields.phone.label')}
-              value={phone}
-              onChangeText={setPhone}
-              placeholder={t('authPhoneVerification.fields.phone.placeholder')}
-              keyboardType="phone-pad"
-              autoCapitalize="none"
-              editable={!verifying}
-            />
-            <Text style={styles.hint}>{t('authPhoneVerification.fields.phone.hint')}</Text>
-
-            <Input
-              label={t('authPhoneVerification.fields.code.label')}
-              value={code}
-              onChangeText={(t2) => setCode(t2.replace(/\D/g, ''))}
-              placeholder={t('authPhoneVerification.fields.code.placeholder')}
-              keyboardType="numeric"
-              maxLength={10}
-              editable={!verifying}
-            />
-
-            <Button
-              title={verifying ? t('authPhoneVerification.actions.verifying') : t('authPhoneVerification.actions.verifyContinue')}
-              onPress={handleVerify}
-              disabled={verifying}
-              loading={verifying}
-              style={styles.verifyBtn}
-            />
-
-            <TouchableOpacity onPress={handleResend} disabled={sending} style={styles.resendWrap}>
-              {sending ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={styles.resendText}>{t('authPhoneVerification.actions.resendCode')}</Text>}
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </ScreenContainer>
+    <AuthLayout
+      icon="cellphone-check"
+      title={t('authPhoneVerification.title')}
+      subtitle={t('authPhoneVerification.subtitle')}
+      progress={{ current: 1, total: 2 }}
+    >
+      <View style={styles.notice}>
+        <Ionicons name="shield-checkmark-outline" size={19} color={colors.primary} />
+        <Text style={styles.noticeText}>{t('authExperience.phone.securityNotice')}</Text>
+      </View>
+      <CountryPhoneInput label={t('authPhoneVerification.fields.phone.label')} value={phone} onChangeText={setPhone} editable={!verifying} helperText={t('authPhoneVerification.fields.phone.hint')} />
+      <Input
+        label={t('authPhoneVerification.fields.code.label')}
+        value={code}
+        onChangeText={(value) => setCode(value.replace(/\D/g, ''))}
+        placeholder={t('authPhoneVerification.fields.code.placeholder')}
+        keyboardType="numeric"
+        maxLength={10}
+        editable={!verifying}
+        helperText={t('authExperience.phone.codeHint')}
+        leftIcon={<Ionicons name="keypad-outline" size={20} color={colors.primary} />}
+      />
+      <Button
+        title={verifying ? t('authPhoneVerification.actions.verifying') : t('authPhoneVerification.actions.verifyContinue')}
+        onPress={handleVerify}
+        disabled={verifying}
+        loading={verifying}
+        style={styles.verifyBtn}
+        icon={<Ionicons name="checkmark-circle-outline" size={20} color={colors.textInverse} />}
+      />
+      <View style={styles.resendRow}>
+        <Text style={styles.resendLabel}>{t('authExperience.phone.noCode')}</Text>
+        <TouchableOpacity onPress={handleResend} disabled={sending} hitSlop={8}>
+          {sending ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={styles.resendText}>{t('authPhoneVerification.actions.resendCode')}</Text>}
+        </TouchableOpacity>
+      </View>
+      <View style={styles.divider} />
+      <AuthInfoRow icon="document-text-outline" title={t('authExperience.phone.nextTitle')} description={t('authExperience.phone.nextDescription')} last />
+    </AuthLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  bg: { backgroundColor: colors.background },
-  keyboard: { flex: 1 },
-  scrollContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl * 2 },
-  header: { alignItems: 'center', marginBottom: spacing.xl },
-  logoIcon: { fontSize: 48, marginBottom: spacing.md },
-  title: { ...typography.h2, color: colors.text, marginBottom: spacing.sm },
-  subtitle: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-  form: { marginTop: spacing.md },
-  hint: { ...typography.caption, color: colors.textSecondary, marginTop: -spacing.sm, marginBottom: spacing.md },
-  verifyBtn: { marginTop: spacing.lg },
-  resendWrap: { alignItems: 'center', marginTop: spacing.lg },
-  resendText: { ...typography.body, color: colors.primary },
+  notice: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.primaryLight + '14', borderRadius: borderRadius.md, padding: spacing.md, marginBottom: spacing.lg },
+  noticeText: { ...typography.bodySmall, color: colors.primaryDark, flex: 1, lineHeight: 19 },
+  verifyBtn: { marginTop: spacing.sm },
+  resendRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: spacing.lg },
+  resendLabel: { ...typography.bodySmall, color: colors.textSecondary },
+  resendText: { ...typography.bodySmall, color: colors.primary, fontWeight: '800' },
+  divider: { height: 1, backgroundColor: colors.borderLight, marginVertical: spacing.lg },
 });

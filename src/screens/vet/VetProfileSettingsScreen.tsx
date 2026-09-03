@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
@@ -204,6 +205,13 @@ export function VetProfileSettingsScreen() {
 
   return (
     <ScreenContainer scroll padded>
+      <View style={styles.profileHero}>
+        <View style={styles.profileHeroAvatar}>
+          {profileImage ? <Image source={{ uri: getImageUrl(profileImage) ?? profileImage }} style={styles.profileHeroImage} /> : <Text style={styles.profileHeroInitial}>{form.firstName ? String(form.firstName).charAt(0).toUpperCase() : 'V'}</Text>}
+        </View>
+        <View style={styles.profileHeroCopy}><Text style={styles.profileHeroTitle}>{displayName || t('common.veterinarian')}</Text><Text style={styles.profileHeroText}>{t('vetProfileSettings.subtitle')}</Text></View>
+        <Ionicons name="create-outline" size={20} color={colors.primaryDark} />
+      </View>
       {/* Profile sections nav (same as VeterinaryFrontend DoctorProfileTabs) */}
       <Card style={styles.navCard}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -364,19 +372,21 @@ export function VetProfileSettingsScreen() {
 const styles = StyleSheet.create({
   loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
   loadingText: { ...typography.bodySmall, color: colors.textSecondary, marginTop: spacing.sm },
-  navCard: { marginBottom: spacing.md },
+  profileHero: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: 18, backgroundColor: colors.successLight, borderWidth: 1, borderColor: colors.primaryLight + '25', marginBottom: spacing.md },
+  profileHeroAvatar: { width: 48, height: 48, borderRadius: 16, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.secondaryLight, marginRight: spacing.sm }, profileHeroImage: { width: '100%', height: '100%' }, profileHeroInitial: { ...typography.h3, color: colors.primaryDark }, profileHeroCopy: { flex: 1 }, profileHeroTitle: { ...typography.label, color: colors.primaryDark }, profileHeroText: { ...typography.caption, color: colors.primaryDark, opacity: 0.72, marginTop: 3 },
+  navCard: { marginBottom: spacing.md, paddingVertical: spacing.sm },
   tabsRow: { flexDirection: 'row', gap: 8, paddingVertical: 4 },
   tab: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: 8,
+    borderRadius: 12,
     backgroundColor: colors.backgroundSecondary,
   },
   tabActive: { backgroundColor: colors.primary },
-  tabText: { ...typography.body, color: colors.textSecondary },
+  tabText: { ...typography.bodySmall, color: colors.textSecondary, fontWeight: '600' },
   tabTextActive: { color: colors.textInverse, fontWeight: '600' },
   sectionTitle: { ...typography.h3, marginBottom: spacing.sm, marginTop: spacing.sm },
-  photoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
+  photoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md, padding: spacing.sm, borderRadius: 14, backgroundColor: colors.backgroundSecondary },
   avatarWrap: {
     width: 80,
     height: 80,
@@ -388,7 +398,7 @@ const styles = StyleSheet.create({
   },
   avatarImage: { width: 80, height: 80, borderRadius: 40 },
   avatarText: { ...typography.h2, color: colors.primary },
-  photoActions: { marginLeft: spacing.lg },
+  photoActions: { marginLeft: spacing.md, flex: 1 },
   photoBtn: {
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,

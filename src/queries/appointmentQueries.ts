@@ -15,7 +15,10 @@ export interface AppointmentListParams {
   toDate?: string;
 }
 
-export function useAppointments(params: AppointmentListParams = {}) {
+export function useAppointments(
+  params: AppointmentListParams = {},
+  queryOptions: Record<string, unknown> = {}
+) {
   return useQuery({
     queryKey: ['appointments', params],
     queryFn: () =>
@@ -27,10 +30,14 @@ export function useAppointments(params: AppointmentListParams = {}) {
     retryDelay: 800,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
+    ...queryOptions,
   });
 }
 
-export function useAppointment(appointmentId: string | null | undefined) {
+export function useAppointment(
+  appointmentId: string | null | undefined,
+  queryOptions: Record<string, unknown> = {}
+) {
   return useQuery({
     queryKey: ['appointment', appointmentId],
     queryFn: () =>
@@ -42,5 +49,6 @@ export function useAppointment(appointmentId: string | null | undefined) {
     retryDelay: 800,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
+    ...queryOptions,
   });
 }

@@ -8,6 +8,7 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
 import { colors } from '../../theme/colors';
@@ -15,6 +16,7 @@ import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useVaccinations } from '../../queries/medicalQueries';
 import { useTranslation } from 'react-i18next';
+import { ResponsiveFilterChips } from '../../components/common/ResponsiveFilterChips';
 
 type VaccinationItem = {
   _id: string;
@@ -102,8 +104,13 @@ export function VetVaccinationsScreen() {
 
   return (
     <ScreenContainer padded>
+      <View style={styles.hero}>
+        <View style={styles.heroIcon}><Ionicons name="medkit-outline" size={23} color={colors.primaryDark} /></View>
+        <View style={styles.heroCopy}><Text style={styles.heroTitle}>{t('menu.vaccinations')}</Text><Text style={styles.heroText}>{t('vetVaccinations.recordCount', { count: vaccinations.length })}</Text></View>
+        <View style={styles.heroCount}><Text style={styles.heroCountText}>{vaccinations.length}</Text></View>
+      </View>
       <View style={styles.searchWrap}>
-        <Text style={styles.searchIcon}>🔍</Text>
+        <Ionicons name="search-outline" size={19} color={colors.textSecondary} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder={t('vetVaccinations.searchPlaceholder')}
@@ -112,23 +119,13 @@ export function VetVaccinationsScreen() {
           onChangeText={setSearchQuery}
         />
       </View>
-      <View style={styles.filterRow}>
-        <TouchableOpacity
-          style={[styles.filterChip, filterVaccine === 'all' && styles.filterChipActive]}
-          onPress={() => setFilterVaccine('all')}
-        >
-          <Text style={[styles.filterChipText, filterVaccine === 'all' && styles.filterChipTextActive]}>{t('vetVaccinations.filters.all')}</Text>
-        </TouchableOpacity>
-        {vaccineTypes.map((v) => (
-          <TouchableOpacity
-            key={v}
-            style={[styles.filterChip, filterVaccine === v && styles.filterChipActive]}
-            onPress={() => setFilterVaccine(v)}
-          >
-            <Text style={[styles.filterChipText, filterVaccine === v && styles.filterChipTextActive]}>{v}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <ResponsiveFilterChips
+        width={148}
+        value={filterVaccine}
+        onChange={setFilterVaccine}
+        accessibilityLabel="Filter vaccination records by vaccine type"
+        options={[{ value: 'all', label: t('vetVaccinations.filters.all') }, ...vaccineTypes.map((value) => ({ value, label: value }))]}
+      />
       <FlatList
         data={filtered}
         keyExtractor={(item) => item._id}
@@ -140,20 +137,21 @@ export function VetVaccinationsScreen() {
           const vaccineType = item.vaccinationType ?? t('vetVaccinations.labels.vaccination');
           const status = getStatus(item);
           const statusText = statusLabel(status);
-          const isDueSoon = status === 'Due soon' || status === 'Overdue';
+          const isDueSoon = status === 'Due soon';
+          const isOverdue = status === 'Overdue';
           return (
             <Card style={styles.card}>
               <View style={styles.topRow}>
-                <Text style={styles.petName}>{petName}{breed ? ` (${breed})` : ''}</Text>
-                <View style={[styles.statusBadge, isDueSoon && styles.statusDue]}>
+                <View style={styles.petHeading}><View style={styles.petAvatar}><Text style={styles.petInitial}>{petName.charAt(0)}</Text></View><View><Text style={styles.petName}>{petName}</Text><Text style={styles.breed}>{[breed, item.petId?.species].filter(Boolean).join(' · ') || '—'}</Text></View></View>
+                <View style={[styles.statusBadge, isDueSoon && styles.statusDue, isOverdue && styles.statusOverdue]}>
                   <Text style={styles.statusText}>{statusText}</Text>
                 </View>
               </View>
-              <Text style={styles.owner}>{t('vetVaccinations.labels.owner')}: {ownerName}</Text>
-              <Text style={styles.vaccine}>💉 {vaccineType}</Text>
-              <Text style={styles.date}>{t('vetVaccinations.labels.given')}: {formatDate(item.vaccinationDate)}</Text>
-              <Text style={styles.nextDue}>{t('vetVaccinations.labels.nextDue')}: {item.nextDueDate ? formatDate(item.nextDueDate) : '—'}</Text>
-              {item.notes ? <Text style={styles.notes}>{t('vetVaccinations.labels.note')}: {item.notes}</Text> : null}
+              <View style={styles.ownerRow}><Ionicons name="person-outline" size={14} color={colors.textSecondary} /><Text style={styles.owner}>{t('vetVaccinations.labels.owner')}: {ownerName}</Text></View>
+              <View style={styles.vaccinePanel}><View style={styles.vaccineIcon}><Ionicons name="medical-outline" size={18} color={colors.primary} /></View><View style={{ flex: 1 }}><Text style={styles.vaccineLabel}>{t('vetVaccinations.labels.vaccination')}</Text><Text style={styles.vaccine}>{vaccineType}</Text></View>{item.doseNumber ? <View style={styles.dosePill}><Text style={styles.doseText}>#{item.doseNumber}</Text></View> : null}</View>
+              <View style={styles.dateGrid}><View style={styles.dateCell}><Text style={styles.dateLabel}>{t('vetVaccinations.labels.given')}</Text><Text style={styles.date}>{formatDate(item.vaccinationDate)}</Text></View><View style={styles.dateCell}><Text style={styles.dateLabel}>{t('vetVaccinations.labels.nextDue')}</Text><Text style={styles.date}>{item.nextDueDate ? formatDate(item.nextDueDate) : '—'}</Text></View></View>
+              {item.batchNumber ? <Text style={styles.batch}>{t('vetVaccinations.batch', { value: item.batchNumber })}</Text> : null}
+              {item.notes ? <View style={styles.notesRow}><Ionicons name="document-text-outline" size={14} color={colors.textSecondary} /><Text style={styles.notes}>{item.notes}</Text></View> : null}
             </Card>
           );
         }}
@@ -170,6 +168,9 @@ export function VetVaccinationsScreen() {
 const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
   errorText: { ...typography.body, color: colors.error },
+  hero: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: 18, backgroundColor: colors.successLight, borderWidth: 1, borderColor: colors.primaryLight + '25', marginBottom: spacing.md },
+  heroIcon: { width: 48, height: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.secondaryLight, marginRight: spacing.md },
+  heroCopy: { flex: 1 }, heroTitle: { ...typography.h3, color: colors.primaryDark }, heroText: { ...typography.caption, color: colors.primaryDark, opacity: 0.72, marginTop: 3 }, heroCount: { minWidth: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primaryDark }, heroCountText: { ...typography.label, color: colors.textInverse },
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -181,22 +182,18 @@ const styles = StyleSheet.create({
   },
   searchIcon: { marginRight: spacing.sm, fontSize: 16 },
   searchInput: { flex: 1, ...typography.body, paddingVertical: spacing.sm },
-  filterRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md, flexWrap: 'wrap' },
-  filterChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: 20, backgroundColor: colors.backgroundTertiary },
-  filterChipActive: { backgroundColor: colors.primary },
-  filterChipText: { ...typography.label, color: colors.textSecondary },
-  filterChipTextActive: { color: colors.textInverse },
   list: { paddingBottom: spacing.xxl },
-  card: { marginBottom: spacing.sm },
+  card: { marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.borderLight },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  petName: { ...typography.body, fontWeight: '600' },
-  owner: { ...typography.caption, color: colors.textSecondary },
-  vaccine: { ...typography.h3, color: colors.primary, marginTop: spacing.xs },
-  date: { ...typography.bodySmall, marginTop: 4 },
-  nextDue: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
-  notes: { ...typography.caption, color: colors.textLight, marginTop: 2, fontStyle: 'italic' },
+  petHeading: { flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0 },
+  petAvatar: { width: 38, height: 38, borderRadius: 13, backgroundColor: colors.primaryLight + '20', alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm }, petInitial: { ...typography.label, color: colors.primary },
+  petName: { ...typography.body, fontWeight: '700' }, breed: { ...typography.caption, color: colors.textSecondary, marginTop: 1 },
+  ownerRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.sm }, owner: { ...typography.bodySmall, color: colors.textSecondary },
+  vaccinePanel: { flexDirection: 'row', alignItems: 'center', padding: spacing.sm, borderRadius: 13, backgroundColor: colors.backgroundSecondary, marginTop: spacing.sm }, vaccineIcon: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center', borderRadius: 11, backgroundColor: colors.primaryLight + '16', marginRight: spacing.sm }, vaccineLabel: { ...typography.caption, color: colors.textSecondary }, vaccine: { ...typography.label, color: colors.primaryDark, marginTop: 1 }, dosePill: { backgroundColor: colors.primaryLight + '1A', paddingHorizontal: 7, paddingVertical: 4, borderRadius: 8 }, doseText: { ...typography.caption, color: colors.primaryDark, fontWeight: '800' },
+  dateGrid: { flexDirection: 'row', marginTop: spacing.sm, gap: spacing.sm }, dateCell: { flex: 1, padding: spacing.sm, borderRadius: 10, backgroundColor: colors.backgroundSecondary }, dateLabel: { ...typography.caption, color: colors.textSecondary }, date: { ...typography.bodySmall, color: colors.text, fontWeight: '600', marginTop: 2 }, batch: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.sm }, notesRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 5, marginTop: spacing.sm }, notes: { ...typography.bodySmall, color: colors.textSecondary, flex: 1 },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: colors.successLight },
   statusDue: { backgroundColor: colors.warningLight },
+  statusOverdue: { backgroundColor: colors.errorLight },
   statusText: { fontSize: 12, fontWeight: '600' },
   empty: { paddingVertical: spacing.xxl, alignItems: 'center' },
   emptyText: { ...typography.bodySmall, color: colors.textSecondary },

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
@@ -13,6 +13,7 @@ import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 import i18n from '../../i18n/appI18n';
 
 function extractPlans(payload: unknown): any[] {
@@ -80,9 +81,10 @@ export function PharmacySubscriptionScreen() {
   if (isParapharmacy) {
     return (
       <ScreenContainer padded>
-        <Card>
-          <Text style={styles.sectionTitle}>{t('pharmacySubscription.title')}</Text>
-          <Text style={styles.desc}>{t('pharmacySubscription.parapharmacy.noSubscriptionRequired')}</Text>
+        <Card style={styles.heroCard}>
+          <View style={styles.heroIcon}><Ionicons name="shield-checkmark-outline" size={25} color={colors.textInverse} /></View>
+          <Text style={styles.heroTitle}>{t('pharmacySubscription.title')}</Text>
+          <Text style={[styles.desc, styles.heroDesc]}>{t('pharmacySubscription.parapharmacy.noSubscriptionRequired')}</Text>
         </Card>
       </ScreenContainer>
     );
@@ -98,7 +100,8 @@ export function PharmacySubscriptionScreen() {
 
   return (
     <ScreenContainer scroll padded>
-      <Card>
+      <Card style={styles.currentCard}>
+        <View style={styles.currentTopRow}><View style={styles.currentIcon}><Ionicons name="ribbon-outline" size={23} color={colors.textInverse} /></View><Text style={styles.currentEyebrow}>SUBSCRIPTION STATUS</Text></View>
         <Text style={styles.sectionTitle}>{t('pharmacySubscription.current.title')}</Text>
         <View style={styles.statusRow}>
           <Text style={styles.label}>{t('pharmacySubscription.current.status')}</Text>
@@ -124,7 +127,7 @@ export function PharmacySubscriptionScreen() {
         <Card><Text style={styles.errorText}>{plansQuery.error?.message ?? t('pharmacySubscription.errors.failedToLoadPlans')}</Text></Card>
       )}
       {plans.length > 0 && (
-        <ScrollView style={styles.plansScroll} showsVerticalScrollIndicator={false}>
+        <View style={styles.plansScroll}>
           {plans.map((plan: any) => {
             const id = plan?._id ?? plan?.id;
             const name = plan?.name ?? plan?.title ?? t('pharmacySubscription.plans.planFallback');
@@ -133,7 +136,7 @@ export function PharmacySubscriptionScreen() {
             const isSelected = id === selectedPlanId;
             return (
               <Card key={id} style={styles.planCard}>
-                <Text style={styles.planName}>{name}</Text>
+                <View style={styles.planHeading}><Text style={styles.planName}>{name}</Text>{isCurrent ? <View style={styles.currentPlanBadge}><Text style={styles.currentPlanBadgeText}>Current plan</Text></View> : null}</View>
                 <Text style={styles.planPrice}>{t('pharmacySubscription.plans.pricePerMonth', { price: formatPrice(price) })}</Text>
                 {plan?.description ? <Text style={styles.planFeatures}>{plan.description}</Text> : null}
                 {!isCurrent && (
@@ -149,7 +152,7 @@ export function PharmacySubscriptionScreen() {
               </Card>
             );
           })}
-        </ScrollView>
+        </View>
       )}
       {selectedPlanId && (
         <Button title={t('pharmacySubscription.actions.confirmSubscription')} onPress={onBuy} loading={buyMutation.isPending} style={styles.confirmBtn} />
@@ -161,6 +164,14 @@ export function PharmacySubscriptionScreen() {
 const styles = StyleSheet.create({
   loadingRow: { padding: spacing.xl, alignItems: 'center' },
   errorText: { ...typography.body, color: colors.error },
+  heroCard: { backgroundColor: colors.primaryDark },
+  heroIcon: { width: 46, height: 46, borderRadius: 15, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm },
+  heroTitle: { ...typography.h2, color: colors.textInverse, marginBottom: spacing.sm },
+  heroDesc: { color: 'rgba(255,255,255,0.78)', marginBottom: 0 },
+  currentCard: { borderWidth: 1, borderColor: colors.primaryLight + '42', backgroundColor: colors.primaryLight + '0A' },
+  currentTopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
+  currentIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary },
+  currentEyebrow: { ...typography.caption, color: colors.primaryDark, fontWeight: '800', letterSpacing: 0.7 },
   sectionTitle: { ...typography.h3, marginBottom: spacing.md },
   statusRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
   label: { ...typography.body, marginRight: spacing.sm },
@@ -170,7 +181,10 @@ const styles = StyleSheet.create({
   badgeTextInactive: { color: colors.error },
   desc: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.md },
   plansScroll: { marginTop: spacing.sm },
-  planCard: { marginTop: spacing.sm },
+  planCard: { marginTop: spacing.sm, borderWidth: 1, borderColor: colors.borderLight },
+  planHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  currentPlanBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, backgroundColor: colors.successLight },
+  currentPlanBadgeText: { ...typography.caption, color: colors.success, fontWeight: '800' },
   planName: { ...typography.h3 },
   planPrice: { ...typography.h2, color: colors.primary, marginTop: 4 },
   planFeatures: { ...typography.body, color: colors.textSecondary, marginTop: spacing.sm },

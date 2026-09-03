@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { PetOwnerTabParamList } from './types';
 import { VetHeaderSearchProvider } from '../contexts/VetHeaderSearchContext';
 import { VetHeader } from '../components/common/VetHeader';
@@ -10,8 +11,10 @@ import { PetOwnerPharmacyStack } from './PetOwnerPharmacyStack';
 import { PetOwnerMessagesScreen } from '../screens/petowner/PetOwnerMessagesScreen';
 import { PetOwnerMoreScreen } from '../screens/petowner/PetOwnerMoreScreen';
 import { colors } from '../theme/colors';
-import { typography } from '../theme/typography';
 import { useTranslation } from 'react-i18next';
+import { useNotifications, useUnreadNotificationsCount } from '../queries/notificationQueries';
+import { useUnreadChatCount } from '../queries/chatQueries';
+import { TabBadgeIcon } from '../components/common/TabBadgeIcon';
 
 const Tab = createBottomTabNavigator<PetOwnerTabParamList>();
 
@@ -23,19 +26,24 @@ const TAB_HEADERS: Record<string, { titleKey: string; subtitleKey?: string }> = 
   PetOwnerMore: { titleKey: 'tabs.more', subtitleKey: 'petOwnerTabs.PetOwnerMore.subtitle' },
 };
 
-function TabIcon({ name, focused }: { name: string; focused: boolean }) {
+function getCount(payload: unknown): number {
+  const outer = (payload as { data?: unknown })?.data ?? payload;
+  const inner = (outer as { data?: unknown })?.data ?? outer;
+  const value = (inner as { unreadCount?: unknown; pagination?: { total?: unknown } })?.unreadCount
+    ?? (inner as { pagination?: { total?: unknown } })?.pagination?.total;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function TabIcon({ name, focused, badge }: { name: string; focused: boolean; badge?: number }) {
   const icons: Record<string, string> = {
-    PetOwnerHome: '🏠',
-    PetOwnerAppointments: '📅',
-    PetOwnerPharmacy: '🛒',
-    PetOwnerMessages: '💬',
-    PetOwnerMore: '⋯',
+    PetOwnerHome: 'home-outline',
+    PetOwnerAppointments: 'calendar-outline',
+    PetOwnerPharmacy: 'bag-handle-outline',
+    PetOwnerMessages: 'chatbubbles-outline',
+    PetOwnerMore: 'grid-outline',
   };
-  return (
-    <Text style={[styles.tabIcon, { color: focused ? colors.tabActive : colors.tabInactive }, focused && styles.tabIconActive]}>
-      {icons[name] || '•'}
-    </Text>
-  );
+  return <TabBadgeIcon name={(icons[name] || 'ellipse-outline') as keyof typeof Ionicons.glyphMap} focused={focused} badge={badge} />;
 }
 
 function PetOwnerTabHeader({ route }: { route: { name: string } }) {
@@ -46,6 +54,12 @@ function PetOwnerTabHeader({ route }: { route: { name: string } }) {
 
 export function PetOwnerTabNavigator() {
   const { t } = useTranslation();
+  const appointmentNotifications = useNotifications({ type: 'APPOINTMENT', unreadOnly: true, page: 1, limit: 50 }, { refetchInterval: 30_000 });
+  const unreadMessages = useUnreadChatCount({ refetchInterval: 30_000 });
+  const unreadNotifications = useUnreadNotificationsCount({ refetchInterval: 30_000 });
+  const appointmentBadge = getCount(appointmentNotifications.data);
+  const messageBadge = getCount(unreadMessages.data);
+  const moreBadge = getCount(unreadNotifications.data);
   return (
     <VetHeaderSearchProvider>
     <Tab.Navigator
@@ -58,7 +72,7 @@ export function PetOwnerTabNavigator() {
           tabBarActiveTintColor: colors.tabActive,
           tabBarInactiveTintColor: colors.tabInactive,
           tabBarLabelStyle: styles.tabLabel,
-          tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} badge={route.name === 'PetOwnerAppointments' ? appointmentBadge : route.name === 'PetOwnerMessages' ? messageBadge : route.name === 'PetOwnerMore' ? moreBadge : 0} />,
         };
       }}
     >
@@ -81,6 +95,4 @@ const styles = StyleSheet.create({
     height: 64,
   },
   tabLabel: { fontSize: 12, fontWeight: '600' },
-  tabIcon: { fontSize: 20, opacity: 0.7 },
-  tabIconActive: { opacity: 1 },
 });

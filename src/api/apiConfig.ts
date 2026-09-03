@@ -40,6 +40,7 @@ export const API_ROUTES = {
     DASHBOARD: '/pet-owners/dashboard',
     APPOINTMENTS: '/pet-owners/appointments',
     PAYMENTS: '/pet-owners/payments',
+    INVOICE_PDF: (transactionId: string) => `/pet-owners/payments/${transactionId}/pdf`,
   },
 
   MEDICAL_RECORDS: {
@@ -57,6 +58,7 @@ export const API_ROUTES = {
     PET: '/upload/pet',
     PROFILE: '/upload/profile',
     MEDICAL_RECORDS: '/upload/medical-records',
+    PRODUCT_PRESCRIPTION: '/upload/product-prescription',
     CHAT: '/upload/chat',
     CHAT_MULTIPLE: '/upload/chat/multiple',
   },
@@ -146,6 +148,7 @@ export const API_ROUTES = {
     REVIEWS: '/veterinarians/reviews',
     INVOICES: '/veterinarians/invoices',
     INVOICE: (transactionId: string) => `/veterinarians/invoices/${transactionId}`,
+    INVOICE_PDF: (transactionId: string) => `/veterinarians/invoices/${transactionId}/pdf`,
   },
 
   SPECIALIZATIONS: {
@@ -185,12 +188,15 @@ export const API_ROUTES = {
     MESSAGES: (conversationId: string) => `/chat/messages/${conversationId}`,
     SEND: '/chat/send',
     MARK_READ: (conversationId: string) => `/chat/conversations/${conversationId}/read`,
+    MARK_COMPLETE: (conversationId: string) => `/chat/conversations/${conversationId}/complete`,
     UNREAD_COUNT: '/chat/unread-count',
   },
 
   VIDEO: {
     CREATE: '/video/create',
+    ACCEPT: '/video/accept',
     END: '/video/end',
+    INCOMING: '/video/incoming',
     BY_APPOINTMENT: (appointmentId: string) => `/video/appointment/${appointmentId}`,
   },
 
@@ -199,6 +205,18 @@ export const API_ROUTES = {
     UNREAD_COUNT: '/notifications/unread-count',
     MARK_READ: (id: string) => `/notifications/${id}/read`,
     READ_ALL: '/notifications/read-all',
+  },
+
+  SUPPORT_TICKETS: {
+    BASE: '/support-tickets',
+    LIST: '/support-tickets',
+    CREATE: '/support-tickets',
+    GET: (ticketId: string) => `/support-tickets/${ticketId}`,
+    REPLY: (ticketId: string) => `/support-tickets/${ticketId}/messages`,
+    REOPEN: (ticketId: string) => `/support-tickets/${ticketId}/reopen`,
+    UPLOAD_ATTACHMENTS: '/support-tickets/attachments',
+    DOWNLOAD_ATTACHMENT: (attachmentId: string) => `/support-tickets/attachments/${attachmentId}/download`,
+    UNREAD_COUNT: '/support-tickets/unread-count',
   },
 
   SUBSCRIPTION_PLANS: {
@@ -239,6 +257,14 @@ export const API_ROUTES = {
     CREATE: '/products',
     UPDATE: (id: string) => `/products/${id}`,
     DELETE: (id: string) => `/products/${id}`,
+  },
+
+  PRODUCT_PRESCRIPTION_REQUESTS: {
+    BASE: '/product-prescription-requests',
+    ELIGIBILITY: (productId: string) => `/product-prescription-requests/product/${productId}/eligibility`,
+    PHARMACY: '/product-prescription-requests/pharmacy',
+    PENDING_COUNT: '/product-prescription-requests/pharmacy/pending-count',
+    REVIEW: (requestId: string) => `/product-prescription-requests/${requestId}/review`,
   },
 
   ORDERS: {

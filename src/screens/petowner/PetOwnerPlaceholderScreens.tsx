@@ -32,6 +32,7 @@ import { getErrorMessage } from '../../utils/errorUtils';
 import { useTranslation } from 'react-i18next';
 import { VideoCallScreen } from '../shared/VideoCallScreen';
 import i18n from '../../i18n/appI18n';
+import { Ionicons } from '@expo/vector-icons';
 
 type RequestRoute = RouteProp<PetOwnerStackParamList, 'PetOwnerRequestReschedule'>;
 
@@ -41,6 +42,7 @@ type EligibleAppointment = {
   appointmentTime?: string;
   appointmentNumber?: string;
   veterinarianId?: { name?: string; fullName?: string; email?: string } | string;
+  petId?: { name?: string; breed?: string } | string;
 };
 
 function normalizeEligibleAppointments(response: unknown): EligibleAppointment[] {
@@ -57,6 +59,7 @@ function normalizeEligibleAppointments(response: unknown): EligibleAppointment[]
       appointmentTime: (a.appointmentTime as string) || undefined,
       appointmentNumber: (a.appointmentNumber as string) || undefined,
       veterinarianId: (a.veterinarianId as EligibleAppointment['veterinarianId']) || undefined,
+      petId: (a.petId as EligibleAppointment['petId']) || undefined,
     }))
     .filter((a) => !!a._id);
 }
@@ -461,11 +464,18 @@ export function PetOwnerRequestRescheduleScreen() {
     }
   };
 
+  const selectedAppointment = useMemo(
+    () => eligibleAppointments.find((item) => String(item._id) === String(selectedAppointmentId)) ?? null,
+    [eligibleAppointments, selectedAppointmentId]
+  );
+
   return (
     <ScreenContainer scroll padded>
-      <Card>
-        <Text style={styles.title}>{t('petOwnerPlaceholders.requestReschedule.title')}</Text>
-        <Text style={styles.subtitle}>{t('petOwnerPlaceholders.requestReschedule.subtitle')}</Text>
+      <View style={styles.rescheduleHero}>
+        <View style={styles.rescheduleHeroIcon}><Ionicons name="calendar-outline" size={24} color={colors.primaryDark} /></View>
+        <View style={styles.rescheduleHeroCopy}><Text style={styles.rescheduleHeroTitle}>{t('petOwnerPlaceholders.requestReschedule.title')}</Text><Text style={styles.rescheduleHeroText}>{t('petOwnerPlaceholders.requestReschedule.subtitle')}</Text></View>
+      </View>
+      <Card style={styles.rescheduleCard}>
 
         {eligibleQuery.isLoading ? (
           <View style={styles.center}>
@@ -483,37 +493,49 @@ export function PetOwnerRequestRescheduleScreen() {
         ) : (
           <>
             <Text style={styles.sectionLabel}>{t('petOwnerPlaceholders.requestReschedule.fields.selectAppointment')}</Text>
-            <View style={styles.list}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.appointmentPickerScroll}>
               {eligibleAppointments.map((item) => {
                 const vet = item.veterinarianId as { name?: string; fullName?: string; email?: string } | string | undefined;
                 const vetName =
                   typeof vet === 'string'
                     ? t('common.veterinarian')
                     : vet?.name || vet?.fullName || vet?.email || t('common.veterinarian');
-                const label = `${vetName} - ${formatDateTime(item.appointmentDate, item.appointmentTime)}`;
                 const selected = String(selectedAppointmentId) === String(item._id);
                 return (
                   <TouchableOpacity
                     key={item._id}
                     activeOpacity={0.8}
                     onPress={() => setSelectedAppointmentId(String(item._id))}
-                    style={[styles.pickRow, selected && styles.pickRowSelected]}
+                    style={[styles.appointmentPickerCard, selected && styles.appointmentPickerCardSelected]}
                   >
-                    <View style={styles.pickRowTextWrap}>
-                      <Text style={styles.pickRowTitle}>{label}</Text>
+                    <View style={[styles.appointmentPickerIcon, selected && styles.appointmentPickerIconSelected]}><Ionicons name="medical-outline" size={18} color={selected ? colors.textInverse : colors.primary} /></View>
+                    <View style={styles.appointmentPickerCopy}>
+                      <Text style={styles.appointmentPickerVet} numberOfLines={1}>{vetName}</Text>
+                      <Text style={styles.appointmentPickerDate} numberOfLines={2}>{formatDateTime(item.appointmentDate, item.appointmentTime)}</Text>
                       {item.appointmentNumber ? (
-                        <Text style={styles.pickRowMeta}>
+                        <Text style={styles.appointmentPickerMeta}>
                           {t('petOwnerPlaceholders.requestReschedule.labels.appointmentNumber', { value: item.appointmentNumber })}
                         </Text>
                       ) : null}
                     </View>
-                    <Text style={[styles.pickRowCheck, selected && styles.pickRowCheckSelected]}>
-                      {selected ? '✓' : ''}
-                    </Text>
+                    {selected ? <View style={styles.appointmentSelectedCheck}><Ionicons name="checkmark" size={14} color={colors.textInverse} /></View> : null}
                   </TouchableOpacity>
                 );
               })}
-            </View>
+            </ScrollView>
+
+            {selectedAppointment ? (() => {
+              const selectedVet = selectedAppointment.veterinarianId;
+              const selectedPet = selectedAppointment.petId;
+              const selectedVetName = typeof selectedVet === 'string' ? t('common.veterinarian') : selectedVet?.name || selectedVet?.fullName || selectedVet?.email || t('common.veterinarian');
+              const selectedPetName = typeof selectedPet === 'string' ? t('common.pet') : selectedPet?.name || t('common.pet');
+              return <View style={styles.selectedAppointmentSummary}>
+                <View style={styles.selectedAppointmentSummaryTop}><View style={styles.selectedAppointmentSummaryIcon}><Ionicons name="checkmark-circle" size={18} color={colors.primary} /></View><Text style={styles.selectedAppointmentSummaryTitle}>{t('petOwnerPlaceholders.requestReschedule.selectedAppointment')}</Text></View>
+                <View style={styles.selectedAppointmentInfoRow}><Ionicons name="medkit-outline" size={15} color={colors.textSecondary} /><Text style={styles.selectedAppointmentInfoText}>{selectedVetName}</Text></View>
+                <View style={styles.selectedAppointmentInfoRow}><Ionicons name="paw-outline" size={15} color={colors.textSecondary} /><Text style={styles.selectedAppointmentInfoText}>{selectedPetName}</Text></View>
+                <View style={styles.selectedAppointmentInfoRow}><Ionicons name="time-outline" size={15} color={colors.textSecondary} /><Text style={styles.selectedAppointmentInfoText}>{formatDateTime(selectedAppointment.appointmentDate, selectedAppointment.appointmentTime)}</Text></View>
+              </View>;
+            })() : null}
 
             <Text style={styles.sectionLabel}>{t('petOwnerPlaceholders.requestReschedule.fields.preferredDateOptional')}</Text>
             <TouchableOpacity
@@ -524,7 +546,7 @@ export function PetOwnerRequestRescheduleScreen() {
               <Text style={[styles.pickerFieldText, !preferredDate && styles.pickerFieldPlaceholder]}>
                 {preferredDate || t('petOwnerPlaceholders.requestReschedule.placeholders.selectDate')}
               </Text>
-              <Text style={styles.pickerIcon}>📅</Text>
+              <Ionicons name="calendar-outline" size={19} color={colors.primary} />
             </TouchableOpacity>
 
             <Text style={styles.sectionLabel}>{t('petOwnerPlaceholders.requestReschedule.fields.preferredTimeOptional')}</Text>
@@ -536,7 +558,7 @@ export function PetOwnerRequestRescheduleScreen() {
               <Text style={[styles.pickerFieldText, !preferredTime && styles.pickerFieldPlaceholder]}>
                 {preferredTime || t('petOwnerPlaceholders.requestReschedule.placeholders.selectTime')}
               </Text>
-              <Text style={styles.pickerIcon}>🕒</Text>
+              <Ionicons name="time-outline" size={19} color={colors.primary} />
             </TouchableOpacity>
 
             <Text style={styles.sectionLabel}>{t('petOwnerPlaceholders.requestReschedule.fields.reason')}</Text>
@@ -552,6 +574,7 @@ export function PetOwnerRequestRescheduleScreen() {
             <Text style={styles.counter}>{String(reason || '').length}/500</Text>
 
             <View style={styles.warningBox}>
+              <Ionicons name="information-circle-outline" size={18} color={colors.secondaryDark} style={styles.warningIcon} />
               <Text style={styles.warningText}>
                 {t('petOwnerPlaceholders.requestReschedule.hint.feeAfterApproval')}
               </Text>
@@ -561,6 +584,7 @@ export function PetOwnerRequestRescheduleScreen() {
               title={createRequest.isPending ? t('petOwnerPlaceholders.requestReschedule.actions.submitting') : t('petOwnerPlaceholders.requestReschedule.actions.submit')}
               onPress={submit}
               disabled={createRequest.isPending}
+              icon={<Ionicons name="send-outline" size={19} color={colors.textInverse} />}
             />
           </>
         )}
@@ -588,7 +612,10 @@ export function PetOwnerRequestRescheduleScreen() {
 
 export function PetOwnerRescheduleRequestsScreen() {
   const navigation = useNavigation<any>();
-  const requestsQuery = useRescheduleRequests();
+  const requestsQuery = useRescheduleRequests(
+    {},
+    { refetchInterval: 10_000, refetchIntervalInBackground: true }
+  );
   const payFee = usePayRescheduleFee();
   const { t } = useTranslation();
 
@@ -608,7 +635,7 @@ export function PetOwnerRescheduleRequestsScreen() {
   const confirmPay = async () => {
     if (!selected?._id) return;
     try {
-      await payFee.mutateAsync({ id: selected._id, paymentMethod: 'DUMMY' });
+      await payFee.mutateAsync({ id: selected._id, paymentMethod: 'STRIPE' });
       Toast.show({ type: 'success', text1: t('petOwnerPlaceholders.rescheduleRequests.toasts.paid') });
       setShowPayModal(false);
       setSelected(null);
@@ -1046,7 +1073,7 @@ const styles = StyleSheet.create({
   pickerField: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 12,
+    borderRadius: 14,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     flexDirection: 'row',
@@ -1056,7 +1083,28 @@ const styles = StyleSheet.create({
   },
   pickerFieldText: { ...typography.body },
   pickerFieldPlaceholder: { color: colors.textLight },
-  pickerIcon: { fontSize: 18 },
+  rescheduleHero: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.successLight, borderRadius: 18, padding: spacing.md, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.primaryLight + '28' },
+  rescheduleHeroIcon: { width: 48, height: 48, borderRadius: 15, backgroundColor: colors.secondaryLight, alignItems: 'center', justifyContent: 'center', marginRight: spacing.md },
+  rescheduleHeroCopy: { flex: 1 },
+  rescheduleHeroTitle: { ...typography.h3, color: colors.primaryDark },
+  rescheduleHeroText: { ...typography.caption, color: colors.primaryDark, opacity: 0.72, marginTop: 3 },
+  rescheduleCard: { borderWidth: 1, borderColor: colors.borderLight },
+  appointmentPickerScroll: { gap: spacing.sm, paddingTop: spacing.xs, paddingBottom: spacing.md, paddingRight: spacing.sm },
+  appointmentPickerCard: { width: 228, minHeight: 106, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: spacing.sm, backgroundColor: colors.background, position: 'relative' },
+  appointmentPickerCardSelected: { borderColor: colors.primary, backgroundColor: colors.primaryLight + '14' },
+  appointmentPickerIcon: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primaryLight + '18', marginBottom: spacing.sm },
+  appointmentPickerIconSelected: { backgroundColor: colors.primary },
+  appointmentPickerCopy: { paddingRight: spacing.md },
+  appointmentPickerVet: { ...typography.label, color: colors.text },
+  appointmentPickerDate: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 3 },
+  appointmentPickerMeta: { ...typography.caption, color: colors.textLight, marginTop: 4 },
+  appointmentSelectedCheck: { position: 'absolute', top: spacing.sm, right: spacing.sm, width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary },
+  selectedAppointmentSummary: { padding: spacing.md, marginBottom: spacing.xs, borderRadius: 14, backgroundColor: colors.primaryLight + '10', borderWidth: 1, borderColor: colors.primaryLight + '28' },
+  selectedAppointmentSummaryTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.sm },
+  selectedAppointmentSummaryIcon: { width: 28, height: 28, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.successLight },
+  selectedAppointmentSummaryTitle: { ...typography.label, color: colors.primaryDark },
+  selectedAppointmentInfoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 5 },
+  selectedAppointmentInfoText: { ...typography.bodySmall, color: colors.text },
   list: { paddingTop: spacing.sm, paddingBottom: spacing.md },
   pickRow: {
     flexDirection: 'row',
@@ -1088,8 +1136,9 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   counter: { ...typography.caption, color: colors.textLight, marginTop: spacing.xs },
-  warningBox: { marginTop: spacing.md, padding: spacing.md, borderRadius: 12, backgroundColor: colors.warning + '15' },
-  warningText: { ...typography.bodySmall, color: colors.textSecondary },
+  warningBox: { flexDirection: 'row', alignItems: 'flex-start', marginTop: spacing.md, padding: spacing.md, borderRadius: 12, backgroundColor: colors.warning + '15' },
+  warningIcon: { marginRight: spacing.sm, marginTop: 1 },
+  warningText: { ...typography.bodySmall, color: colors.textSecondary, flex: 1 },
   headerCard: { marginBottom: spacing.sm },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   headerBtn: { paddingHorizontal: spacing.md, minHeight: 40 },

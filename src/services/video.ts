@@ -20,6 +20,14 @@ export async function endVideoSession(sessionId: string) {
   return api.post<{ success: boolean; message?: string; data?: unknown }>(API_ROUTES.VIDEO.END, { sessionId });
 }
 
+export async function acceptVideoSession(sessionId: string) {
+  return api.post<VideoSessionResponse>(API_ROUTES.VIDEO.ACCEPT, { sessionId });
+}
+
+export async function getIncomingVideoSessions() {
+  return api.get<{ success: boolean; data?: { sessions?: unknown[] } }>(API_ROUTES.VIDEO.INCOMING);
+}
+
 export async function getVideoSessionByAppointment(appointmentId: string) {
   return api.get<VideoSessionResponse>(API_ROUTES.VIDEO.BY_APPOINTMENT(appointmentId));
 }
