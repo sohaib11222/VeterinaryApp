@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import {
   View,
   Text,
@@ -207,7 +208,7 @@ export function VetProfileSettingsScreen() {
     <ScreenContainer scroll padded>
       <View style={styles.profileHero}>
         <View style={styles.profileHeroAvatar}>
-          {profileImage ? <Image source={{ uri: getImageUrl(profileImage) ?? profileImage }} style={styles.profileHeroImage} /> : <Text style={styles.profileHeroInitial}>{form.firstName ? String(form.firstName).charAt(0).toUpperCase() : 'V'}</Text>}
+          {profileImage ? <AppImage source={{ uri: getImageUrl(profileImage) ?? profileImage }} style={styles.profileHeroImage} /> : <Text style={styles.profileHeroInitial}>{form.firstName ? String(form.firstName).charAt(0).toUpperCase() : 'V'}</Text>}
         </View>
         <View style={styles.profileHeroCopy}><Text style={styles.profileHeroTitle}>{displayName || t('common.veterinarian')}</Text><Text style={styles.profileHeroText}>{t('vetProfileSettings.subtitle')}</Text></View>
         <Ionicons name="create-outline" size={20} color={colors.primaryDark} />
@@ -240,7 +241,7 @@ export function VetProfileSettingsScreen() {
         <View style={styles.photoRow}>
           <View style={styles.avatarWrap}>
             {profileImage ? (
-              <Image source={{ uri: getImageUrl(profileImage) ?? profileImage }} style={styles.avatarImage} />
+              <AppImage source={{ uri: getImageUrl(profileImage) ?? profileImage }} style={styles.avatarImage} />
             ) : (
               <Text style={styles.avatarText}>
                 {form.firstName ? String(form.firstName).charAt(0).toUpperCase() : 'V'}

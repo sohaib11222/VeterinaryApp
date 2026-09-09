@@ -121,6 +121,7 @@ export function VetVaccinationsScreen() {
       </View>
       <ResponsiveFilterChips
         width={148}
+        bottomSpacing={spacing.xs}
         value={filterVaccine}
         onChange={setFilterVaccine}
         accessibilityLabel="Filter vaccination records by vaccine type"
@@ -129,6 +130,7 @@ export function VetVaccinationsScreen() {
       <FlatList
         data={filtered}
         keyExtractor={(item) => item._id}
+        style={styles.listContainer}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => {
           const petName = item.petId?.name ?? t('common.pet');
@@ -182,7 +184,8 @@ const styles = StyleSheet.create({
   },
   searchIcon: { marginRight: spacing.sm, fontSize: 16 },
   searchInput: { flex: 1, ...typography.body, paddingVertical: spacing.sm },
-  list: { paddingBottom: spacing.xxl },
+  listContainer: { flex: 1 },
+  list: { paddingTop: 0, paddingBottom: spacing.xxl },
   card: { marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.borderLight },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   petHeading: { flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0 },

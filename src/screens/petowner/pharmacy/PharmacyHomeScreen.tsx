@@ -1,4 +1,5 @@
 import React from 'react';
+import { AppImage } from '../../../components/common/AppImage';
 import {
   View,
   Text,
@@ -109,7 +110,7 @@ export function PharmacyHomeScreen() {
                   >
                     <View style={styles.productImageContainer}>
                       {imageUri ? (
-                        <Image source={{ uri: imageUri }} style={styles.productImage} resizeMode="cover" />
+                        <AppImage source={{ uri: imageUri }} style={styles.productImage} resizeMode="cover" />
                       ) : (
                         <View style={styles.productImage} />
                       )}

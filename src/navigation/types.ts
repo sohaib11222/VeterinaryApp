@@ -6,6 +6,8 @@ import type { CompositeScreenProps, NavigatorScreenParams } from '@react-navigat
 export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
+  PetSitterRegister: undefined;
+  VerifyEmail: { email: string };
   ForgotPassword: undefined;
   DoctorRegister: undefined;
   DoctorVerificationUpload: undefined;
@@ -23,7 +25,7 @@ export type AuthStackScreenProps<T extends keyof AuthStackParamList> = NativeSta
 export type RootStackParamList = {
   Auth: undefined;
   Pending: undefined;
-  Main: NavigatorScreenParams<VetStackParamList>;
+  Main: NavigatorScreenParams<VetStackParamList | PetOwnerStackParamList | PetSitterStackParamList>;
 };
 
 // Vet tab
@@ -185,6 +187,7 @@ export type PetOwnerStackParamList = {
   PetOwnerChatDetail: {
     conversationId: string;
     veterinarianId?: string;
+    petSitterId?: string;
     petOwnerId?: string;
     appointmentId?: string;
     conversationType?: string;
@@ -207,6 +210,8 @@ export type PetOwnerStackParamList = {
   PetOwnerProfileSettings: undefined;
   PetOwnerChangePassword: undefined;
   PetOwnerSearch: undefined;
+  PetOwnerPetSitters: undefined;
+  PetOwnerPetSitterProfile: { petSitterId: string };
   PetOwnerVetProfile: { vetId: string };
   PetOwnerBooking: { vetId?: string };
   PetOwnerBookingCheckout: {
@@ -223,6 +228,34 @@ export type PetOwnerStackParamList = {
   PetOwnerCart: undefined;
   PetOwnerCheckout: undefined;
   PetOwnerPaymentSuccess: undefined;
+};
+
+// Pet Sitter: the same account, profiles, chats and support records used by the website.
+export type PetSitterTabParamList = {
+  PetSitterDashboard: undefined;
+  PetSitterChats: undefined;
+  PetSitterMore: undefined;
+};
+
+export type PetSitterStackParamList = {
+  PetSitterOnboarding: undefined;
+  PetSitterTabs: undefined;
+  PetSitterChatDetail: {
+    conversationId: string;
+    petSitterId?: string;
+    petOwnerId?: string;
+    conversationType?: string;
+    title?: string;
+    subtitle?: string;
+    peerImageUri?: string | null;
+  };
+  PetSitterProfile: undefined;
+  PetSitterSupportTickets: undefined;
+  PetSitterCreateSupportTicket: undefined;
+  PetSitterSupportTicketDetail: { ticketId: string };
+  PetSitterChangePassword: undefined;
+  PetSitterNotifications: undefined;
+  Language: undefined;
 };
 
 declare global {

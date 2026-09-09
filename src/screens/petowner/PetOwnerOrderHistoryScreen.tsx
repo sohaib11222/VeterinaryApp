@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import {
   View,
   Text,
@@ -144,6 +145,7 @@ export function PetOwnerOrderHistoryScreen() {
     const firstImage = items[0]?.productId?.images?.[0];
     const imageUri = getImageUrl(firstImage ?? undefined);
     const createdAt = formatDate(order.createdAt as string, t('common.na'));
+    const expectedDeliveryDate = order.expectedDeliveryDate ? formatDate(order.expectedDeliveryDate as string, t('common.na')) : null;
 
     const statusStyle = getStatusStyle(status);
     const canPay = paymentStatus === 'UNPAID' && shippingSet && (status === 'PENDING' || status === 'CONFIRMED');
@@ -164,7 +166,7 @@ export function PetOwnerOrderHistoryScreen() {
         </View>
         <View style={styles.orderBody}>
           {imageUri ? (
-            <Image source={{ uri: imageUri }} style={styles.productImage} resizeMode="cover" />
+            <AppImage source={{ uri: imageUri }} style={styles.productImage} resizeMode="cover" />
           ) : (
             <View style={[styles.productImage, styles.productImageFallback]}><Ionicons name="cube-outline" size={24} color={colors.textLight} /></View>
           )}
@@ -174,6 +176,7 @@ export function PetOwnerOrderHistoryScreen() {
             </Text>
             <Text style={styles.orderDate}>{t('petOwnerOrders.labels.orderedOn', { date: createdAt })}</Text>
             <View style={styles.paymentRow}><Ionicons name={paymentStatus === 'PAID' ? 'checkmark-circle-outline' : 'card-outline'} size={13} color={paymentStatus === 'PAID' ? colors.success : colors.textSecondary} /><Text style={styles.paymentStatusText}>{t('petOwnerOrders.labels.payment', { status: paymentStatus })}</Text></View>
+            {expectedDeliveryDate ? <View style={styles.deliveryDateRow}><Ionicons name="car-outline" size={13} color={colors.primary} /><Text style={styles.deliveryDateText}>Expected delivery: {expectedDeliveryDate}</Text></View> : null}
           </View>
           <Text style={styles.orderTotal}>€{total.toFixed(2)}</Text>
         </View>
@@ -430,6 +433,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
   },
+  deliveryDateRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5 },
+  deliveryDateText: { ...typography.caption, color: colors.primary, fontWeight: '700' },
   orderTotal: {
     fontSize: 18,
     fontWeight: '700',

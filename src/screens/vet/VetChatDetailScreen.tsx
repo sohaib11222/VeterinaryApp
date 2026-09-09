@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import {
   View,
   Text,
@@ -6,14 +7,12 @@ import {
   FlatList,
   TextInput,
   TouchableOpacity,
-  Platform,
   Alert,
   ActivityIndicator,
   Image,
   Modal,
   Pressable,
   Linking,
-  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute, RouteProp } from '@react-navigation/native';
@@ -32,6 +31,8 @@ import { useUploadChatFile } from '../../mutations/uploadMutations';
 import { copyToCacheUri, deleteCacheFiles, getExtensionFromMime } from '../../utils/fileUpload';
 import Toast from 'react-native-toast-message';
 import { useTranslation } from 'react-i18next';
+import { useChatKeyboardInset } from '../../hooks/useChatKeyboardInset';
+import { useChatAutoScroll } from '../../hooks/useChatAutoScroll';
 
 type Route = RouteProp<VetStackParamList, 'VetChatDetail'>;
 
@@ -88,22 +89,9 @@ export function VetChatDetailScreen() {
 
   const [message, setMessage] = useState('');
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const listRef = useRef<FlatList>(null);
+  const { composerRef, keyboardOffset, onComposerFocus } = useChatKeyboardInset();
   const lastMarkedReadRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', (e) => {
-      setKeyboardHeight(e.endCoordinates.height);
-    });
-    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => {
-      setKeyboardHeight(0);
-    });
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
 
   const { data: messagesResponse, isLoading: messagesLoading } = useMessages(
     conversationId,
@@ -124,6 +112,13 @@ export function VetChatDetailScreen() {
     const list = payload?.data?.messages ?? payload?.messages ?? [];
     return Array.isArray(list) ? list : [];
   })();
+  const { scrollToLatest, onContentSizeChange, onListLayout } = useChatAutoScroll(
+    listRef,
+    conversationId,
+    messages,
+    messagesLoading,
+    keyboardOffset
+  );
 
   const selectedConversation = (() => {
     const payload = conversationsResponse as { data?: { conversations?: Array<{ _id?: string; status?: string; conversationType?: string }> }; conversations?: Array<{ _id?: string; status?: string; conversationType?: string }> } | undefined;
@@ -140,10 +135,6 @@ export function VetChatDetailScreen() {
     lastMarkedReadRef.current = readKey;
     markRead.mutate(conversationId);
   }, [conversationId, markRead, messages]);
-
-  useEffect(() => {
-    if (messages.length > 0) setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
-  }, [messages.length]);
 
   const handleSend = async () => {
     if (isConversationCompleted) {
@@ -299,13 +290,7 @@ export function VetChatDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenContainer
-        style={{
-          ...styles.screenWrap,
-          ...(keyboardHeight > 0 ? { paddingBottom: keyboardHeight } : {}),
-        }}
-        padded={false}
-      >
+      <ScreenContainer style={styles.screenWrap} padded={false} keyboardAvoidance="none">
           {isConversationCompleted ? (
             <View style={styles.completedBanner}>
               <Ionicons name="lock-closed-outline" size={18} color={colors.warning} />
@@ -333,7 +318,9 @@ export function VetChatDetailScreen() {
               ref={listRef}
               data={messages}
               keyExtractor={(item) => String(item._id)}
-              contentContainerStyle={styles.messagesList}
+              contentContainerStyle={[styles.messagesList, { paddingBottom: spacing.lg + keyboardOffset }]}
+              onContentSizeChange={onContentSizeChange}
+              onLayout={onListLayout}
               ListEmptyComponent={
                 <View style={styles.empty}>
                   <Text style={styles.emptyText}>{t('vetChatDetail.empty')}</Text>
@@ -360,7 +347,7 @@ export function VetChatDetailScreen() {
                                   onPress={() => setPreviewImageUri(att.url)}
                                   style={styles.attachmentImageWrap}
                                 >
-                                  <Image source={{ uri: att.url }} style={styles.attachmentImage} resizeMode="cover" />
+                                  <AppImage source={{ uri: att.url }} style={styles.attachmentImage} resizeMode="cover" />
                                 </TouchableOpacity>
                               );
                             }
@@ -389,7 +376,8 @@ export function VetChatDetailScreen() {
               }}
             />
           )}
-          <View style={styles.inputRow}>
+          <View ref={composerRef} collapsable={false}>
+            <View style={[styles.inputRow, { transform: [{ translateY: -keyboardOffset }], zIndex: 5 }]}>
             <TouchableOpacity
               style={[styles.attachBtn, isConversationCompleted && styles.attachBtnDisabled]}
               onPress={handleAttach}
@@ -403,6 +391,10 @@ export function VetChatDetailScreen() {
               placeholderTextColor={colors.textLight}
               value={message}
               onChangeText={setMessage}
+              onFocus={() => {
+                onComposerFocus();
+                scrollToLatest(true);
+              }}
               multiline
               submitBehavior="submit"
               onSubmitEditing={() => { void handleSend(); }}
@@ -416,6 +408,7 @@ export function VetChatDetailScreen() {
             >
               <Ionicons name="send" size={18} color={colors.textInverse} />
             </TouchableOpacity>
+            </View>
           </View>
       </ScreenContainer>
 
@@ -423,7 +416,7 @@ export function VetChatDetailScreen() {
         <Pressable style={styles.imagePreviewOverlay} onPress={() => setPreviewImageUri(null)}>
           <View style={styles.imagePreviewContent}>
             {previewImageUri ? (
-              <Image source={{ uri: previewImageUri }} style={styles.imagePreviewImg} resizeMode="contain" />
+              <AppImage source={{ uri: previewImageUri }} style={styles.imagePreviewImg} resizeMode="contain" />
             ) : null}
           </View>
         </Pressable>

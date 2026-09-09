@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import {
   View,
   Text,
@@ -168,7 +169,7 @@ export function PetOwnerVetProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <Card>
           <View style={styles.header}>
-            {image ? <Image source={{ uri: image }} style={styles.avatar} /> : (
+            {image ? <AppImage source={{ uri: image }} style={styles.avatar} /> : (
               <View style={styles.avatarPlaceholder}><Text style={styles.avatarLetter}>{name.charAt(0)}</Text></View>
             )}
             <View style={styles.headerInfo}>
@@ -316,7 +317,7 @@ export function PetOwnerVetProfileScreen() {
               return (
                 <View key={String(r._id)} style={styles.reviewItem}>
                   <View style={styles.reviewHeader}>
-                    {reviewerImage ? <Image source={{ uri: reviewerImage }} style={styles.reviewAvatar} /> : <View style={styles.reviewAvatarPlaceholder}><Text style={styles.reviewAvatarLetter}>{reviewerName.charAt(0)}</Text></View>}
+                    {reviewerImage ? <AppImage source={{ uri: reviewerImage }} style={styles.reviewAvatar} /> : <View style={styles.reviewAvatarPlaceholder}><Text style={styles.reviewAvatarLetter}>{reviewerName.charAt(0)}</Text></View>}
                     <View style={styles.reviewMeta}>
                       <Text style={styles.reviewerName}>{reviewerName}</Text>
                       <View style={styles.ratingRow}>{renderStars(Number(r?.rating ?? 0))}</View>

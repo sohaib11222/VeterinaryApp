@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { AppImage } from '../../../components/common/AppImage';
 import {
   View,
   Text,
@@ -82,7 +83,7 @@ export function PharmacySearchScreen() {
     return (
       <View style={styles.pharmacyCard}>
         {logo ? (
-          <Image source={{ uri: logo }} style={styles.pharmacyImage} resizeMode="cover" />
+          <AppImage source={{ uri: logo }} style={styles.pharmacyImage} resizeMode="cover" />
         ) : (
           <View style={styles.pharmacyImage} />
         )}

@@ -8,12 +8,17 @@ export const API_ROUTES = {
 
   AUTH: {
     REGISTER: '/auth/register',
+    REGISTER_PET_SITTER: '/auth/register-pet-sitter',
     LOGIN: '/auth/login',
     CHANGE_PASSWORD: '/auth/change-password',
+    REQUEST_CHANGE_PASSWORD_CODE: '/auth/change-password/request-code',
+    VERIFY_CHANGE_PASSWORD_CODE: '/auth/change-password/verify-code',
     REFRESH_TOKEN: '/auth/refresh-token',
     FORGOT_PASSWORD: '/auth/forgot-password',
     VERIFY_RESET_CODE: '/auth/verify-reset-code',
     RESET_PASSWORD: '/auth/reset-password',
+    VERIFY_EMAIL: '/auth/verify-email',
+    RESEND_EMAIL_VERIFICATION: '/auth/resend-email-verification',
     SEND_PHONE_OTP: '/auth/phone-otp/send',
     VERIFY_PHONE_OTP: '/auth/phone-otp/verify',
     APPROVE_VETERINARIAN: '/auth/approve-veterinarian',
@@ -247,6 +252,14 @@ export const API_ROUTES = {
     BUY_SUBSCRIPTION: '/pet-stores/buy-subscription',
     CREATE: '/pet-stores',
     UPDATE: (id: string) => `/pet-stores/${id}`,
+  },
+
+  PET_SITTERS: {
+    LIST: '/pet-sitters',
+    PUBLIC_PROFILE: (id: string) => `/pet-sitters/${id}`,
+    ME: '/pet-sitters/me/profile',
+    UPDATE_ME: '/pet-sitters/me/profile',
+    UPLOAD_DOCUMENTS: '/pet-sitters/me/documents',
   },
 
   PRODUCTS: {

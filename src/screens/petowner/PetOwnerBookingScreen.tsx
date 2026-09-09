@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -47,6 +47,7 @@ export function PetOwnerBookingScreen() {
   const [reason, setReason] = useState('');
   const [petSymptoms, setPetSymptoms] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const formScrollRef = useRef<ScrollView | null>(null);
 
   const petOwnerId = (user as { _id?: string })?._id ?? (user as { id?: string })?.id ?? '';
 
@@ -134,6 +135,12 @@ export function PetOwnerBookingScreen() {
     });
   };
 
+  const revealFocusedBookingField = () => {
+    // Wait for the keyboard animation to reduce the viewport, then bring the
+    // lower form fields fully above it on both iOS and Android.
+    setTimeout(() => formScrollRef.current?.scrollToEnd({ animated: true }), 140);
+  };
+
   if (!vetId) {
     return (
       <ScreenContainer padded>
@@ -146,8 +153,7 @@ export function PetOwnerBookingScreen() {
   }
 
   return (
-    <ScreenContainer scroll padded>
-      <ScrollView showsVerticalScrollIndicator={false}>
+    <ScreenContainer scroll padded scrollRef={formScrollRef}>
         <Card>
           <Text style={styles.vetName}>{vetLoading ? t('petOwnerBooking.loading') : vetName}</Text>
           <Text style={styles.subtitle}>{t('petOwnerBooking.subtitle')}</Text>
@@ -268,6 +274,7 @@ export function PetOwnerBookingScreen() {
           placeholderTextColor={colors.textLight}
           value={reason}
           onChangeText={setReason}
+          onFocus={revealFocusedBookingField}
         />
 
         <Text style={styles.label}>{t('petOwnerBooking.labels.petSymptomsOptional')}</Text>
@@ -277,6 +284,7 @@ export function PetOwnerBookingScreen() {
           placeholderTextColor={colors.textLight}
           value={petSymptoms}
           onChangeText={setPetSymptoms}
+          onFocus={revealFocusedBookingField}
           multiline
           numberOfLines={3}
         />
@@ -287,7 +295,6 @@ export function PetOwnerBookingScreen() {
           disabled={pets.length === 0}
           style={styles.submitBtn}
         />
-      </ScrollView>
     </ScreenContainer>
   );
 }
@@ -307,7 +314,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   typeChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  typeChipText: { ...typography.body },
+  typeChipText: { ...typography.body, color: colors.text },
   typeChipTextActive: { color: colors.textInverse },
   pickerWrap: { marginBottom: spacing.xs },
   petChip: {
@@ -318,7 +325,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   petChipActive: { backgroundColor: colors.primary },
-  petChipText: { ...typography.body },
+  petChipText: { ...typography.body, color: colors.text },
   petChipTextActive: { color: colors.textInverse },
   input: {
     borderWidth: 1,
@@ -329,8 +336,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    backgroundColor: colors.background,
+    color: colors.text,
   },
-  dateButtonText: { ...typography.body },
+  dateButtonText: { ...typography.body, color: colors.text },
   dateButtonPlaceholder: { color: colors.textLight },
   calendarIcon: { fontSize: 18 },
   dateModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
@@ -342,9 +351,9 @@ const styles = StyleSheet.create({
   dateRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, paddingHorizontal: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
   dateRowActive: { backgroundColor: colors.primaryLight },
   dateRowWeekday: { ...typography.caption, width: 40, color: colors.textSecondary },
-  dateRowLabel: { ...typography.body, flex: 1 },
+  dateRowLabel: { ...typography.body, flex: 1, color: colors.text },
   dateRowLabelActive: { fontWeight: '600', color: colors.primary },
-  inputText: { ...typography.body },
+  inputText: { ...typography.body, color: colors.text },
   textArea: { minHeight: 72 },
   hint: { ...typography.caption, color: colors.textLight, marginTop: spacing.xs },
   slotWrap: { minHeight: 44, marginBottom: spacing.sm },
@@ -358,7 +367,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   slotChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  slotChipText: { ...typography.caption },
+  slotChipText: { ...typography.caption, color: colors.text },
   slotChipTextActive: { color: colors.textInverse },
   submitBtn: { marginTop: spacing.xl, marginBottom: spacing.xl },
 });

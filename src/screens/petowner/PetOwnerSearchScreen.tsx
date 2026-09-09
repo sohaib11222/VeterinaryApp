@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import {
   View,
   Text,
@@ -12,6 +13,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
@@ -296,6 +298,10 @@ export function PetOwnerSearchScreen() {
         <TouchableOpacity onPress={clearFilters}>
           <Text style={styles.clearText}>{t('petOwnerSearch.actions.clearFilters')}</Text>
         </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('PetOwnerPetSitters')} style={styles.sitterLink}>
+          <Ionicons name="heart-outline" size={16} color={colors.primary} />
+          <Text style={styles.sitterLinkText}>Find Pet Sitters</Text>
+        </TouchableOpacity>
       </View>
 
       <Text style={styles.resultCount}>
@@ -338,7 +344,7 @@ export function PetOwnerSearchScreen() {
                   >
                     <View style={styles.avatarWrap}>
                       {getVetImage(vet) ? (
-                        <Image source={{ uri: getVetImage(vet)! }} style={styles.avatar} />
+                        <AppImage source={{ uri: getVetImage(vet)! }} style={styles.avatar} />
                       ) : (
                         <View style={styles.avatarPlaceholder}>
                           <Text style={styles.avatarLetter}>{getVetName(vet).charAt(0)}</Text>
@@ -452,8 +458,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   availabilityLabel: { ...typography.body, color: colors.text },
-  clearRow: { marginBottom: spacing.md },
+  clearRow: { marginBottom: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   clearText: { ...typography.caption, color: colors.primary, textDecorationLine: 'underline' },
+  sitterLink: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 },
+  sitterLinkText: { ...typography.caption, color: colors.primary, fontWeight: '800' },
   resultCount: { ...typography.body, marginBottom: spacing.sm, color: colors.textSecondary },
   resultCountNum: { fontWeight: '700', color: colors.text },
   errorBox: { padding: spacing.md, backgroundColor: colors.errorLight, borderRadius: 8, marginBottom: spacing.md },

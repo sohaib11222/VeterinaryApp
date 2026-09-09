@@ -14,8 +14,8 @@ export interface FileForUpload {
 }
 
 const NETWORK_ERROR_MESSAGE =
-  'Cannot reach server. Ensure the backend is running and the app is using the correct API URL. ' +
-  'On a physical device, set EXPO_PUBLIC_API_BASE_URL to your computer IP (e.g. http://192.168.1.x:5000/api) in .env and restart.';
+  `Cannot reach server at ${API_BASE_URL}. Verify that this API URL is online and reachable from the device. ` +
+  'For a local backend on a physical device, use your computer IP in EXPO_PUBLIC_API_BASE_URL and restart Expo.';
 
 function getFullUrl(path: string): string {
   const base = API_BASE_URL.replace(/\/$/, '');
@@ -44,6 +44,35 @@ function buildNetworkError(url: string) {
     console.log('[upload] network error', { apiBaseUrl: API_BASE_URL, url });
   }
   return new Error(msg);
+}
+
+/**
+ * React Native's Axios adapter can fail before reaching the server when a
+ * multipart body contains a device-local `content://` file URI. Pet Sitter
+ * registration includes a required profile photo, so use the same native XHR
+ * upload path already used by the app's document and image uploads.
+ */
+export function uploadPetSitterRegistration(formData: FormData): Promise<{ success: boolean; data?: unknown; message?: string }> {
+  return new Promise((resolve, reject) => {
+    const url = getFullUrl('/auth/register-pet-sitter');
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    xhr.timeout = 120000;
+    xhr.setRequestHeader('Accept', 'application/json');
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const body = parseXhrJson(xhr.responseText);
+        if (body) resolve(body as { success: boolean; data?: unknown; message?: string });
+        else reject(new Error('The server returned an invalid registration response.'));
+      } else {
+        reject(buildHttpError(xhr.status, xhr.responseText));
+      }
+    };
+    xhr.onerror = () => reject(buildNetworkError(url));
+    xhr.ontimeout = () => reject(new Error('Registration upload timed out. Please try again.'));
+    xhr.send(formData as any);
+  });
 }
 
 /**

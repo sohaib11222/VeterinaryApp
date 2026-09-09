@@ -309,9 +309,9 @@ export function PharmacyDashboardScreen() {
   }, [productsQuery.data]);
 
   const navOrders = (params?: { status?: string }) =>
-    (navigation.getParent() as any)?.navigate('PharmacyOrders', { screen: 'PharmacyOrdersList', params: params ?? {} });
-  const navProducts = () => (navigation.getParent() as any)?.navigate('PharmacyProducts', { screen: 'PharmacyProductList' });
-  const navMore = (screen: string) => (navigation.getParent() as any)?.navigate('PharmacyMore', { screen });
+    navigation.navigate('PharmacyOrders', { screen: 'PharmacyOrdersList', params: params ?? {} });
+  const navProducts = () => navigation.navigate('PharmacyProducts', { screen: 'PharmacyProductList' });
+  const navMore = (screen: string) => navigation.navigate('PharmacyMore', { screen });
 
   const isLoading = recentOrdersQuery.isLoading && orders.length === 0;
   const stats = useMemo(

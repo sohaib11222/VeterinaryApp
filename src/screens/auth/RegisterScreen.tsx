@@ -25,7 +25,7 @@ const ROLE_OPTIONS: { role: UserRole; labelKey: string; icon: keyof typeof Mater
 export function RegisterScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
-  const { register, logout } = useAuth();
+  const { register } = useAuth();
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -55,10 +55,9 @@ export function RegisterScreen() {
     setLoading(true);
     setErrors({});
     try {
-      await register({ name, email, phone, password }, role);
-      if (role === 'PET_OWNER') {
-        await logout();
-        navigation.replace('Login');
+      const result = await register({ name, email, phone, password }, role);
+      if (result?.requiresEmailVerification) {
+        navigation.navigate('VerifyEmail', { email: result.email || email.trim() });
       }
       // Role-specific document and approval screens are selected by RootNavigator.
     } catch (err: unknown) {
@@ -108,6 +107,7 @@ export function RegisterScreen() {
       <View style={styles.professionalBlock}>
         <Text style={styles.professionalTitle}>{t('authExperience.register.professionals')}</Text>
         <Text style={styles.professionalCopy}>{t('authExperience.register.professionalsDescription')}</Text>
+        <Button title="Become a Pet Sitter" onPress={() => navigation.navigate('PetSitterRegister')} variant="outline" style={styles.roleBtn} disabled={loading} icon={<MaterialCommunityIcons name="home-heart" size={20} color={colors.primary} />} />
         {ROLE_OPTIONS.map(({ role, labelKey, icon }) => (
           <Button key={role} title={t(labelKey)} onPress={() => submitWithRole(role)} variant="outline" style={styles.roleBtn} disabled={loading} icon={<MaterialCommunityIcons name={icon} size={20} color={colors.primary} />} />
         ))}

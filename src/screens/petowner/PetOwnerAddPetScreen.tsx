@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
@@ -170,7 +171,7 @@ export function PetOwnerAddPetScreen() {
           <Text style={styles.fieldLabel}>{t('petOwnerAddPet.fields.photo.label')}</Text>
           <TouchableOpacity style={[styles.photoPlaceholder, photo?.uri && styles.photoPlaceholderSelected]} onPress={pickPhoto} activeOpacity={0.78}>
             {photo?.uri ? (
-              <Image source={{ uri: photo.uri }} style={styles.photoPreview} />
+              <AppImage source={{ uri: photo.uri }} style={styles.photoPreview} />
             ) : (
               <>
                 <View style={styles.uploadIcon}><Ionicons name="cloud-upload-outline" size={26} color={colors.primary} /></View>

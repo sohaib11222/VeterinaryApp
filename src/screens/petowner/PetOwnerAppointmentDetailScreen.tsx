@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import {
   View,
   Text,
@@ -22,7 +23,7 @@ import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { useAppointment } from '../../queries/appointmentQueries';
 import { useCancelAppointment } from '../../mutations/appointmentMutations';
-import { useGetOrCreateConversation } from '../../mutations/chatMutations';
+import { getConversationId, useGetOrCreateConversation } from '../../mutations/chatMutations';
 import { useMyAppointmentReview } from '../../queries/reviewQueries';
 import { useCreateReview } from '../../mutations/reviewMutations';
 import { getImageUrl } from '../../config/api';
@@ -112,25 +113,27 @@ export function PetOwnerAppointmentDetailScreen() {
     // avoids hiding a valid reschedule action on devices in another timezone.
     return eligibleAppointmentIds.has(String(appointmentId));
   }, [appointment, appointmentId, eligibleAppointmentIds, status]);
-  const vetId = (vet as { _id?: string })?._id ?? (appointment?.veterinarianId as string) ?? '';
-  const ownerId = (appointment?.petOwnerId as { _id?: string })?._id ?? (appointment?.petOwnerId as string) ?? '';
+  const idOf = (value: unknown) => typeof value === 'object' && value !== null
+    ? String((value as { _id?: string; id?: string })._id ?? (value as { id?: string }).id ?? '')
+    : String(value ?? '');
+  const vetId = idOf(appointment?.veterinarianId);
+  const ownerId = idOf(appointment?.petOwnerId);
+  const canChat = ['CONFIRMED', 'COMPLETED'].includes(status);
 
   const openChat = async () => {
-    if (status !== 'CONFIRMED' || !appointmentId || !vetId || !ownerId) return;
+    if (!canChat || !appointmentId || !vetId || !ownerId) return;
     try {
       const res = await getOrCreateConversation.mutateAsync({
         veterinarianId: vetId,
         petOwnerId: ownerId,
         appointmentId,
       });
-      const conv = (res as { _id?: string; data?: { _id?: string } })?.data ?? (res as { _id?: string });
-      const conversationId = conv?._id;
+      const conversationId = getConversationId(res);
       if (!conversationId) {
         Toast.show({ type: 'error', text1: t('petOwnerAppointmentDetail.errors.couldNotOpenChat') });
         return;
       }
-      const stackNav = navigation.getParent();
-      stackNav?.navigate('PetOwnerChatDetail', {
+      navigation.navigate('PetOwnerChatDetail', {
         conversationId: String(conversationId),
         veterinarianId: vetId,
         petOwnerId: ownerId,
@@ -221,7 +224,7 @@ export function PetOwnerAppointmentDetailScreen() {
 
           <View style={styles.vetRow}>
             {vetImage ? (
-              <Image source={{ uri: vetImage }} style={styles.vetImage} />
+              <AppImage source={{ uri: vetImage }} style={styles.vetImage} />
             ) : (
               <View style={styles.vetImagePlaceholder}>
 <Text style={styles.vetImageLetter}>
@@ -306,7 +309,7 @@ export function PetOwnerAppointmentDetailScreen() {
               />
             </Card>
           )}
-          {status === 'CONFIRMED' && (
+          {canChat && (
             <Button
               title={t('petOwnerAppointmentDetail.actions.chatWithVet')}
               variant="outline"

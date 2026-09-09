@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -16,6 +17,7 @@ type Conversation = {
   _id: string;
   conversationType?: string;
   veterinarianId?: { _id?: string; name?: string; fullName?: string; profileImage?: string } | string;
+  petSitterId?: { _id?: string; name?: string; fullName?: string; profileImage?: string } | string;
   petOwnerId?: { _id?: string; name?: string; fullName?: string } | string;
   appointmentId?: { _id?: string } | string;
   lastMessage?: { message?: string; fileName?: string };
@@ -27,16 +29,16 @@ type Conversation = {
 };
 
 function getConversationName(c: Conversation, veterinarianLabel: string, naLabel: string): string {
-  const vet = c?.veterinarianId;
-  if (!vet) return naLabel;
-  const o = typeof vet === 'object' ? vet : null;
-  return (o?.fullName ?? o?.name ?? veterinarianLabel) as string;
+  const peer = c?.veterinarianId ?? c?.petSitterId;
+  if (!peer) return naLabel;
+  const o = typeof peer === 'object' ? peer : null;
+  return (o?.fullName ?? o?.name ?? (c?.petSitterId ? 'Pet Sitter' : veterinarianLabel)) as string;
 }
 
 function getConversationImage(c: Conversation): string | null {
-  const vet = c?.veterinarianId;
-  if (!vet || typeof vet !== 'object') return null;
-  return getImageUrl((vet as { profileImage?: string }).profileImage) ?? null;
+  const peer = c?.veterinarianId ?? c?.petSitterId;
+  if (!peer || typeof peer !== 'object') return null;
+  return getImageUrl((peer as { profileImage?: string }).profileImage) ?? null;
 }
 
 function formatTime(c: Conversation, yesterdayLabel: string): string {
@@ -93,6 +95,7 @@ export function PetOwnerMessagesScreen() {
     const id = c?._id;
     if (!id) return;
     const vetId = c?.veterinarianId && (typeof c.veterinarianId === 'object' ? c.veterinarianId._id : c.veterinarianId);
+    const petSitterId = c?.petSitterId && (typeof c.petSitterId === 'object' ? c.petSitterId._id : c.petSitterId);
     const ownerId = c?.petOwnerId && (typeof c.petOwnerId === 'object' ? c.petOwnerId._id : c.petOwnerId);
     const aptId = c?.appointmentId && (typeof c.appointmentId === 'object' ? c.appointmentId._id : c.appointmentId);
     const peerName = getConversationName(c, t('common.veterinarian'), t('common.na'));
@@ -100,6 +103,7 @@ export function PetOwnerMessagesScreen() {
     stackNav?.navigate('PetOwnerChatDetail', {
       conversationId: id,
       veterinarianId: vetId ?? '',
+      petSitterId: petSitterId ?? '',
       petOwnerId: ownerId ?? '',
       appointmentId: aptId ?? '',
       conversationType: c.conversationType ?? 'VETERINARIAN_PET_OWNER',
@@ -119,7 +123,7 @@ export function PetOwnerMessagesScreen() {
           <View style={styles.row}>
             <View style={styles.avatar}>
               {avatarUri ? (
-                <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
+                <AppImage source={{ uri: avatarUri }} style={styles.avatarImg} />
               ) : (
                 <Text style={styles.avatarText}>{getConversationName(item, t('common.veterinarian'), t('common.na')).charAt(0)}</Text>
               )}

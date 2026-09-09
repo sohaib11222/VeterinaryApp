@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Image } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
@@ -85,7 +86,7 @@ export function PetOwnerWeightRecordsScreen() {
         {latest ? (
           <View style={styles.latestRow}>
             {getImageUrl(latest.petId?.photo) ? (
-              <Image source={{ uri: getImageUrl(latest.petId?.photo) as string }} style={styles.latestPetPhoto} />
+              <AppImage source={{ uri: getImageUrl(latest.petId?.photo) as string }} style={styles.latestPetPhoto} />
             ) : null}
             <View style={styles.latestCopy}>
               <Text style={styles.latestPetName}>{latest.petId?.name || t('petOwnerWeightRecords.defaults.pet')}</Text>

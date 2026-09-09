@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -29,6 +29,11 @@ function terminalSessionStatus(status: string) {
   return ['DECLINED', 'MISSED', 'ENDED'].includes(status);
 }
 
+function sessionStatusFrom(payload: unknown): string {
+  const data = responseData(payload);
+  return String(data?.session?.status ?? data?.status ?? '').toUpperCase();
+}
+
 /** Full-screen appointment call room with the same ringing → accepted → joined lifecycle as web. */
 export function VideoCallScreen() {
   const navigation = useNavigation<any>();
@@ -43,6 +48,7 @@ export function VideoCallScreen() {
   const [callError, setCallError] = useState<string | null>(null);
   const didStart = useRef(false);
   const didJoin = useRef(false);
+  const isClosingRef = useRef(false);
 
   const participantRole = String(user?.role ?? '').toUpperCase();
 
@@ -86,15 +92,17 @@ export function VideoCallScreen() {
     let disposed = false;
 
     const waitForAnswer = async () => {
+      if (didJoin.current) return;
       let latest: unknown = null;
       try {
         latest = await getSession();
         if (disposed) return;
-        const sessionResult = latest as { session?: { status?: string }; status?: string };
-        const status = String(sessionResult?.session?.status ?? sessionResult?.status ?? '').toUpperCase();
+        const status = sessionStatusFrom(latest);
         if (status === 'ACTIVE') {
           didJoin.current = true;
-          setPhase('joining');
+          // Do not change `phase` before awaiting the join. That phase is a
+          // dependency of this polling effect, so changing it here disposes
+          // the listener and prevents the caller from ever reaching `active`.
           await joinActiveCall(latest);
           if (!disposed) setPhase('active');
           return;
@@ -135,11 +143,53 @@ export function VideoCallScreen() {
     }
   };
 
-  const handleEndCall = async () => {
+  const closeForRemoteEnd = useCallback(async () => {
+    if (isClosingRef.current) return;
+    isClosingRef.current = true;
+    await endCall();
+    Toast.show({ type: 'info', text1: 'Video call ended', text2: 'The other participant ended the call.' });
+    navigation.goBack();
+  }, [endCall, navigation]);
+
+  const handleEndCall = useCallback(async () => {
+    if (isClosingRef.current) return;
+    isClosingRef.current = true;
     await endServerSession();
     await endCall();
     navigation.goBack();
-  };
+  }, [appointmentId, endCall, navigation, sessionPayload]);
+
+  // Stream handles media transport, while the appointment session is the
+  // source of truth for cancel/decline/end. Watch it from both devices so a
+  // remote cancellation closes an active room, a joining screen, or a caller
+  // ringing screen without leaving either participant stranded.
+  useEffect(() => {
+    if (!appointmentId || !sessionPayload || phase === 'error' || isClosingRef.current) return;
+    let disposed = false;
+    let checking = false;
+
+    const syncRemoteSessionEnd = async () => {
+      if (checking || disposed || isClosingRef.current) return;
+      checking = true;
+      try {
+        const latest = await getSession();
+        if (disposed || isClosingRef.current) return;
+        setSessionPayload(latest);
+        if (terminalSessionStatus(sessionStatusFrom(latest))) await closeForRemoteEnd();
+      } catch {
+        // A temporary network failure must not disconnect an ongoing call.
+      } finally {
+        checking = false;
+      }
+    };
+
+    syncRemoteSessionEnd();
+    const timer = setInterval(syncRemoteSessionEnd, 1_500);
+    return () => {
+      disposed = true;
+      clearInterval(timer);
+    };
+  }, [appointmentId, closeForRemoteEnd, getSession, phase, sessionPayload]);
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
@@ -168,6 +218,19 @@ export function VideoCallScreen() {
           <TouchableOpacity style={styles.primaryFeedbackButton} onPress={() => navigation.goBack()}><Text style={styles.primaryFeedbackText}>Back to appointment</Text></TouchableOpacity>
         </View>
       </SafeAreaView>
+    );
+  }
+
+  // The SDK client and call are the actual signal that this device joined the
+  // shared room. Render them immediately instead of depending on a separate
+  // visual phase that can update a render later than the successful join.
+  if (client && call) {
+    return (
+      <StreamVideo client={client}>
+        <StreamCall call={call}>
+          <VideoCallContent role={participantRole} onEndCall={handleEndCall} />
+        </StreamCall>
+      </StreamVideo>
     );
   }
 
@@ -200,13 +263,7 @@ export function VideoCallScreen() {
     );
   }
 
-  return (
-    <StreamVideo client={client}>
-      <StreamCall call={call}>
-        <VideoCallContent role={participantRole} onEndCall={handleEndCall} />
-      </StreamCall>
-    </StreamVideo>
-  );
+  return null;
 }
 
 function VideoCallContent({ role, onEndCall }: { role: string; onEndCall: () => void }) {

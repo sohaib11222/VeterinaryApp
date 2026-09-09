@@ -9,6 +9,8 @@ import { spacing } from '../../theme/spacing';
 import { useTranslation } from 'react-i18next';
 import { usePharmacyPendingPrescriptionCount } from '../../queries/productPrescriptionRequestQueries';
 import { useUnreadChatCount } from '../../queries/chatQueries';
+import { useMyPetStore } from '../../queries/petStoreQueries';
+import { getImageUrl } from '../../config/api';
 
 function unreadCount(payload: unknown, key: 'pendingCount' | 'unreadCount'): number {
   const outer = (payload as { data?: unknown })?.data ?? payload;
@@ -25,8 +27,12 @@ export function PharmacyMoreScreen() {
   const { t } = useTranslation();
   const pendingPrescriptions = usePharmacyPendingPrescriptionCount({ enabled: !isParapharmacy, refetchInterval: 30_000 });
   const unreadChat = useUnreadChatCount({ refetchInterval: 30_000 });
+  const storeQuery = useMyPetStore({ refetchInterval: 30_000 });
   const prescriptionBadge = unreadCount(pendingPrescriptions.data, 'pendingCount');
   const chatBadge = unreadCount(unreadChat.data, 'unreadCount');
+  const storePayload: any = storeQuery.data;
+  const store = storePayload?.data?.data ?? storePayload?.data ?? storePayload ?? {};
+  const profileImage = store?.logo ?? store?.profileImage ?? user?.profileImage;
 
   const menuSections = [
     {
@@ -61,6 +67,7 @@ export function PharmacyMoreScreen() {
           name={user?.name || (isParapharmacy ? t('more.pharmacy.parapharmacy') : t('more.pharmacy.pharmacy'))}
           role={isParapharmacy ? t('more.pharmacy.parapharmacy') : t('more.pharmacy.pharmacy')}
           email={user?.email}
+          avatar={profileImage ? { uri: getImageUrl(profileImage) ?? profileImage } : null}
           avatarFallback={user?.name || t('pharmacyMore.avatarFallback')}
           accountLabel={t('moreMenu.account')}
           sections={menuSections.map((section) => ({

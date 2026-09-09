@@ -35,7 +35,7 @@ function TabIcon({ name, focused, badge }: { name: string; focused: boolean; bad
 
 export function PharmacyTabNavigator() {
   const { t } = useTranslation();
-  const orderNotifications = useNotifications({ type: 'ORDER', unreadOnly: true, page: 1, limit: 50 }, { refetchInterval: 30_000 });
+  const orderNotifications = useNotifications({ type: 'ORDER', unreadOnly: true, page: 1, limit: 50 }, { refetchInterval: 10_000 });
   const unreadNotifications = useUnreadNotificationsCount({ refetchInterval: 30_000 });
   const ordersBadge = getCount(orderNotifications.data);
   const moreBadge = getCount(unreadNotifications.data);

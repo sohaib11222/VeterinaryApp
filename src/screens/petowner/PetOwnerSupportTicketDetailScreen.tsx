@@ -16,6 +16,7 @@ import { useReopenSupportTicket, useReplyToSupportTicket, useUploadSupportTicket
 import { API_ROUTES } from '../../api/apiConfig';
 import { downloadAndShareFile } from '../../utils/nativePdf';
 import { getErrorMessage } from '../../utils/errorUtils';
+import { useAuth } from '../../contexts/AuthContext';
 
 type Attachment = { _id: string; name?: string; mimeType?: string; downloadUrl?: string };
 type Message = { _id: string; senderRole?: string; body?: string; attachments?: Attachment[]; createdAt?: string };
@@ -45,6 +46,7 @@ export function PetOwnerSupportTicketDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const ticketId = String(route.params?.ticketId || '');
+  const { user } = useAuth();
   const ticketQuery = useSupportTicket(ticketId);
   const replyTicket = useReplyToSupportTicket();
   const reopen = useReopenSupportTicket();
@@ -117,7 +119,7 @@ export function PetOwnerSupportTicketDetailScreen() {
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.conversation}
         ListHeaderComponent={<View><Card style={styles.original}><Text style={styles.originalLabel}>ORIGINAL REQUEST</Text><Text style={styles.originalText}>{ticket.description}</Text>{ticket.relatedRecord?.type ? <View style={styles.related}><Ionicons name="link-outline" size={15} color={colors.primary} /><Text style={styles.relatedText}>Related {supportLabel(ticket.relatedRecord.type)}</Text></View> : null}<Text style={styles.sectionLabel}>CONVERSATION</Text></Card></View>}
-        renderItem={({ item }) => { const mine = String(item.senderRole).toUpperCase() === 'PET_OWNER'; return <View style={[styles.messageWrap, mine ? styles.mine : styles.theirs]}><View style={[styles.message, mine ? styles.mineBubble : styles.theirBubble]}><Text style={[styles.sender, mine && styles.mineText]}>{mine ? 'You' : 'Support team'} · {dateTime(item.createdAt)}</Text>{item.body ? <Text style={[styles.messageBody, mine && styles.mineText]}>{item.body}</Text> : null}{(item.attachments || []).map((attachment) => <TouchableOpacity key={attachment._id} style={[styles.attachment, mine && styles.mineAttachment]} onPress={() => openAttachment(attachment)}><Ionicons name="attach-outline" size={16} color={mine ? colors.textInverse : colors.primary} /><Text style={[styles.attachmentText, mine && styles.mineText]} numberOfLines={1}>{attachment.name || 'Attachment'}</Text><Ionicons name="download-outline" size={15} color={mine ? colors.textInverse : colors.primary} /></TouchableOpacity>)}</View></View>; }}
+        renderItem={({ item }) => { const mine = String(item.senderRole).toUpperCase() === String(user?.role || 'PET_OWNER').toUpperCase(); return <View style={[styles.messageWrap, mine ? styles.mine : styles.theirs]}><View style={[styles.message, mine ? styles.mineBubble : styles.theirBubble]}><Text style={[styles.sender, mine && styles.mineText]}>{mine ? 'You' : 'Support team'} · {dateTime(item.createdAt)}</Text>{item.body ? <Text style={[styles.messageBody, mine && styles.mineText]}>{item.body}</Text> : null}{(item.attachments || []).map((attachment) => <TouchableOpacity key={attachment._id} style={[styles.attachment, mine && styles.mineAttachment]} onPress={() => openAttachment(attachment)}><Ionicons name="attach-outline" size={16} color={mine ? colors.textInverse : colors.primary} /><Text style={[styles.attachmentText, mine && styles.mineText]} numberOfLines={1}>{attachment.name || 'Attachment'}</Text><Ionicons name="download-outline" size={15} color={mine ? colors.textInverse : colors.primary} /></TouchableOpacity>)}</View></View>; }}
         ListFooterComponent={ticket.activities?.length ? <Card style={styles.activity}><Text style={styles.activityTitle}>Ticket activity</Text>{ticket.activities.slice(-4).map((event) => <View style={styles.activityRow} key={event._id}><View style={styles.activityDot} /><View><Text style={styles.activityText}>{event.summary}</Text><Text style={styles.activityDate}>{dateTime(event.createdAt)}</Text></View></View>)}</Card> : null}
       />
       {ticket.status === 'RESOLVED' ? <View style={styles.resolvedRow}><Text style={styles.resolvedText}>Is this still unresolved?</Text><TouchableOpacity onPress={handleReopen} disabled={reopen.isPending}><Text style={styles.reopenText}>{reopen.isPending ? 'Reopening…' : 'Reopen ticket'}</Text></TouchableOpacity></View> : null}

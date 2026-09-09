@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -101,7 +102,7 @@ export function PharmacyProductListScreen() {
               <Card style={styles.productCard}>
                 <View style={styles.productRow}>
                   <View style={styles.productThumb}>
-                    {img ? <Image source={{ uri: img }} style={styles.thumbImg} resizeMode="cover" /> : null}
+                    {img ? <AppImage source={{ uri: img }} style={styles.thumbImg} resizeMode="cover" /> : null}
                   </View>
                   <View style={styles.productInfo}>
                     <Text style={styles.productName} numberOfLines={2}>{name}</Text>

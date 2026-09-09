@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import {
   View,
   Text,
@@ -250,9 +251,9 @@ export function PetOwnerProfileSettingsScreen() {
             {pendingRemoveProfileImage ? (
               <Text style={styles.avatarPlaceholder}>{t('petOwnerProfileSettings.photo.placeholder')}</Text>
             ) : pendingProfileImage?.uri ? (
-              <Image source={{ uri: pendingProfileImage.uri }} style={styles.avatarImage} />
+              <AppImage source={{ uri: pendingProfileImage.uri }} style={styles.avatarImage} />
             ) : form.profileImage ? (
-              <Image source={{ uri: getImageUrl(form.profileImage) ?? form.profileImage }} style={styles.avatarImage} />
+              <AppImage source={{ uri: getImageUrl(form.profileImage) ?? form.profileImage }} style={styles.avatarImage} />
             ) : form.name ? (
               <Text style={styles.avatarText}>{String(form.name).charAt(0).toUpperCase()}</Text>
             ) : (

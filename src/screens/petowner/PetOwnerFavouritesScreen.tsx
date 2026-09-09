@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import {
   View,
   Text,
@@ -171,7 +172,7 @@ export function PetOwnerFavouritesScreen() {
               </TouchableOpacity>
               <TouchableOpacity style={styles.vetInfo} onPress={() => navigation.navigate('PetOwnerVetProfile', { vetId: item.vetUserId ?? '' })}>
                 {item.image ? (
-                  <Image source={{ uri: item.image }} style={styles.avatarImg} />
+                  <AppImage source={{ uri: item.image }} style={styles.avatarImg} />
                 ) : (
                   <View style={styles.avatar}>
                     <Text style={styles.avatarText}>{item.name?.charAt(0) ?? t('petOwnerFavourites.defaults.vetAvatarLetter')}</Text>

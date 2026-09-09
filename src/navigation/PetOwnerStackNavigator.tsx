@@ -44,6 +44,8 @@ import { PetOwnerVetProfileScreen as PetOwnerVetProfileScreenReal } from '../scr
 import { PetOwnerBookingScreen as PetOwnerBookingScreenReal } from '../screens/petowner/PetOwnerBookingScreen';
 import { PetOwnerBookingCheckoutScreen } from '../screens/petowner/PetOwnerBookingCheckoutScreen';
 import { PetOwnerBookingSuccessScreen } from '../screens/petowner/PetOwnerBookingSuccessScreen';
+import { PetOwnerPetSittersScreen } from '../screens/petowner/PetOwnerPetSittersScreen';
+import { PetOwnerPetSitterProfileScreen } from '../screens/petowner/PetOwnerPetSitterProfileScreen';
 import { LanguageScreen } from '../screens/shared/LanguageScreen';
 
 const Stack = createNativeStackNavigator<PetOwnerStackParamList>();
@@ -52,12 +54,18 @@ const STATIC_HEADERS: Record<string, { title: string; subtitle?: string }> = {
   PetOwnerSupportTickets: { title: 'Support Center', subtitle: 'Tickets & replies' },
   PetOwnerCreateSupportTicket: { title: 'New support ticket', subtitle: 'We are here to help' },
   PetOwnerSupportTicketDetail: { title: 'Support ticket', subtitle: 'Secure conversation' },
+  PetOwnerPetSitters: { title: 'Find Pet Sitters', subtitle: 'Trusted care for your pet' },
+  PetOwnerPetSitterProfile: { title: 'Pet Sitter Details', subtitle: 'Care profile and availability' },
 };
 
 function PetOwnerStackHeader({ navigation, route }: { navigation: any; route: { name: string; params?: any } }) {
   const rightActionCtx = useVetHeaderRightAction();
   const { t } = useTranslation();
-  const staticHeader = STATIC_HEADERS[route.name];
+  const staticHeader = route.name === 'PetOwnerPetSitters'
+    ? { title: t('petSitter.directory.title'), subtitle: t('petSitter.directory.subtitle') }
+    : route.name === 'PetOwnerPetSitterProfile'
+      ? { title: t('petSitter.details.title'), subtitle: t('petSitter.details.subtitle') }
+      : STATIC_HEADERS[route.name];
   const title = route.params?.title ?? staticHeader?.title ?? t(`petOwnerStack.${route.name}.title`, { defaultValue: route.name });
   const subtitle = route.params?.subtitle ?? staticHeader?.subtitle ?? t(`petOwnerStack.${route.name}.subtitle`, { defaultValue: '' });
   return (
@@ -111,6 +119,8 @@ export function PetOwnerStackNavigator() {
         <Stack.Screen name="PetOwnerChangePassword" component={PetOwnerChangePasswordScreen} />
         <Stack.Screen name="Language" component={LanguageScreen} />
         <Stack.Screen name="PetOwnerSearch" component={PetOwnerSearchScreen} />
+        <Stack.Screen name="PetOwnerPetSitters" component={PetOwnerPetSittersScreen} />
+        <Stack.Screen name="PetOwnerPetSitterProfile" component={PetOwnerPetSitterProfileScreen} />
         <Stack.Screen name="PetOwnerVetProfile" component={PetOwnerVetProfileScreenReal} />
         <Stack.Screen name="PetOwnerBooking" component={PetOwnerBookingScreenReal} />
         <Stack.Screen name="PetOwnerBookingCheckout" component={PetOwnerBookingCheckoutScreen} />

@@ -30,7 +30,7 @@ import {
   useCompleteAppointment,
   useUpdateAppointmentStatus,
 } from '../../mutations/appointmentMutations';
-import { useGetOrCreateConversation } from '../../mutations/chatMutations';
+import { getConversationId, useGetOrCreateConversation } from '../../mutations/chatMutations';
 import { useVaccines } from '../../queries/medicalQueries';
 import { getErrorMessage } from '../../utils/errorUtils';
 
@@ -101,24 +101,26 @@ export function VetAppointmentDetailScreen() {
   const canMarkNoShow = status === 'CONFIRMED';
   const canStartVideo = status === 'CONFIRMED' && (appointment?.bookingType as string) === 'ONLINE';
   const canPrescription = status === 'COMPLETED';
-  const ownerId = (owner as { _id?: string })?._id ?? (appointment?.petOwnerId as string) ?? '';
+  const idOf = (value: unknown) => typeof value === 'object' && value !== null
+    ? String((value as { _id?: string; id?: string })._id ?? (value as { id?: string }).id ?? '')
+    : String(value ?? '');
+  const ownerId = idOf(appointment?.petOwnerId);
+  const canChat = ['CONFIRMED', 'COMPLETED'].includes(status);
 
   const openChat = async () => {
-    if (status !== 'CONFIRMED' || !appointmentId || !currentUserId || !ownerId) return;
+    if (!canChat || !appointmentId || !currentUserId || !ownerId) return;
     try {
       const res = await getOrCreateConversation.mutateAsync({
         veterinarianId: currentUserId,
         petOwnerId: ownerId,
         appointmentId,
       });
-      const conv = (res as { _id?: string; data?: { _id?: string } })?.data ?? (res as { _id?: string });
-      const conversationId = conv?._id;
+      const conversationId = getConversationId(res);
       if (!conversationId) {
         Toast.show({ type: 'error', text1: t('vetAppointmentDetail.errors.couldNotOpenChat') });
         return;
       }
-      const stackNav = navigation.getParent();
-      stackNav?.navigate('VetChatDetail', {
+      navigation.navigate('VetChatDetail', {
         conversationId: String(conversationId),
         conversationType: 'VETERINARIAN_PET_OWNER',
         petOwnerId: ownerId,
@@ -343,7 +345,7 @@ export function VetAppointmentDetailScreen() {
                 style={[styles.actionBtn, { backgroundColor: colors.accent }]}
               />
             )}
-            {status === 'CONFIRMED' && (
+            {canChat && (
               <Button
                 title={t('vetAppointmentDetail.actions.chatWithPetOwner')}
                 variant="outline"

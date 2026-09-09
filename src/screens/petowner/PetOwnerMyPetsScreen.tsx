@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, ActivityIndicator, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
@@ -107,7 +108,7 @@ export function PetOwnerMyPetsScreen() {
         <View style={styles.row}>
           <View style={styles.avatar}>
             {img ? (
-              <Image source={{ uri: img }} style={styles.avatarImage} />
+              <AppImage source={{ uri: img }} style={styles.avatarImage} />
             ) : (
               <Text style={styles.avatarText}>{(item.name || t('common.pet')).charAt(0)}</Text>
             )}

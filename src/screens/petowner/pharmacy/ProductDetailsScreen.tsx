@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { AppImage } from '../../../components/common/AppImage';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -145,7 +146,7 @@ export function ProductDetailsScreen() {
   if (isError || !product) return <ScreenContainer padded><Text style={styles.errorText}>{t('petOwnerProductDetails.errors.notFound')}</Text></ScreenContainer>;
 
   return <ScreenContainer scroll padded>
-    {imageUri ? <Image source={{ uri: imageUri }} style={styles.productImage} resizeMode="cover" /> : <View style={styles.productImage}><Ionicons name="cube-outline" size={42} color={colors.textLight} /></View>}
+    {imageUri ? <AppImage source={{ uri: imageUri }} style={styles.productImage} resizeMode="cover" /> : <View style={styles.productImage}><Ionicons name="cube-outline" size={42} color={colors.textLight} /></View>}
     <View style={styles.productHeader}><View style={styles.titleRow}><Text style={styles.productName}>{name}</Text>{requiresPrescription ? <View style={styles.prescriptionBadge}><Ionicons name="document-text-outline" size={13} color="#805B00" /><Text style={styles.prescriptionBadgeText}>{t('petOwnerProductDetails.prescription.required')}</Text></View> : null}</View><Text style={styles.soldBy}>{t('petOwnerProductDetails.soldBy', { soldByName })}</Text><Text style={styles.productKind}>{isMedicine ? t('petOwnerProductDetails.labels.medicine') : t('petOwnerProductDetails.labels.parapharmacyProduct')}</Text></View>
     <Card style={styles.purchaseCard}>
       {variants.length > 1 ? <><Text style={styles.sectionEyebrow}>{t('petOwnerProductDetails.labels.chooseVariant')}</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.variantChips}>{variants.map((variant, index) => { const selected = variantKey(variant) === variantKey(selectedVariant); return <TouchableOpacity key={variantKey(variant, String(index))} style={[styles.variantChip, selected && styles.variantChipSelected, variant.isActive === false && styles.variantChipDisabled]} onPress={() => selectVariant(variant)} disabled={variant.isActive === false}><Text numberOfLines={1} style={[styles.variantChipText, selected && styles.variantChipTextSelected]}>{variantLabel(variant, `${t('petOwnerProductDetails.labels.variant')} ${index + 1}`)}</Text></TouchableOpacity>; })}</ScrollView></> : null}

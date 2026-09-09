@@ -89,8 +89,8 @@ apiClient.interceptors.response.use(
       message = data?.message ?? error.message ?? 'An unexpected error occurred';
     } else if (error.request) {
       message =
-        'Cannot reach server. Ensure the backend is running and the app is using the correct API URL. ' +
-        'On a physical device, set EXPO_PUBLIC_API_BASE_URL to your computer IP (e.g. http://192.168.1.x:5000/api) in .env and restart.';
+        `Cannot reach server at ${API_BASE_URL}. Verify that this API URL is online and reachable from the device. ` +
+        'For a local backend on a physical device, use your computer IP in EXPO_PUBLIC_API_BASE_URL and restart Expo.';
     } else {
       message = error.message ?? 'An unexpected error occurred';
     }

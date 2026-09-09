@@ -8,6 +8,8 @@ import { useVetHeaderSearch } from '../../contexts/VetHeaderSearchContext';
 import { useVetHeaderRightAction } from '../../contexts/VetHeaderRightActionContext';
 import { spacing } from '../../theme/spacing';
 import { useTranslation } from 'react-i18next';
+import { useVeterinarianProfile } from '../../queries/veterinarianQueries';
+import { getImageUrl } from '../../config/api';
 
 export function VetMoreScreen() {
   const navigation = useNavigation<any>();
@@ -16,6 +18,11 @@ export function VetMoreScreen() {
   const headerSearch = useVetHeaderSearch();
   const headerRight = useVetHeaderRightAction();
   const { t } = useTranslation();
+  const profileQuery = useVeterinarianProfile();
+  const profilePayload: any = profileQuery.data;
+  const veterinarianProfile = profilePayload?.data?.data ?? profilePayload?.data ?? profilePayload ?? {};
+  const profileUser = veterinarianProfile?.userId ?? veterinarianProfile?.user ?? {};
+  const profileImage = profileUser?.profileImage ?? veterinarianProfile?.profileImage ?? user?.profileImage;
 
   const setHeaderSearchConfig = headerSearch?.setConfig;
   const setHeaderRightAction = headerRight?.setRightAction;
@@ -72,6 +79,7 @@ export function VetMoreScreen() {
           name={user?.name || t('common.veterinarian')}
           role={t('common.veterinarian')}
           email={user?.email}
+          avatar={profileImage ? { uri: getImageUrl(profileImage) ?? profileImage } : null}
           avatarFallback={user?.name || 'V'}
           accountLabel={t('moreMenu.account')}
           sections={menuSections.map((section) => ({

@@ -8,10 +8,12 @@ import { PendingNavigator } from './PendingNavigator';
 import { VetStackNavigator } from './VetStackNavigator';
 import { PetOwnerStackNavigator } from './PetOwnerStackNavigator';
 import { PharmacyTabNavigator } from './PharmacyTabNavigator';
+import { PetSitterStackNavigator } from './PetSitterStackNavigator';
 import { RootStackParamList } from './types';
 import { colors } from '../theme/colors';
 import { rootNavigationRef } from './navigationRef';
 import { IncomingCallNotifier } from '../components/video/IncomingCallNotifier';
+import { PrescriptionApprovalNotifier } from '../components/prescriptions/PrescriptionApprovalNotifier';
 
 const PENDING_STATUSES = ['PENDING', 'REJECTED', 'BLOCKED'] as const;
 
@@ -44,11 +46,14 @@ export function RootNavigator() {
           <Stack.Screen name="Main" component={PetOwnerStackNavigator} />
         ) : user.role === 'PET_STORE' || user.role === 'PARAPHARMACY' ? (
           <Stack.Screen name="Main" component={PharmacyTabNavigator} />
+        ) : user.role === 'PET_SITTER' ? (
+          <Stack.Screen name="Main" component={PetSitterStackNavigator} />
         ) : (
           <Stack.Screen name="Auth" component={AuthNavigator} />
         )}
       </Stack.Navigator>
       <IncomingCallNotifier />
+      <PrescriptionApprovalNotifier />
       </>
     </NavigationContainer>
   );

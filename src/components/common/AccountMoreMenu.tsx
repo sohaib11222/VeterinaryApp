@@ -1,4 +1,5 @@
 import React from 'react';
+import { AppImage } from './AppImage';
 import { View, Text, StyleSheet, TouchableOpacity, Image, type ImageSourcePropType } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from './Card';
@@ -57,7 +58,7 @@ export function AccountMoreMenu({
         <View style={styles.profileTopRow}>
           <View style={styles.avatar}>
             {avatar ? (
-              <Image source={avatar} style={styles.avatarImage} />
+              <AppImage source={avatar} style={styles.avatarImage} />
             ) : (
               <Text style={styles.avatarLetter}>{avatarFallback.slice(0, 1).toUpperCase()}</Text>
             )}

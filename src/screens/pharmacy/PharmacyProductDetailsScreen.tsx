@@ -1,6 +1,7 @@
 import React from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, ActivityIndicator } from 'react-native';
-import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { useFocusEffect, useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
@@ -51,6 +52,14 @@ export function PharmacyProductDetailsScreen() {
   const { data, isLoading, isError } = useProduct(productId);
   const deleteMutation = useDeleteProduct();
   const product = extractProduct(data);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const tabNavigator = navigation.getParent?.();
+      tabNavigator?.setOptions({ tabBarStyle: { display: 'none' } });
+      return () => tabNavigator?.setOptions({ tabBarStyle: undefined });
+    }, [navigation])
+  );
 
   const discountPercent =
     product && product.discountPrice != null && Number(product.price) > 0
@@ -107,7 +116,7 @@ export function PharmacyProductDetailsScreen() {
     <ScreenContainer scroll padded>
       <View style={styles.imageContainer}>
         {imgUrl ? (
-          <Image source={{ uri: imgUrl }} style={styles.productImage} resizeMode="cover" />
+          <AppImage source={{ uri: imgUrl }} style={styles.productImage} resizeMode="cover" />
         ) : (
           <View style={[styles.productImage, styles.productImagePlaceholder]} />
         )}
@@ -264,7 +273,7 @@ const styles = StyleSheet.create({
   packDescription: { ...typography.caption, color: colors.textSecondary, marginTop: 4 },
   detailBlock: { paddingTop: spacing.sm, marginTop: spacing.xs, borderTopWidth: 1, borderTopColor: colors.borderLight },
   blockValue: { ...typography.bodySmall, color: colors.text, marginTop: 4, lineHeight: 20 },
-  actions: { marginTop: spacing.md },
+  actions: { marginTop: spacing.md, marginBottom: spacing.xl },
   actionBtn: { marginBottom: spacing.sm },
   deleteBtn: { paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: colors.error, borderRadius: 12 },
   deleteBtnText: { ...typography.body, color: colors.error, fontWeight: '600' },

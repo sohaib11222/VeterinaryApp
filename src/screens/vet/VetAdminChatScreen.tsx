@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import {
   View,
   Text,
@@ -6,13 +7,11 @@ import {
   FlatList,
   TextInput,
   TouchableOpacity,
-  Platform,
   ActivityIndicator,
   Image,
   Modal,
   Pressable,
   Linking,
-  Keyboard,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
@@ -29,6 +28,8 @@ import { useUploadChatFile } from '../../mutations/uploadMutations';
 import { copyToCacheUri, deleteCacheFiles, getExtensionFromMime } from '../../utils/fileUpload';
 import Toast from 'react-native-toast-message';
 import { useTranslation } from 'react-i18next';
+import { useChatKeyboardInset } from '../../hooks/useChatKeyboardInset';
+import { useChatAutoScroll } from '../../hooks/useChatAutoScroll';
 
 type Message = {
   _id: string;
@@ -98,22 +99,9 @@ export function VetAdminChatScreen() {
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null);
   const [pendingAttachment, setPendingAttachment] = useState<{ uri: string; name: string; type: string } | null>(null);
   const [pendingTempUri, setPendingTempUri] = useState<string | null>(null);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const listRef = useRef<FlatList>(null);
+  const { composerRef, keyboardOffset, onComposerFocus } = useChatKeyboardInset();
   const lastMarkedReadRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', (e) => {
-      setKeyboardHeight(e.endCoordinates.height);
-    });
-    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => {
-      setKeyboardHeight(0);
-    });
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
 
   const getOrCreate = useGetOrCreateConversation();
   const { data: messagesResponse, isLoading: messagesLoading } = useMessages(
@@ -156,10 +144,13 @@ export function VetAdminChatScreen() {
     const list = payload?.data?.messages ?? payload?.messages ?? [];
     return Array.isArray(list) ? list : [];
   })();
-
-  useEffect(() => {
-    if (messages.length > 0) setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
-  }, [messages.length]);
+  const { scrollToLatest, onContentSizeChange, onListLayout } = useChatAutoScroll(
+    listRef,
+    conversationId,
+    messages,
+    messagesLoading,
+    keyboardOffset
+  );
 
   const handleSend = async () => {
     const text = (message ?? '').trim();
@@ -254,13 +245,7 @@ export function VetAdminChatScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenContainer
-        style={{
-          ...styles.screenWrap,
-          ...(keyboardHeight > 0 ? { paddingBottom: keyboardHeight } : {}),
-        }}
-        padded={false}
-      >
+      <ScreenContainer style={styles.screenWrap} padded={false} keyboardAvoidance="none">
           {!conversationId && getOrCreate.isPending ? (
             <View style={styles.centered}>
               <ActivityIndicator size="large" color={colors.primary} />
@@ -275,7 +260,9 @@ export function VetAdminChatScreen() {
               ref={listRef}
               data={messages}
               keyExtractor={(item) => String(item._id)}
-              contentContainerStyle={styles.messagesList}
+              contentContainerStyle={[styles.messagesList, { paddingBottom: spacing.lg + keyboardOffset }]}
+              onContentSizeChange={onContentSizeChange}
+              onLayout={onListLayout}
               ListEmptyComponent={
                 <View style={styles.empty}>
                   <Text style={styles.emptyText}>{t('vetAdminChat.empty')}</Text>
@@ -302,7 +289,7 @@ export function VetAdminChatScreen() {
                                   onPress={() => setPreviewImageUri(att.url)}
                                   style={styles.attachmentImageWrap}
                                 >
-                                  <Image source={{ uri: att.url }} style={styles.attachmentImage} resizeMode="cover" />
+                                  <AppImage source={{ uri: att.url }} style={styles.attachmentImage} resizeMode="cover" />
                                 </TouchableOpacity>
                               );
                             }
@@ -349,7 +336,8 @@ export function VetAdminChatScreen() {
               </TouchableOpacity>
             </View>
           ) : null}
-          <View style={styles.inputRow}>
+          <View ref={composerRef} collapsable={false}>
+            <View style={[styles.inputRow, { transform: [{ translateY: -keyboardOffset }], zIndex: 5 }]}>
             <TouchableOpacity
               style={styles.attachBtn}
               onPress={handleAttach}
@@ -363,6 +351,10 @@ export function VetAdminChatScreen() {
               placeholderTextColor={colors.textLight}
               value={message}
               onChangeText={setMessage}
+              onFocus={() => {
+                onComposerFocus();
+                scrollToLatest(true);
+              }}
               multiline
               maxLength={2000}
               editable={!!adminId && !sendMessage.isPending}
@@ -374,6 +366,7 @@ export function VetAdminChatScreen() {
             >
               <Text style={styles.sendText}>{t('common.send')}</Text>
             </TouchableOpacity>
+            </View>
           </View>
       </ScreenContainer>
 
@@ -381,7 +374,7 @@ export function VetAdminChatScreen() {
         <Pressable style={styles.imagePreviewOverlay} onPress={() => setPreviewImageUri(null)}>
           <View style={styles.imagePreviewContent}>
             {previewImageUri ? (
-              <Image source={{ uri: previewImageUri }} style={styles.imagePreviewImg} resizeMode="contain" />
+              <AppImage source={{ uri: previewImageUri }} style={styles.imagePreviewImg} resizeMode="contain" />
             ) : null}
           </View>
         </Pressable>

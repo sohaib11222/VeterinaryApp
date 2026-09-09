@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import {
   View,
   Text,
@@ -12,11 +13,13 @@ import {
   Image,
 } from 'react-native';
 import { getImageUrl } from '../../config/api';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { useOrders } from '../../queries/orderQueries';
+import { useNotifications } from '../../queries/notificationQueries';
+import { useMarkNotificationRead } from '../../mutations/notificationMutations';
 import { useUpdateShippingFee } from '../../mutations/orderMutations';
 import { getErrorMessage } from '../../utils/errorUtils';
 import Toast from 'react-native-toast-message';
@@ -37,6 +40,17 @@ function extractOrders(payload: unknown): any[] {
   const d = (outer as { data?: unknown })?.data ?? outer;
   const list = (d as { orders?: unknown[] })?.orders ?? (d as { items?: unknown[] })?.items;
   return Array.isArray(list) ? list : [];
+}
+
+function extractUnreadNotificationIds(payload: unknown): string[] {
+  const outer = (payload as { data?: unknown })?.data ?? payload;
+  const data = (outer as { data?: unknown })?.data ?? outer;
+  const notifications = (data as { notifications?: unknown[] })?.notifications;
+  return Array.isArray(notifications)
+    ? notifications
+        .map((item) => String((item as { _id?: unknown })?._id ?? '').trim())
+        .filter(Boolean)
+    : [];
 }
 
 function getStatusColor(status: string) {
@@ -67,8 +81,9 @@ export function PharmacyOrdersListScreen() {
   const [statusFilter, setStatusFilter] = useState(initialStatus ?? '');
   const [paymentFilter, setPaymentFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [shippingModal, setShippingModal] = useState<{ orderId: string; orderNumber: string; currentShipping?: number } | null>(null);
+  const [shippingModal, setShippingModal] = useState<{ orderId: string; orderNumber: string; currentShipping?: number; currentDeliveryDays?: number } | null>(null);
   const [shippingFee, setShippingFee] = useState('');
+  const [deliveryDays, setDeliveryDays] = useState('2');
 
   const queryParams = useMemo(() => ({
     page: 1,
@@ -78,6 +93,8 @@ export function PharmacyOrdersListScreen() {
   }), [statusFilter, paymentFilter]);
 
   const { data, isLoading, isError } = useOrders(queryParams, { refetchInterval: 15_000, refetchIntervalInBackground: true });
+  const newOrderNotifications = useNotifications({ type: 'ORDER', unreadOnly: true, page: 1, limit: 50 }, { refetchInterval: 15_000 });
+  const markNotificationRead = useMarkNotificationRead();
   const updateShipping = useUpdateShippingFee();
   const orders = useMemo(() => extractOrders(data), [data]);
 
@@ -91,16 +108,28 @@ export function PharmacyOrdersListScreen() {
     });
   }, [orders, searchQuery]);
 
+  // Opening the Orders workspace acknowledges the seller's new-order alerts,
+  // so the tab dot accurately represents orders they have not reviewed yet.
+  useFocusEffect(
+    useCallback(() => {
+      const notificationIds = extractUnreadNotificationIds(newOrderNotifications.data);
+      notificationIds.forEach((id) => markNotificationRead.mutate(id));
+      return () => {};
+    }, [markNotificationRead, newOrderNotifications.data]),
+  );
+
   const openShippingModal = (order: any) => {
     const id = order?._id ?? order?.id;
     const orderNo = order?.orderNumber ?? id;
-    setShippingModal({ orderId: String(id), orderNumber: String(orderNo), currentShipping: order?.shipping });
+    setShippingModal({ orderId: String(id), orderNumber: String(orderNo), currentShipping: order?.shipping, currentDeliveryDays: order?.promisedDeliveryDays });
     setShippingFee(order?.shipping != null ? String(order.shipping) : '');
+    setDeliveryDays(String(order?.promisedDeliveryDays ?? 2));
   };
 
   const closeShippingModal = () => {
     setShippingModal(null);
     setShippingFee('');
+    setDeliveryDays('2');
   };
 
   const statusLabel = (code: string) =>
@@ -120,8 +149,13 @@ export function PharmacyOrdersListScreen() {
       return;
     }
     if (!shippingModal) return;
+    const days = Number(deliveryDays);
+    if (!Number.isInteger(days) || days < 2 || days > 5) {
+      Toast.show({ type: 'error', text1: 'Expected delivery time must be between 2 and 5 days.' });
+      return;
+    }
     try {
-      await updateShipping.mutateAsync({ orderId: shippingModal.orderId, data: { shippingFee: n } });
+      await updateShipping.mutateAsync({ orderId: shippingModal.orderId, data: { shippingFee: n, deliveryDays: days } });
       Toast.show({ type: 'success', text1: t('pharmacyOrdersList.toasts.shippingFeeUpdated') });
       closeShippingModal();
     } catch (err) {
@@ -199,7 +233,7 @@ export function PharmacyOrdersListScreen() {
               <TouchableOpacity onPress={() => navigation.navigate('PharmacyOrderDetails', { orderId: String(id) })} activeOpacity={0.9}>
                 <View style={styles.orderRow}>
                   {thumbUri ? (
-                    <Image source={{ uri: thumbUri }} style={styles.orderThumb} />
+                    <AppImage source={{ uri: thumbUri }} style={styles.orderThumb} />
                   ) : (
                     <View style={styles.orderThumbPlaceholder} />
                   )}
@@ -265,6 +299,16 @@ export function PharmacyOrdersListScreen() {
                 placeholder={t('pharmacyOrdersList.modal.shippingFeePlaceholder')}
                 keyboardType="decimal-pad"
               />
+              <Text style={[styles.modalLabel, { marginTop: spacing.md }]}>Expected delivery time (days)</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={deliveryDays}
+                onChangeText={(value) => setDeliveryDays(value.replace(/\D/g, '').slice(0, 1))}
+                placeholder="2–5"
+                keyboardType="number-pad"
+                maxLength={1}
+              />
+              <Text style={styles.modalHelpText}>Choose 2–5 days. The expected delivery date is calculated automatically.</Text>
             </View>
             <View style={styles.modalFooter}>
               <Button title={t('common.cancel')} variant="outline" onPress={closeShippingModal} style={styles.modalBtn} />
@@ -332,6 +376,7 @@ const styles = StyleSheet.create({
   modalOrderNo: { ...typography.bodySmall, color: colors.textSecondary, marginBottom: spacing.sm },
   modalLabel: { ...typography.label, marginBottom: 4 },
   modalInput: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: spacing.sm, ...typography.body, backgroundColor: colors.backgroundSecondary },
+  modalHelpText: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xs, lineHeight: 17 },
   modalFooter: { flexDirection: 'row', gap: spacing.sm, padding: spacing.sm, borderTopWidth: 1, borderTopColor: colors.borderLight },
   modalBtn: { flex: 1 },
 });

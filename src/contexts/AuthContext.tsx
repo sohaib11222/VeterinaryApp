@@ -1,12 +1,12 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import Toast from 'react-native-toast-message';
-import { loginApi, registerApi, AuthResponseData } from '../mutations/authMutations';
+import { loginApi, registerApi, registerPetSitterApi, requiresEmailVerification, verifyEmailApi, AuthResponseData } from '../mutations/authMutations';
 import { AUTH_TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from '../api/client';
 
 const VET_ONBOARDING_REQUIRED_KEY = 'vet_onboarding_required';
 
-export type UserRole = 'PET_OWNER' | 'VETERINARIAN' | 'PET_STORE' | 'PARAPHARMACY' | 'ADMIN';
+export type UserRole = 'PET_OWNER' | 'VETERINARIAN' | 'PET_STORE' | 'PARAPHARMACY' | 'PET_SITTER' | 'ADMIN';
 
 export type UserStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'BLOCKED';
 
@@ -17,12 +17,15 @@ export interface User {
   role: UserRole;
   status?: UserStatus;
   phone?: string;
+  profileImage?: string;
   isPhoneVerified?: boolean;
 }
 
 /** Response from login/register for navigation decisions (role, status) */
 export interface AuthResult {
   user: User;
+  requiresEmailVerification?: boolean;
+  email?: string;
 }
 
 interface AuthContextType {
@@ -30,6 +33,8 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<AuthResult | undefined>;
   register: (payload: { name: string; email: string; phone?: string; password: string }, role?: string) => Promise<AuthResult | undefined>;
+  registerPetSitter: (formData: FormData) => Promise<AuthResult | undefined>;
+  verifyEmail: (email: string, code: string) => Promise<AuthResult | undefined>;
   logout: () => Promise<void>;
   setUser: (user: User | null) => void;
   updateUser: (partial: Partial<User>) => void;
@@ -43,8 +48,8 @@ function normalizeUser(u: AuthResponseData['user'] | null): User | null {
   const id = rawId != null ? String(rawId) : '';
   if (!id) return null;
   const roleRaw = String(u.role ?? 'PET_OWNER').toUpperCase();
-  const role = (['PET_OWNER', 'VETERINARIAN', 'PET_STORE', 'PARAPHARMACY', 'ADMIN'].includes(roleRaw) ? roleRaw : 'PET_OWNER') as UserRole;
-  const raw = u as { phone?: string; isPhoneVerified?: boolean };
+  const role = (['PET_OWNER', 'VETERINARIAN', 'PET_STORE', 'PARAPHARMACY', 'PET_SITTER', 'ADMIN'].includes(roleRaw) ? roleRaw : 'PET_OWNER') as UserRole;
+  const raw = u as { phone?: string; profileImage?: string; isPhoneVerified?: boolean };
   return {
     id,
     email: u.email ?? '',
@@ -52,6 +57,7 @@ function normalizeUser(u: AuthResponseData['user'] | null): User | null {
     role,
     status: (u.status as User['status']) ?? undefined,
     phone: raw?.phone ?? undefined,
+    profileImage: raw?.profileImage ?? undefined,
     isPhoneVerified: raw?.isPhoneVerified ?? undefined,
   };
 }
@@ -146,14 +152,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const roleRaw = String(role || '').toUpperCase();
         const backendRole = (
-          ['PET_OWNER', 'VETERINARIAN', 'PET_STORE', 'PARAPHARMACY'].includes(roleRaw)
-            ? (roleRaw as 'PET_OWNER' | 'VETERINARIAN' | 'PET_STORE' | 'PARAPHARMACY')
+          ['PET_OWNER', 'VETERINARIAN', 'PET_STORE', 'PARAPHARMACY', 'PET_SITTER'].includes(roleRaw)
+            ? (roleRaw as 'PET_OWNER' | 'VETERINARIAN' | 'PET_STORE' | 'PARAPHARMACY' | 'PET_SITTER')
             : 'PET_OWNER'
         );
         const data = await registerApi({
           ...payload,
           role: backendRole,
         });
+        if (requiresEmailVerification(data)) {
+          const pendingUser = normalizeUser(data.user);
+          if (!pendingUser) throw new Error('Registration response did not include a valid user');
+          Toast.show({ type: 'success', text1: 'Verification Code Sent', text2: 'Check your email to activate your account.' });
+          return { user: pendingUser, requiresEmailVerification: true, email: data.email };
+        }
         const userFromApi = await persistAuth(data);
         if (userFromApi) {
           setUserState(userFromApi);
@@ -181,6 +193,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const registerPetSitter = useCallback(async (formData: FormData): Promise<AuthResult | undefined> => {
+    try {
+      const data = await registerPetSitterApi(formData);
+      if (!requiresEmailVerification(data)) throw new Error('Pet sitter verification could not be started');
+      const pendingUser = normalizeUser(data.user);
+      if (!pendingUser) throw new Error('Registration response did not include a valid user');
+      Toast.show({ type: 'success', text1: 'Verification Code Sent', text2: 'Check your email to activate your Pet Sitter account.' });
+      return { user: pendingUser, requiresEmailVerification: true, email: data.email };
+    } catch (err: unknown) {
+      const message = (err as { message?: string })?.message ?? 'Registration failed. Please try again.';
+      Toast.show({ type: 'error', text1: 'Pet Sitter Registration Failed', text2: message });
+      throw err;
+    }
+  }, []);
+
+  const verifyEmail = useCallback(async (email: string, code: string): Promise<AuthResult | undefined> => {
+    const data = await verifyEmailApi(email, code);
+    const verifiedUser = await persistAuth(data);
+    if (!verifiedUser) throw new Error('Email verification did not return a valid account');
+    setUserState(verifiedUser);
+    Toast.show({ type: 'success', text1: 'Email Verified', text2: 'Welcome to MyPetPlus!' });
+    return { user: verifiedUser };
+  }, []);
+
   const logout = useCallback(async () => {
     await clearAuth();
     setUserState(null);
@@ -200,7 +236,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, setUser, updateUser }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, registerPetSitter, verifyEmail, logout, setUser, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

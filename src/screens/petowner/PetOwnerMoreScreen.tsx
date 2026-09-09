@@ -8,6 +8,8 @@ import { useVetHeaderSearch } from '../../contexts/VetHeaderSearchContext';
 import { spacing } from '../../theme/spacing';
 import { useTranslation } from 'react-i18next';
 import { useSupportTicketUnreadCount } from '../../queries/supportTicketQueries';
+import { useUserById } from '../../queries/userQueries';
+import { getImageUrl } from '../../config/api';
 
 function getUnreadCount(payload: unknown): number {
   const outer = (payload as { data?: unknown })?.data ?? payload;
@@ -23,7 +25,11 @@ export function PetOwnerMoreScreen() {
   const headerSearch = useVetHeaderSearch();
   const { t } = useTranslation();
   const supportUnread = useSupportTicketUnreadCount({ refetchInterval: 15_000 });
+  const profileQuery = useUserById(user?.id, { enabled: !!user?.id });
   const supportBadge = getUnreadCount(supportUnread.data);
+  const profilePayload: any = profileQuery.data;
+  const profile = profilePayload?.data?.data ?? profilePayload?.data ?? profilePayload ?? {};
+  const profileImage = profile?.profileImage ?? user?.profileImage;
 
   const menuSections: { title: string; items: { label: string; icon: any; screen: string; description?: string; badge?: number }[] }[] = [
     {
@@ -81,6 +87,7 @@ export function PetOwnerMoreScreen() {
           name={user?.name || t('petOwnerMore.defaults.petOwnerName')}
           role={t('petOwnerMore.role')}
           email={user?.email}
+          avatar={profileImage ? { uri: getImageUrl(profileImage) ?? profileImage } : null}
           avatarFallback={user?.name || t('petOwnerMore.defaults.avatarLetter')}
           accountLabel={t('moreMenu.account')}
           sections={menuSections.map((section) => ({

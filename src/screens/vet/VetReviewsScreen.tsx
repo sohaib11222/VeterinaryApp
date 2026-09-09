@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import {
   View,
   Text,
@@ -175,7 +176,7 @@ export function VetReviewsScreen() {
             <View style={styles.reviewRow}>
               <View style={styles.avatarWrap}>
                 {imageUri ? (
-                  <Image source={{ uri: imageUri }} style={styles.avatarImage} resizeMode="cover" />
+                  <AppImage source={{ uri: imageUri }} style={styles.avatarImage} resizeMode="cover" />
                 ) : (
                   <View style={styles.avatarPlaceholder}>
                     <Text style={styles.avatarText}>{ownerName(item).charAt(0)}</Text>

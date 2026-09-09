@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import {
   View,
   Text,
@@ -185,7 +186,7 @@ export function VetAnnouncementsScreen() {
               </View>
               <Text style={styles.message}>{item.message ?? ''}</Text>
               {imageUri ? (
-                <Image source={{ uri: imageUri }} style={styles.image} resizeMode="cover" />
+                <AppImage source={{ uri: imageUri }} style={styles.image} resizeMode="cover" />
               ) : null}
               {item.file ? (
                 <TouchableOpacity style={styles.attachBtn} onPress={() => openFile(item.file!)}>

@@ -34,12 +34,28 @@ export function getApiOrigin(): string {
   return base.replace(/\/api(\/.*)?$/, '') || base;
 }
 
-/** Full URL for backend image path (e.g. /uploads/profiles/...). Returns null if no path. */
-export function getImageUrl(path: string | null | undefined): string | null {
-  if (!path || typeof path !== 'string') return null;
-  const t = path.trim();
+/** Full URL for an uploaded image path. Supports relative backend paths and device-local picker URIs. */
+export function getImageUrl(path: unknown): string | null {
+  const rawPath = typeof path === 'string'
+    ? path
+    : (path && typeof path === 'object'
+      ? ((path as { url?: unknown; fileUrl?: unknown; uri?: unknown; path?: unknown }).url
+        ?? (path as { fileUrl?: unknown }).fileUrl
+        ?? (path as { uri?: unknown }).uri
+        ?? (path as { path?: unknown }).path)
+      : null);
+  if (!rawPath || typeof rawPath !== 'string') return null;
+  const t = rawPath.trim();
   if (!t) return null;
-  if (t.startsWith('http://') || t.startsWith('https://')) return t;
+  if (/^(https?:|file:|content:|data:)/i.test(t)) return t;
+  const normalized = `/${t.replace(/\\/g, '/').replace(/^\/+/, '')}`;
+
+  // Production routes the API through /api, including the mirrored static
+  // upload route. Going through API_BASE_URL works on the deployed domain,
+  // Android emulator and physical-device development server alike.
+  if (normalized.startsWith('/uploads/')) {
+    return `${String(API_BASE_URL || '').replace(/\/+$/, '')}${normalized}`;
+  }
   const origin = getApiOrigin();
-  return `${origin}${t.startsWith('/') ? t : `/${t}`}`;
+  return `${origin}${normalized}`;
 }

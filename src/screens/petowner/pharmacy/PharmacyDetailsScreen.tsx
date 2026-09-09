@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { AppImage } from '../../../components/common/AppImage';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -80,7 +81,7 @@ export function PharmacyDetailsScreen() {
         <View style={styles.storeRow}>
           <View style={styles.storeLeft}>
             {logoUri ? (
-              <Image source={{ uri: logoUri }} style={styles.logo} resizeMode="cover" />
+              <AppImage source={{ uri: logoUri }} style={styles.logo} resizeMode="cover" />
             ) : (
               <View style={styles.logo} />
             )}
@@ -155,7 +156,7 @@ export function PharmacyDetailsScreen() {
                         onPress={() => navigation.navigate('ProductDetails', { productId: id })}
                       >
                         {imgUri ? (
-                          <Image source={{ uri: imgUri }} style={styles.productThumb} resizeMode="cover" />
+                          <AppImage source={{ uri: imgUri }} style={styles.productThumb} resizeMode="cover" />
                         ) : (
                           <View style={styles.productThumb} />
                         )}

@@ -290,8 +290,8 @@ export function VetDashboardScreen() {
         {/* Stats row – modern cards */}
         <View style={styles.statsGrid}>
           {stats.map((s, i) => (
-            <View key={i} style={[styles.statCard, { backgroundColor: s.color + '2' }]}>
-              <View style={[styles.statIconWrap, { backgroundColor: s.color + '2' }]}>
+            <View key={i} style={styles.statCard}>
+              <View style={[styles.statIconWrap, { backgroundColor: s.color + '22' }]}>
                 <Ionicons name={s.icon as any} size={20} color={s.color} />
               </View>
               <Text style={[styles.statValue, { color: s.color }]}>{s.value}</Text>
@@ -323,7 +323,7 @@ export function VetDashboardScreen() {
         <Card style={styles.todayCard}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>{t('vetDashboard.today.title')}</Text>
-            <TouchableOpacity onPress={() => navigation.getParent()?.navigate('VetAppointments')}>
+            <TouchableOpacity onPress={() => navigation.navigate('VetAppointments')} accessibilityRole="button" accessibilityLabel={t('vetDashboard.today.seeAll')}>
               <Text style={styles.seeAll}>{t('vetDashboard.today.seeAll')}</Text>
             </TouchableOpacity>
           </View>
@@ -444,11 +444,14 @@ const styles = StyleSheet.create({
     width: '48%',
     borderRadius: 16,
     padding: spacing.md,
+    borderWidth: 1,
+    backgroundColor: colors.background,
+    borderColor: colors.borderLight,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    // elevation: 2,
+    shadowOpacity: 0.02,
+    shadowRadius: 5,
+    elevation: 1,
   },
   statIconWrap: {
     width: 40,

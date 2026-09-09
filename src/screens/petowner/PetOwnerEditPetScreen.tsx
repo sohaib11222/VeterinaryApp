@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, ActivityIndicator } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
@@ -157,9 +158,9 @@ export function PetOwnerEditPetScreen() {
           <Text style={styles.fieldLabel}>{t('petOwnerAddPet.fields.photo.label')}</Text>
           <TouchableOpacity style={styles.photoPlaceholder} onPress={pickPhoto}>
             {photo?.uri ? (
-              <Image source={{ uri: photo.uri }} style={styles.photoPreview} />
+              <AppImage source={{ uri: photo.uri }} style={styles.photoPreview} />
             ) : pet?.photo ? (
-              <Image source={{ uri: getImageUrl(String(pet.photo)) ?? String(pet.photo) }} style={styles.photoPreview} />
+              <AppImage source={{ uri: getImageUrl(String(pet.photo)) ?? String(pet.photo) }} style={styles.photoPreview} />
             ) : (
               <Text style={styles.photoText}>{t('petOwnerEditPet.photo.changePhoto')}</Text>
             )}

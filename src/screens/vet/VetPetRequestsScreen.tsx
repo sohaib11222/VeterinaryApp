@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import {
   View,
   Text,
@@ -123,7 +124,7 @@ export function VetPetRequestsScreen() {
     <Card style={styles.card}>
       <View style={styles.topRow}>
         {item.petImg ? (
-          <Image source={{ uri: item.petImg }} style={styles.petImage} />
+          <AppImage source={{ uri: item.petImg }} style={styles.petImage} />
         ) : (
           <View style={styles.petImagePlaceholder}>
             <Text style={styles.petImageLetter}>{item.petName.charAt(0) || '?'}</Text>

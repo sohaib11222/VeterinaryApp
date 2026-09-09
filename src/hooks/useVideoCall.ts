@@ -42,6 +42,22 @@ function delay(milliseconds: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
 }
 
+function within<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (error) => { clearTimeout(timer); reject(error); },
+    );
+  });
+}
+
+const MEDIA_PERMISSION_TIMEOUT_MS = 12_000;
+const STREAM_PREPARE_TIMEOUT_MS = 15_000;
+const STREAM_JOIN_TIMEOUT_MS = 20_000;
+const STREAM_JOIN_RETRY_DELAY_MS = 750;
+const STREAM_JOIN_ATTEMPTS = 4;
+
 /**
  * Mobile implementation of the same two-stage Stream flow used on web:
  * caller creates a private call and waits; recipient accepts on the server;
@@ -55,6 +71,7 @@ export function useVideoCall(appointmentId: string | null | undefined) {
   const [error, setError] = useState<string | null>(null);
   const clientRef = useRef<StreamVideoClient | null>(null);
   const callRef = useRef<Call | null>(null);
+  const joiningPromiseRef = useRef<Promise<unknown> | null>(null);
 
   const requestMediaPermissions = useCallback(async () => {
     if (Platform.OS === 'android') {
@@ -124,8 +141,17 @@ export function useVideoCall(appointmentId: string | null | undefined) {
     const resources = createResources(payload);
     try {
       const members = resources.memberIds.map((id) => ({ user_id: id }));
-      await resources.streamCall.getOrCreate(members.length > 0 ? { data: { members } } : undefined);
+      // Match the working web lifecycle: create a member-only call while it
+      // rings, then disconnect this temporary client. Both participants join
+      // fresh authenticated clients only after the server marks it ACTIVE.
+      await within(
+        resources.streamCall.getOrCreate(members.length > 0 ? { data: { members } } : undefined),
+        STREAM_PREPARE_TIMEOUT_MS,
+        'The video service did not prepare the shared call in time. Please try again.',
+      );
       return { streamCallId: resources.streamCallId };
+    } catch (error) {
+      throw error;
     } finally {
       await resources.streamClient.disconnectUser().catch(() => {});
     }
@@ -152,48 +178,71 @@ export function useVideoCall(appointmentId: string | null | undefined) {
   }, [appointmentId, user]);
 
   /** Joins an already ACTIVE session; neither participant can replace its call id. */
-  const joinActiveCall = useCallback(async (knownPayload?: unknown) => {
-    setLoading(true);
-    setError(null);
-    let resources: ReturnType<typeof createResources> | null = null;
-    try {
-      const payload = knownPayload ? responseData(knownPayload) : await getSession();
-      const activeSession = payload.session ?? payload;
-      if (String(activeSession?.status ?? '').toUpperCase() !== 'ACTIVE') {
-        throw new Error('The other participant has not accepted the call yet.');
-      }
+  const joinActiveCall = useCallback((knownPayload?: unknown) => {
+    // The caller's acceptance poll can run again before a network join
+    // finishes. Share one in-flight join instead of creating two clients for
+    // the same user/call and letting one disconnect the other.
+    if (joiningPromiseRef.current) return joiningPromiseRef.current;
 
-      await requestMediaPermissions();
-      let lastError: unknown = null;
-      for (let attempt = 0; attempt < 3; attempt += 1) {
-        resources = createResources(payload);
-        try {
-          await resources.streamCall.join({ create: false });
-          lastError = null;
-          break;
-        } catch (joinError) {
-          lastError = joinError;
-          await resources.streamClient.disconnectUser().catch(() => {});
-          resources = null;
-          if (attempt < 2) await delay(700);
+    const task = (async () => {
+      setLoading(true);
+      setError(null);
+      let resources: ReturnType<typeof createResources> | null = null;
+      try {
+        const payload = knownPayload ? responseData(knownPayload) : await getSession();
+        const activeSession = payload.session ?? payload;
+        if (String(activeSession?.status ?? '').toUpperCase() !== 'ACTIVE') {
+          throw new Error('The other participant has not accepted the call yet.');
         }
-      }
-      if (!resources || lastError) throw lastError || new Error('Unable to join the video call.');
 
-      await Promise.allSettled([resources.streamCall.camera.enable(), resources.streamCall.microphone.enable()]);
-      clientRef.current = resources.streamClient;
-      callRef.current = resources.streamCall;
-      setClient(resources.streamClient);
-      setCall(resources.streamCall);
-      return resources;
-    } catch (joinError: any) {
-      await resources?.streamClient.disconnectUser().catch(() => {});
-      const message = joinError?.response?.data?.message || joinError?.message || 'Unable to join video call.';
-      setError(message);
-      throw joinError;
-    } finally {
-      setLoading(false);
-    }
+        await within(
+          requestMediaPermissions(),
+          MEDIA_PERMISSION_TIMEOUT_MS,
+          'Camera and microphone access timed out. Check the permission prompt and try again.',
+        );
+
+        let lastError: unknown = null;
+        for (let attempt = 0; attempt < STREAM_JOIN_ATTEMPTS; attempt += 1) {
+          resources = createResources(payload);
+          try {
+            await within(
+              resources.streamCall.join({ create: false }),
+              STREAM_JOIN_TIMEOUT_MS,
+              'The video service did not connect in time. Please check your connection and call again.',
+            );
+            lastError = null;
+            break;
+          } catch (joinError) {
+            lastError = joinError;
+            await resources.streamClient.disconnectUser().catch(() => {});
+            resources = null;
+            if (attempt < STREAM_JOIN_ATTEMPTS - 1) await delay(STREAM_JOIN_RETRY_DELAY_MS);
+          }
+        }
+        if (!resources || lastError) throw lastError || new Error('Unable to join the video call.');
+
+        await Promise.allSettled([resources.streamCall.camera.enable(), resources.streamCall.microphone.enable()]);
+        clientRef.current = resources.streamClient;
+        callRef.current = resources.streamCall;
+        setClient(resources.streamClient);
+        setCall(resources.streamCall);
+        return resources;
+      } catch (joinError: any) {
+        await resources?.streamClient.disconnectUser().catch(() => {});
+        const message = joinError?.response?.data?.message || joinError?.message || 'Unable to join video call.';
+        setError(message);
+        throw joinError;
+      } finally {
+        setLoading(false);
+      }
+    })();
+
+    joiningPromiseRef.current = task;
+    void task.then(
+      () => { if (joiningPromiseRef.current === task) joiningPromiseRef.current = null; },
+      () => { if (joiningPromiseRef.current === task) joiningPromiseRef.current = null; },
+    );
+    return task;
   }, [createResources, getSession, requestMediaPermissions]);
 
   const endCall = useCallback(async () => {

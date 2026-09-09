@@ -26,7 +26,7 @@ export function PetOwnerBookingCheckoutScreen() {
   const { t } = useTranslation();
   const params = route.params;
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('CARD');
+  const paymentMethod = 'STRIPE';
 
   const { data: vetProfileRes, isLoading: vetLoading } = useVeterinarianPublicProfile(params?.veterinarianId);
   const { data: petsRes } = usePets();
@@ -129,14 +129,14 @@ export function PetOwnerBookingCheckoutScreen() {
         </Card>
         <Text style={styles.sectionTitle}>{t('petOwnerBookingCheckout.sections.payment')}</Text>
         <Card>
-          <TouchableOpacity style={styles.radioRow} onPress={() => setPaymentMethod('CARD')}>
-            <Text style={styles.radioIcon}>{paymentMethod === 'CARD' ? '◉' : '○'}</Text>
-            <Text style={styles.radioLabel}>{t('petOwnerBookingCheckout.paymentMethods.card')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.radioRow} onPress={() => setPaymentMethod('DUMMY')}>
-            <Text style={styles.radioIcon}>{paymentMethod === 'DUMMY' ? '◉' : '○'}</Text>
-            <Text style={styles.radioLabel}>{t('petOwnerBookingCheckout.paymentMethods.demo')}</Text>
-          </TouchableOpacity>
+          <View style={styles.stripeRow}>
+            <View style={styles.stripeMark}><Text style={styles.stripeMarkText}>S</Text></View>
+            <View style={styles.stripeCopyWrap}>
+              <Text style={styles.radioLabel}>Stripe</Text>
+              <Text style={styles.stripeCaption}>Secure payment</Text>
+            </View>
+            <Text style={styles.selectedIcon}>✓</Text>
+          </View>
         </Card>
         <TouchableOpacity style={styles.termsRow} onPress={() => setTermsAccepted((a) => !a)}>
           <Text style={styles.radioIcon}>{termsAccepted ? '☑' : '☐'}</Text>
@@ -173,6 +173,12 @@ const styles = StyleSheet.create({
   radioRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
   radioIcon: { marginRight: spacing.sm, fontSize: 18 },
   radioLabel: { ...typography.body },
+  stripeRow: { flexDirection: 'row', alignItems: 'center', minHeight: 48 },
+  stripeMark: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#635BFF', alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm },
+  stripeMarkText: { color: colors.textInverse, fontSize: 18, fontWeight: '800' },
+  stripeCopyWrap: { flex: 1 },
+  stripeCaption: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  selectedIcon: { color: colors.primary, fontSize: 20, fontWeight: '800' },
   termsRow: { flexDirection: 'row', alignItems: 'center', marginVertical: spacing.md },
   termsLabel: { ...typography.caption, flex: 1 },
   confirmBtn: { marginTop: spacing.md, marginBottom: spacing.xl },

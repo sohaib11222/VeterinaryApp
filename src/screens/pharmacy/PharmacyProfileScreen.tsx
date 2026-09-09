@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
@@ -140,7 +141,7 @@ export function PharmacyProfileScreen() {
         <Text style={styles.sectionTitle}>{t('pharmacyProfile.title')}</Text>
         <View style={styles.logoRow}>
           {form.logo ? (
-            <Image source={{ uri: getImageUrl(form.logo) ?? form.logo }} style={styles.logoImg} />
+            <AppImage source={{ uri: getImageUrl(form.logo) ?? form.logo }} style={styles.logoImg} />
           ) : (
             <View style={styles.logoPlaceholder} />
           )}

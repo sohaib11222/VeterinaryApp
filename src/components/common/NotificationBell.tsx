@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUnreadNotificationsCount } from '../../queries/notificationQueries';
+import { rootNavigationRef } from '../../navigation/navigationRef';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 
@@ -15,7 +15,6 @@ function extractUnreadCount(payload: unknown): number {
 }
 
 export function NotificationBell({ color = colors.textInverse }: { color?: string }) {
-  const navigation = useNavigation<any>();
   const { user } = useAuth();
 
   const unreadQuery = useUnreadNotificationsCount({ enabled: !!user, refetchInterval: 30_000 });
@@ -23,53 +22,31 @@ export function NotificationBell({ color = colors.textInverse }: { color?: strin
 
   const handlePress = () => {
     const role = (user?.role ?? '').toUpperCase();
+    if (!rootNavigationRef.isReady()) return;
 
-    // Pharmacy / Parapharmacy: navigate to More tab stack screen
+    // The header is reused at different nesting depths (tabs, More stacks,
+    // appointment details, and chat details). Navigate from the root instead
+    // of guessing how many parent navigators the current screen has.
     if (role === 'PET_STORE' || role === 'PARAPHARMACY') {
-      try {
-        navigation.navigate('PharmacyMore', { screen: 'PharmacyNotifications' });
-        return;
-      } catch {
-        // ignore
-      }
-      try {
-        const tabNav = navigation.getParent?.();
-        tabNav?.navigate('PharmacyMore', { screen: 'PharmacyNotifications' });
-        return;
-      } catch {
-        // ignore
-      }
+      (rootNavigationRef as any).navigate('Main', {
+        screen: 'PharmacyMore',
+        params: { screen: 'PharmacyNotifications' },
+      });
       return;
     }
 
     if (role === 'VETERINARIAN') {
-      try {
-        const parent = navigation.getParent?.();
-        parent?.navigate('VetNotifications');
-        return;
-      } catch {
-        // ignore
-      }
-      try {
-        navigation.navigate('VetNotifications');
-      } catch {
-        // ignore
-      }
+      (rootNavigationRef as any).navigate('Main', { screen: 'VetNotifications' });
       return;
     }
 
-    // Default to Pet Owner
-    try {
-      const parent = navigation.getParent?.();
-      parent?.navigate('PetOwnerNotifications');
+    if (role === 'PET_OWNER') {
+      (rootNavigationRef as any).navigate('Main', { screen: 'PetOwnerNotifications' });
       return;
-    } catch {
-      // ignore
     }
-    try {
-      navigation.navigate('PetOwnerNotifications');
-    } catch {
-      // ignore
+
+    if (role === 'PET_SITTER') {
+      (rootNavigationRef as any).navigate('Main', { screen: 'PetSitterNotifications' });
     }
   };
 

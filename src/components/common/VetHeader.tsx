@@ -1,4 +1,5 @@
 import React from 'react';
+import { AppImage } from './AppImage';
 import {
   View,
   Text,
@@ -65,7 +66,7 @@ export function VetHeader({
         )}
         {avatarUri ? (
           <View style={styles.avatarWrap}>
-            <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
+            <AppImage source={{ uri: avatarUri }} style={styles.avatarImg} />
           </View>
         ) : null}
         <View style={styles.titleBlock}>

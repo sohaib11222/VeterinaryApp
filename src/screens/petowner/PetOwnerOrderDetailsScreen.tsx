@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Image, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
@@ -87,6 +88,9 @@ export function PetOwnerOrderDetailsScreen() {
   const shippingAddress = order.shippingAddress as { line1?: string; line2?: string; city?: string; state?: string; zip?: string; country?: string } | undefined;
   const pharmacy = order.petStoreId as { name?: string; phone?: string; email?: string; storeType?: string } | undefined;
   const transaction = order.transactionId as { _id?: string; provider?: string; status?: string } | undefined;
+  const expectedDeliveryDate = order.expectedDeliveryDate ? formatDate(String(order.expectedDeliveryDate), t('common.na')) : null;
+  const promisedDeliveryDays = Number(order.promisedDeliveryDays ?? 0);
+  const deliveryStatus = String(order.deliveryStatus ?? '').replace(/_/g, ' ').toLowerCase();
 
   const canPay = paymentStatus === 'UNPAID' && shippingSet && (status === 'PENDING' || status === 'CONFIRMED');
   const canCancel = paymentStatus !== 'PAID' && (status === 'PENDING' || status === 'CONFIRMED');
@@ -160,6 +164,15 @@ export function PetOwnerOrderDetailsScreen() {
         </Card>
       )}
 
+      {expectedDeliveryDate ? (
+        <Card style={styles.deliveryCard}>
+          <View style={styles.infoHeading}><View style={styles.infoIcon}><Ionicons name="car-outline" size={19} color={colors.primary} /></View><View><Text style={styles.cardTitle}>Delivery tracking</Text><Text style={styles.infoSubtext}>Your pharmacy’s current delivery commitment</Text></View></View>
+          <View style={styles.deliveryRow}><Text style={styles.deliveryLabel}>Expected delivery</Text><Text style={styles.deliveryValue}>{expectedDeliveryDate}</Text></View>
+          <View style={styles.deliveryRow}><Text style={styles.deliveryLabel}>Delivery status</Text><Text style={styles.deliveryValue}>{deliveryStatus || 'Processing'}</Text></View>
+          {promisedDeliveryDays ? <Text style={styles.deliveryHint}>{promisedDeliveryDays}-day delivery estimate set by the pharmacy.</Text> : null}
+        </Card>
+      ) : null}
+
       {pharmacy?.name ? <Card style={styles.infoCard}><View style={styles.infoHeading}><View style={styles.infoIcon}><Ionicons name="storefront-outline" size={19} color={colors.primary} /></View><View><Text style={styles.cardTitle}>{t('petOwnerOrders.details.sections.pharmacy')}</Text><Text style={styles.infoSubtext}>{pharmacy.name}</Text></View></View>{pharmacy.phone ? <Text style={styles.infoLine}>{pharmacy.phone}</Text> : null}{pharmacy.email ? <Text style={styles.infoLine}>{pharmacy.email}</Text> : null}</Card> : null}
 
       <Card style={styles.infoCard}>
@@ -174,7 +187,7 @@ export function PetOwnerOrderDetailsScreen() {
           return (
             <View key={idx} style={styles.itemRow}>
               {imgUri ? (
-                <Image source={{ uri: imgUri }} style={styles.itemImage} resizeMode="cover" />
+                <AppImage source={{ uri: imgUri }} style={styles.itemImage} resizeMode="cover" />
               ) : (
                 <View style={styles.itemImage} />
               )}
@@ -209,14 +222,14 @@ export function PetOwnerOrderDetailsScreen() {
       )}
 
       <Card style={styles.totalCard}>
-        <Text style={styles.cardTitle}>{t('petOwnerOrders.details.sections.summary')}</Text>
+        <Text style={[styles.cardTitle, styles.totalCardTitle]}>{t('petOwnerOrders.details.sections.summary')}</Text>
         <View style={styles.totalRow}>
-          <Text>{t('petOwnerOrders.details.totals.subtotal')}</Text>
-          <Text>€{subtotal.toFixed(2)}</Text>
+          <Text style={styles.totalRowLabel}>{t('petOwnerOrders.details.totals.subtotal')}</Text>
+          <Text style={styles.totalRowValue}>€{subtotal.toFixed(2)}</Text>
         </View>
         <View style={styles.totalRow}>
-          <Text>{t('petOwnerOrders.details.totals.shipping')}</Text>
-          <Text>€{shipping.toFixed(2)}</Text>
+          <Text style={styles.totalRowLabel}>{t('petOwnerOrders.details.totals.shipping')}</Text>
+          <Text style={styles.totalRowValue}>€{shipping.toFixed(2)}</Text>
         </View>
         <View style={styles.divider} />
         <View style={[styles.totalRow, styles.totalFinal]}>
@@ -291,10 +304,15 @@ const styles = StyleSheet.create({
   alertSuccess: { backgroundColor: colors.successLight },
   alertText: { ...typography.bodySmall, flex: 1, lineHeight: 20 },
   infoCard: { marginBottom: spacing.md, borderWidth: 1, borderColor: colors.borderLight },
+  deliveryCard: { marginBottom: spacing.md, backgroundColor: colors.infoLight + '55', borderWidth: 1, borderColor: colors.primaryLight + '24' },
   infoHeading: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
   infoIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: colors.primaryLight + '18', alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm },
   infoSubtext: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
   infoLine: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 3 },
+  deliveryRow: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md, paddingVertical: spacing.xs },
+  deliveryLabel: { ...typography.bodySmall, color: colors.textSecondary, flex: 1 },
+  deliveryValue: { ...typography.bodySmall, color: colors.text, flex: 1, textAlign: 'right', fontWeight: '800', textTransform: 'capitalize' },
+  deliveryHint: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.sm },
   cardTitle: { ...typography.h3, marginBottom: spacing.sm },
   itemRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
   itemImage: { width: 80, height: 80, backgroundColor: colors.backgroundTertiary, borderRadius: 8, marginRight: spacing.sm },
@@ -310,7 +328,10 @@ const styles = StyleSheet.create({
   paymentGridRight: { alignItems: 'flex-end', maxWidth: '55%' },
   paymentLabel: { ...typography.caption, color: colors.textSecondary, marginBottom: 3 }, paymentValue: { ...typography.bodySmall, color: colors.text, fontWeight: '700' },
   totalCard: { marginBottom: spacing.md, backgroundColor: colors.primaryLight + '10', borderWidth: 1, borderColor: colors.primaryLight + '28' },
+  totalCardTitle: { color: colors.text },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.xs },
+  totalRowLabel: { ...typography.body, color: colors.text },
+  totalRowValue: { ...typography.body, color: colors.text, fontWeight: '700' },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm },
   totalFinal: { marginBottom: 0 },
   totalLabel: { ...typography.body, fontWeight: '700' },

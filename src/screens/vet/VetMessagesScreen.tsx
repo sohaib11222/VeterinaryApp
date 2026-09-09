@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -127,7 +128,7 @@ export function VetMessagesScreen() {
           <View style={styles.row}>
             <View style={styles.avatar}>
               {avatarUri ? (
-                <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
+                <AppImage source={{ uri: avatarUri }} style={styles.avatarImg} />
               ) : (
                 <Text style={styles.avatarText}>{peerName.charAt(0)}</Text>
               )}

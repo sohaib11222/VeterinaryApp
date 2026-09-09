@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import {
   View,
   Text,
@@ -75,6 +76,7 @@ export function PharmacyOrderDetailsScreen() {
 
   const [showShippingModal, setShowShippingModal] = useState(false);
   const [shippingFee, setShippingFee] = useState('');
+  const [deliveryDays, setDeliveryDays] = useState('2');
 
   const paymentStatusCode = String(order?.paymentStatus ?? '').toUpperCase();
   const isPaid = order && paymentStatusCode === 'PAID';
@@ -83,6 +85,8 @@ export function PharmacyOrderDetailsScreen() {
   const shipping = order?.shipping ?? 0;
   const total = order?.total ?? order?.finalTotal ?? (subtotal + shipping);
   const currentStatus = order?.status ?? '';
+  const expectedDeliveryDate = order?.expectedDeliveryDate ? formatDate(order.expectedDeliveryDate) : null;
+  const promisedDeliveryDays = Number(order?.promisedDeliveryDays ?? 0);
 
   const statusLabel = (code: string) =>
     code ? t(`pharmacyOrders.statusLabels.${code}`, { defaultValue: code }) : t('common.na');
@@ -110,8 +114,13 @@ export function PharmacyOrderDetailsScreen() {
       Toast.show({ type: 'error', text1: t('pharmacyOrderDetails.validation.invalidShippingFee') });
       return;
     }
+    const days = Number(deliveryDays);
+    if (!Number.isInteger(days) || days < 2 || days > 5) {
+      Toast.show({ type: 'error', text1: 'Expected delivery time must be between 2 and 5 days.' });
+      return;
+    }
     try {
-      await updateShipping.mutateAsync({ orderId, data: { shippingFee: n } });
+      await updateShipping.mutateAsync({ orderId, data: { shippingFee: n, deliveryDays: days } });
       Toast.show({ type: 'success', text1: t('pharmacyOrderDetails.toasts.shippingFeeUpdated') });
       setShowShippingModal(false);
     } catch (err) {
@@ -151,13 +160,13 @@ export function PharmacyOrderDetailsScreen() {
     <ScreenContainer scroll padded>
       <View style={styles.headerCard}>
         <View style={styles.headerRow}>
-          <View>
+          <View style={styles.headerCopy}>
             <Text style={styles.label}>{t('pharmacyOrderDetails.labels.orderNumber')}</Text>
-            <Text style={styles.orderNumber}>#{orderNumber}</Text>
+            <Text style={styles.orderNumber} numberOfLines={1} ellipsizeMode="middle">#{orderNumber}</Text>
             <Text style={styles.orderDate}>{t('pharmacyOrderDetails.labels.orderDate', { createdAt })}</Text>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: getStatusColor(currentStatus) + '25' }]}>
-            <Text style={[styles.statusText, { color: getStatusColor(currentStatus) }]}>{statusLabel(currentStatus)}</Text>
+            <Text numberOfLines={2} style={[styles.statusText, { color: getStatusColor(currentStatus) }]}>{statusLabel(currentStatus)}</Text>
           </View>
         </View>
         <View style={styles.paymentRow}>
@@ -198,6 +207,14 @@ export function PharmacyOrderDetailsScreen() {
         </Card>
       )}
 
+      {expectedDeliveryDate ? (
+        <Card style={styles.section}>
+          <View style={styles.sectionHeader}><View style={styles.sectionIcon}><Ionicons name="car-outline" size={18} color={colors.primary} /></View><Text style={styles.sectionTitle}>Delivery commitment</Text></View>
+          <View style={styles.deliveryRow}><Text style={styles.deliveryLabel}>Expected delivery date</Text><Text style={styles.deliveryValue}>{expectedDeliveryDate}</Text></View>
+          <View style={styles.deliveryRow}><Text style={styles.deliveryLabel}>Promised time</Text><Text style={styles.deliveryValue}>{promisedDeliveryDays || '—'} day{promisedDeliveryDays === 1 ? '' : 's'}</Text></View>
+        </Card>
+      ) : null}
+
       <Card style={styles.section}>
         <View style={styles.sectionHeader}><View style={styles.sectionIcon}><Ionicons name="bag-handle-outline" size={18} color={colors.primary} /></View><Text style={styles.sectionTitle}>{t('pharmacyOrderDetails.labels.orderItems', { count: items.length })}</Text></View>
         {items.map((item: any, idx: number) => {
@@ -212,7 +229,7 @@ export function PharmacyOrderDetailsScreen() {
 
             <View key={itemId} style={styles.itemRow}>
               <View style={styles.itemImage}>
-                {imgUrl ? <Image source={{ uri: imgUrl }} style={styles.itemImageInner} resizeMode="cover" /> : null}
+                {imgUrl ? <AppImage source={{ uri: imgUrl }} style={styles.itemImageInner} resizeMode="cover" /> : null}
               </View>
               <View style={styles.itemInfo}>
                 <Text style={styles.itemName}>{name}</Text>
@@ -258,6 +275,7 @@ export function PharmacyOrderDetailsScreen() {
               variant="outline"
               onPress={() => {
                 setShippingFee(String(order?.shipping ?? 0));
+                setDeliveryDays(String(order?.promisedDeliveryDays ?? 2));
                 setShowShippingModal(true);
               }}
 
@@ -303,6 +321,16 @@ export function PharmacyOrderDetailsScreen() {
                 placeholder={t('pharmacyOrderDetails.modal.shippingFeePlaceholder')}
                 keyboardType="decimal-pad"
               />
+              <Text style={[styles.modalLabel, { marginTop: spacing.md }]}>Expected delivery time (days)</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={deliveryDays}
+                onChangeText={(value) => setDeliveryDays(value.replace(/\D/g, '').slice(0, 1))}
+                placeholder="2–5"
+                keyboardType="number-pad"
+                maxLength={1}
+              />
+              <Text style={styles.modalHelpText}>Choose a realistic delivery time between 2 and 5 days. The expected date is calculated automatically.</Text>
               {shippingFee && !isNaN(parseFloat(shippingFee)) && (
                 <Text style={styles.modalNewTotal}>
                   {t('pharmacyOrderDetails.modal.newTotal', { amount: (subtotal + parseFloat(shippingFee)).toFixed(2) })}
@@ -326,11 +354,12 @@ const styles = StyleSheet.create({
   errorText: { ...typography.body, color: colors.error, marginBottom: spacing.md },
   headerCard: { marginBottom: spacing.sm, padding: spacing.md, borderRadius: 16, borderWidth: 1, borderColor: colors.primaryLight + '3D', backgroundColor: colors.primaryLight + '0D' },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  headerCopy: { flex: 1, minWidth: 0, paddingRight: spacing.sm },
   label: { ...typography.bodySmall, color: colors.textSecondary },
   orderNumber: { ...typography.h3, marginTop: 2 },
   orderDate: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 4 },
-  statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-  statusText: { fontSize: 12, fontWeight: '600' },
+  statusBadge: { maxWidth: '46%', flexShrink: 1, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, alignSelf: 'flex-start' },
+  statusText: { fontSize: 12, fontWeight: '600', textAlign: 'center' },
   paymentRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm },
   paymentLabel: { ...typography.bodySmall, color: colors.textSecondary, marginRight: 8 },
   paymentBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
@@ -347,6 +376,9 @@ const styles = StyleSheet.create({
   infoIcon: { marginRight: 8, width: 18 },
   infoText: { ...typography.body },
   addressLine: { ...typography.body, marginBottom: 2 },
+  deliveryRow: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md, paddingVertical: spacing.xs },
+  deliveryLabel: { ...typography.bodySmall, color: colors.textSecondary, flex: 1 },
+  deliveryValue: { ...typography.bodySmall, color: colors.text, fontWeight: '700', textAlign: 'right', flex: 1 },
   itemRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
   itemImage: { width: 80, height: 80, borderRadius: 8, marginRight: spacing.sm, backgroundColor: colors.backgroundTertiary, overflow: 'hidden' },
   itemImageInner: { width: 80, height: 80 },
@@ -382,6 +414,7 @@ const styles = StyleSheet.create({
   modalCurrentShipping: { ...typography.body, marginBottom: 4 },
   modalInput: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: spacing.sm, ...typography.body, backgroundColor: colors.backgroundSecondary },
   modalNewTotal: { ...typography.body, fontWeight: '600', marginTop: spacing.sm },
+  modalHelpText: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xs, lineHeight: 17 },
   modalFooter: { flexDirection: 'row', gap: spacing.sm, padding: spacing.sm, borderTopWidth: 1, borderTopColor: colors.borderLight },
   modalBtn: { flex: 1 },
 });

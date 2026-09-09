@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import {
   View,
   Text,
@@ -209,7 +210,7 @@ export function PetOwnerAppointmentsScreen() {
         <View style={styles.topRow}>
           <View style={styles.vetBlock}>
             {item.doctorImg ? (
-              <Image source={{ uri: item.doctorImg }} style={styles.vetImage} />
+              <AppImage source={{ uri: item.doctorImg }} style={styles.vetImage} />
             ) : (
               <View style={styles.vetImagePlaceholder}>
                 <Text style={styles.vetImageLetter}>

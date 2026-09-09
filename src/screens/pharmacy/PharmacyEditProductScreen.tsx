@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AppImage } from '../../components/common/AppImage';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
@@ -295,7 +296,7 @@ export function PharmacyEditProductScreen() {
         <View style={styles.imageRow}>
           {form.images.map((url) => (
             <TouchableOpacity key={url} style={styles.imageWrap} onPress={() => removeImage(url)}>
-              <Image source={{ uri: url }} style={styles.thumbImg} />
+              <AppImage source={{ uri: url }} style={styles.thumbImg} />
               <Text style={styles.removeImgText}>✕</Text>
             </TouchableOpacity>
           ))}

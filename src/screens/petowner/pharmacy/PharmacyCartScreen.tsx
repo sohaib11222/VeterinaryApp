@@ -1,4 +1,5 @@
 import React from 'react';
+import { AppImage } from '../../../components/common/AppImage';
 import {
   View,
   Text,
@@ -67,7 +68,7 @@ export function PharmacyCartScreen() {
               <View key={id} style={styles.cartItem}>
                 <TouchableOpacity onPress={() => navigation.navigate('ProductDetails', { productId: id })}>
                   {imageUri ? (
-                    <Image source={{ uri: imageUri }} style={styles.itemImage} resizeMode="cover" />
+                    <AppImage source={{ uri: imageUri }} style={styles.itemImage} resizeMode="cover" />
                   ) : (
                     <View style={styles.itemImage} />
                   )}
