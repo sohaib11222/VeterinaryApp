@@ -11,6 +11,9 @@ import { usePharmacyPendingPrescriptionCount } from '../../queries/productPrescr
 import { useUnreadChatCount } from '../../queries/chatQueries';
 import { useMyPetStore } from '../../queries/petStoreQueries';
 import { getImageUrl } from '../../config/api';
+import { useNotifications } from '../../queries/notificationQueries';
+import { useMarkNotificationRead } from '../../mutations/notificationMutations';
+import { getUnreadReminders, remindersFor } from '../../utils/reminders';
 
 function unreadCount(payload: unknown, key: 'pendingCount' | 'unreadCount'): number {
   const outer = (payload as { data?: unknown })?.data ?? payload;
@@ -27,20 +30,25 @@ export function PharmacyMoreScreen() {
   const { t } = useTranslation();
   const pendingPrescriptions = usePharmacyPendingPrescriptionCount({ enabled: !isParapharmacy, refetchInterval: 30_000 });
   const unreadChat = useUnreadChatCount({ refetchInterval: 30_000 });
+  const reminderQuery = useNotifications({ unreadOnly: true, page: 1, limit: 50 }, { refetchInterval: 15_000 });
+  const markNotificationRead = useMarkNotificationRead();
   const storeQuery = useMyPetStore({ refetchInterval: 30_000 });
   const prescriptionBadge = unreadCount(pendingPrescriptions.data, 'pendingCount');
   const chatBadge = unreadCount(unreadChat.data, 'unreadCount');
   const storePayload: any = storeQuery.data;
   const store = storePayload?.data?.data ?? storePayload?.data ?? storePayload ?? {};
   const profileImage = store?.logo ?? store?.profileImage ?? user?.profileImage;
+  const unreadReminders = getUnreadReminders(reminderQuery.data);
+  const payoutBadge = remindersFor(unreadReminders, ['PAYOUT', 'WITHDRAW']).length;
+  const notificationBadge = unreadReminders.length;
 
-  const menuSections = [
+  const menuSections: { title: string; items: { label: string; icon: any; screen: any; description?: string; badge?: number; reminderTerms?: string[] }[] }[] = [
     {
       title: isParapharmacy ? t('moreMenu.parapharmacySettings') : t('moreMenu.pharmacySettings'),
       items: [
         { label: t('menu.profile'), icon: 'storefront-outline', screen: 'PharmacyProfile' as const, description: t('moreMenu.descriptions.storeProfile') },
         ...(!isParapharmacy ? [{ label: t('menu.subscription'), icon: 'ribbon-outline', screen: 'PharmacySubscription' as const, description: t('moreMenu.descriptions.subscription') }] : []),
-        { label: t('menu.payouts'), icon: 'wallet-outline', screen: 'PharmacyPayouts' as const, description: t('moreMenu.descriptions.payouts') },
+        { label: t('menu.payouts'), icon: 'wallet-outline', screen: 'PharmacyPayouts' as const, description: t('moreMenu.descriptions.payouts'), badge: payoutBadge, reminderTerms: ['PAYOUT', 'WITHDRAW'] },
         ...(!isParapharmacy ? [{ label: 'Prescription requests', icon: 'document-text-outline' as const, screen: 'PharmacyPrescriptionRequests' as const, description: 'Review medicine approvals', badge: prescriptionBadge }] : []),
         { label: 'Admin messages', icon: 'chatbubble-ellipses-outline', screen: 'PharmacyAdminChat' as const, description: 'Contact platform support', badge: chatBadge },
       ],
@@ -48,7 +56,7 @@ export function PharmacyMoreScreen() {
     {
       title: t('moreMenu.preferences'),
       items: [
-        { label: t('menu.notifications'), icon: 'notifications-outline', screen: 'PharmacyNotifications' as const },
+        { label: t('menu.notifications'), icon: 'notifications-outline', screen: 'PharmacyNotifications' as const, badge: notificationBadge },
         { label: t('menu.language'), icon: 'language-outline', screen: 'Language' as const },
         { label: t('menu.changePassword'), icon: 'lock-closed-outline', screen: 'PharmacyChangePassword' as const },
       ],
@@ -72,7 +80,10 @@ export function PharmacyMoreScreen() {
           accountLabel={t('moreMenu.account')}
           sections={menuSections.map((section) => ({
             title: section.title,
-            items: section.items.map((item) => ({ ...item, onPress: () => navigation.navigate(item.screen) })),
+            items: section.items.map((item) => ({ ...item, onPress: () => {
+              if (item.reminderTerms) remindersFor(unreadReminders, item.reminderTerms).forEach((reminder) => markNotificationRead.mutate(reminder._id));
+              navigation.navigate(item.screen);
+            } })),
           })) as AccountMoreMenuSection[]}
           logoutLabel={t('common.logout')}
           onLogout={logout}

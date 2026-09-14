@@ -25,6 +25,9 @@ import { useGetOrCreateConversation } from '../../mutations/chatMutations';
 import { getImageUrl } from '../../config/api';
 import Toast from 'react-native-toast-message';
 import { useTranslation } from 'react-i18next';
+import { useNotifications } from '../../queries/notificationQueries';
+import { useMarkNotificationRead } from '../../mutations/notificationMutations';
+import { getUnreadReminders, remindersFor } from '../../utils/reminders';
 
 type Tab = 'all' | 'upcoming' | 'cancelled' | 'completed';
 
@@ -43,6 +46,7 @@ interface AppointmentItem {
   status: string;
   appointmentDate: string | null;
   petOwnerId: string;
+  createdAt: string | null;
 }
 
 function normalizeAppointments(response: unknown): AppointmentItem[] {
@@ -72,6 +76,7 @@ function normalizeAppointments(response: unknown): AppointmentItem[] {
       status: String((a.status as string) || '').toUpperCase(),
       appointmentDate: (a.appointmentDate as string) || null,
       petOwnerId: ownerId,
+      createdAt: (a.createdAt as string) || null,
     };
   });
 }
@@ -97,12 +102,24 @@ export function VetAppointmentsScreen() {
     refetch,
     isFetching,
   } = useAppointments({ limit: 50 }, { refetchInterval: 10_000, refetchIntervalInBackground: true });
+  const appointmentReminders = useNotifications({ type: 'APPOINTMENT', unreadOnly: true, page: 1, limit: 50 }, { refetchInterval: 15_000 });
+  const markNotificationRead = useMarkNotificationRead();
   const getOrCreateConversation = useGetOrCreateConversation();
 
-  const appointments = useMemo(
-    () => normalizeAppointments(appointmentsResponse ?? {}),
-    [appointmentsResponse]
-  );
+  const appointments = useMemo(() => {
+    const timestamp = (value: string | null) => {
+      const parsed = value ? new Date(value).getTime() : 0;
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+    return normalizeAppointments(appointmentsResponse ?? {}).sort((left, right) => {
+      // Requests are actionable, so show them before existing appointments.
+      // Within each group, newest records remain first.
+      const leftPriority = left.status === 'PENDING' ? 0 : 1;
+      const rightPriority = right.status === 'PENDING' ? 0 : 1;
+      if (leftPriority !== rightPriority) return leftPriority - rightPriority;
+      return timestamp(right.createdAt) - timestamp(left.createdAt);
+    });
+  }, [appointmentsResponse]);
 
   const filteredByTab = useMemo(() => {
     const now = new Date();
@@ -179,6 +196,14 @@ export function VetAppointmentsScreen() {
         setHeaderRightAction?.(null);
       };
     }, [searchQuery, stackNav, pendingRequestCount, t, setHeaderSearchConfig, setHeaderRightAction])
+  );
+
+  useFocusEffect(
+    React.useCallback(() => {
+      remindersFor(getUnreadReminders(appointmentReminders.data), ['APPOINTMENT', 'REQUEST'])
+        .forEach((reminder) => markNotificationRead.mutate(reminder._id));
+      return () => {};
+    }, [appointmentReminders.data, markNotificationRead])
   );
 
   const tabs: { key: Tab; label: string }[] = [

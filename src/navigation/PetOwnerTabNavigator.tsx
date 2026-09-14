@@ -29,6 +29,8 @@ const TAB_HEADERS: Record<string, { titleKey: string; subtitleKey?: string }> = 
 function getCount(payload: unknown): number {
   const outer = (payload as { data?: unknown })?.data ?? payload;
   const inner = (outer as { data?: unknown })?.data ?? outer;
+  const notificationItems = (inner as { notifications?: Array<{ isRead?: boolean }> })?.notifications;
+  if (Array.isArray(notificationItems)) return notificationItems.filter((item) => item?.isRead !== true).length;
   const value = (inner as { unreadCount?: unknown; pagination?: { total?: unknown } })?.unreadCount
     ?? (inner as { pagination?: { total?: unknown } })?.pagination?.total;
   const number = Number(value);

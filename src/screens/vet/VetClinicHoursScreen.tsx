@@ -33,6 +33,27 @@ function formatTime(value?: string): string {
   return `${hour}:${match[2]} ${period}`;
 }
 
+type Meridiem = 'AM' | 'PM';
+
+function sanitizeTwelveHourTime(value: string): string {
+  const normalized = value.replace(/[^0-9:]/g, '');
+  const digits = normalized.replace(/:/g, '').slice(0, 4);
+  if (digits.length <= 2) return digits;
+  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+}
+
+function toTwentyFourHour(value: string, period: Meridiem): string | null {
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour < 1 || hour > 12 || minute < 0 || minute > 59) return null;
+  const normalizedHour = period === 'AM'
+    ? (hour === 12 ? 0 : hour)
+    : (hour === 12 ? 12 : hour + 12);
+  return `${String(normalizedHour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
 function isValidTimeRange(start: string, end: string): boolean {
   const toMinutes = (value: string) => {
     const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
@@ -54,6 +75,8 @@ export function VetClinicHoursScreen() {
   const [addSlotDay, setAddSlotDay] = useState<string>(DAYS[0]);
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('09:30');
+  const [startPeriod, setStartPeriod] = useState<Meridiem>('AM');
+  const [endPeriod, setEndPeriod] = useState<Meridiem>('AM');
   const [duration, setDuration] = useState(30);
   const [slotError, setSlotError] = useState('');
 
@@ -62,11 +85,13 @@ export function VetClinicHoursScreen() {
   const scheduledDays = useMemo(() => DAYS.filter((day) => getDaySchedule(schedule, day).timeSlots?.length > 0).length, [schedule]);
   useEffect(() => { setDuration(currentDuration); }, [currentDuration]);
 
-  const openAddSlot = (day: string) => { setAddSlotDay(day); setStartTime('09:00'); setEndTime('09:30'); setSlotError(''); setModalVisible(true); };
+  const openAddSlot = (day: string) => { setAddSlotDay(day); setStartTime('09:00'); setEndTime('09:30'); setStartPeriod('AM'); setEndPeriod('AM'); setSlotError(''); setModalVisible(true); };
   const handleAddSlot = async () => {
-    if (!isValidTimeRange(startTime, endTime)) { setSlotError(t('vetClinicHours.modal.invalidRange')); return; }
+    const startTime24 = toTwentyFourHour(startTime, startPeriod);
+    const endTime24 = toTwentyFourHour(endTime, endPeriod);
+    if (!startTime24 || !endTime24 || !isValidTimeRange(startTime24, endTime24)) { setSlotError(t('vetClinicHours.modal.invalidRange')); return; }
     try {
-      await addSlotMutation.mutateAsync({ dayOfWeek: addSlotDay, payload: { startTime: startTime.trim(), endTime: endTime.trim(), isAvailable: true } });
+      await addSlotMutation.mutateAsync({ dayOfWeek: addSlotDay, payload: { startTime: startTime24, endTime: endTime24, isAvailable: true } });
       Toast.show({ type: 'success', text1: t('vetClinicHours.toasts.slotAdded') }); setModalVisible(false);
     } catch (err) { Toast.show({ type: 'error', text1: getErrorMessage(err) }); }
   };
@@ -106,15 +131,26 @@ export function VetClinicHoursScreen() {
       })}
 
       <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
-        {/* Android already resizes the modal window through
-            `softwareKeyboardLayoutMode: resize`. Applying a second `height`
-            adjustment here causes the centered dialog to continuously relayout
-            and blink while typing. */}
+        {/* Keep the dialog centered. Android uses the app-wide pan mode, while
+            iOS applies padding here; neither path performs a second resize. */}
         <KeyboardAvoidingView style={styles.modalKeyboardAvoider} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}><Pressable style={styles.modalContent} onPress={(event) => event.stopPropagation()}>
             <View style={styles.modalHandle} />
             <View style={styles.modalHeader}><View><Text style={styles.modalTitle}>{t('vetClinicHours.modal.title')}</Text><Text style={styles.modalSubtitle}>{t(`days.${addSlotDay.toLowerCase()}`)}</Text></View><TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}><Ionicons name="close" size={20} color={colors.textSecondary} /></TouchableOpacity></View>
-            <View style={styles.timeFields}><View style={styles.timeField}><Text style={styles.inputLabel}>{t('vetClinicHours.modal.startLabel')}</Text><TextInput style={styles.input} value={startTime} onChangeText={(value) => { setStartTime(value); setSlotError(''); }} placeholder={t('vetClinicHours.modal.startPlaceholder')} placeholderTextColor={colors.textLight} keyboardType="numbers-and-punctuation" maxLength={5} /><Text style={styles.timePreview}>{formatTime(startTime)}</Text></View><Ionicons name="arrow-forward" size={18} color={colors.textSecondary} style={styles.arrow} /><View style={styles.timeField}><Text style={styles.inputLabel}>{t('vetClinicHours.modal.endLabel')}</Text><TextInput style={styles.input} value={endTime} onChangeText={(value) => { setEndTime(value); setSlotError(''); }} placeholder={t('vetClinicHours.modal.endPlaceholder')} placeholderTextColor={colors.textLight} keyboardType="numbers-and-punctuation" maxLength={5} /><Text style={styles.timePreview}>{formatTime(endTime)}</Text></View></View>
+            <View style={styles.timeFields}>
+              <View style={styles.timeField}>
+                <Text style={styles.inputLabel}>{t('vetClinicHours.modal.startLabel')}</Text>
+                <TextInput style={styles.input} value={startTime} onChangeText={(value) => { setStartTime(sanitizeTwelveHourTime(value)); setSlotError(''); }} placeholder={t('vetClinicHours.modal.timePlaceholder')} placeholderTextColor={colors.textLight} keyboardType="number-pad" maxLength={5} />
+                <View style={styles.periodPicker}>{(['AM', 'PM'] as Meridiem[]).map((period) => <TouchableOpacity key={period} style={[styles.periodButton, startPeriod === period && styles.periodButtonActive]} onPress={() => { setStartPeriod(period); setSlotError(''); }}><Text style={[styles.periodText, startPeriod === period && styles.periodTextActive]}>{t(`vetClinicHours.modal.${period.toLowerCase()}`)}</Text></TouchableOpacity>)}</View>
+              </View>
+              <Ionicons name="arrow-forward" size={18} color={colors.textSecondary} style={styles.arrow} />
+              <View style={styles.timeField}>
+                <Text style={styles.inputLabel}>{t('vetClinicHours.modal.endLabel')}</Text>
+                <TextInput style={styles.input} value={endTime} onChangeText={(value) => { setEndTime(sanitizeTwelveHourTime(value)); setSlotError(''); }} placeholder={t('vetClinicHours.modal.timePlaceholder')} placeholderTextColor={colors.textLight} keyboardType="number-pad" maxLength={5} />
+                <View style={styles.periodPicker}>{(['AM', 'PM'] as Meridiem[]).map((period) => <TouchableOpacity key={period} style={[styles.periodButton, endPeriod === period && styles.periodButtonActive]} onPress={() => { setEndPeriod(period); setSlotError(''); }}><Text style={[styles.periodText, endPeriod === period && styles.periodTextActive]}>{t(`vetClinicHours.modal.${period.toLowerCase()}`)}</Text></TouchableOpacity>)}</View>
+              </View>
+            </View>
+            <Text style={styles.timePreview}>{startTime || t('vetClinicHours.modal.timePlaceholder')} {startPeriod} — {endTime || t('vetClinicHours.modal.timePlaceholder')} {endPeriod}</Text>
             {slotError ? <Text style={styles.slotError}>{slotError}</Text> : null}
             <View style={styles.modalActions}><Button title={t('common.cancel')} variant="outline" onPress={() => setModalVisible(false)} style={styles.modalBtn} /><Button title={addSlotMutation.isPending ? t('vetClinicHours.modal.saving') : t('vetClinicHours.modal.save')} onPress={handleAddSlot} style={styles.modalBtn} disabled={addSlotMutation.isPending} /></View>
           </Pressable></Pressable>
@@ -132,5 +168,5 @@ const styles = StyleSheet.create({
   scheduleHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }, scheduleTitle: { ...typography.h3 }, scheduleSub: { ...typography.caption, color: colors.textSecondary, marginTop: 2 }, countPill: { minWidth: 42, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primaryLight + '1A' }, countPillText: { ...typography.caption, color: colors.primaryDark, fontWeight: '800' },
   dayCard: { padding: 0, overflow: 'hidden', borderWidth: 1, borderColor: colors.borderLight }, dayHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingTop: spacing.md }, dayHeading: { flexDirection: 'row', alignItems: 'center', gap: 8 }, dayDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.border }, dayDotActive: { backgroundColor: colors.success }, dayTitle: { ...typography.label }, dayStatus: { ...typography.caption, color: colors.textLight, fontWeight: '700', textTransform: 'uppercase' }, dayStatusOpen: { color: colors.success },
   emptySlot: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.md }, noSlots: { ...typography.bodySmall, color: colors.textSecondary, flex: 1 }, slotList: { paddingHorizontal: spacing.md, paddingTop: spacing.sm }, slotRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.borderLight }, slotClock: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primaryLight + '16', marginRight: spacing.sm }, slotCopy: { flex: 1 }, slotText: { ...typography.label }, slotState: { ...typography.caption, color: colors.success, marginTop: 1 }, slotUnavailable: { color: colors.error }, removeSlotButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 10, backgroundColor: colors.errorLight + '8A' }, addSlotButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 46, marginTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.borderLight }, addSlotText: { ...typography.label, color: colors.primary },
-  modalKeyboardAvoider: { flex: 1 }, modalOverlay: { flex: 1, justifyContent: 'center', padding: spacing.md, backgroundColor: 'rgba(22, 32, 28, 0.46)' }, modalContent: { width: '100%', maxWidth: 460, alignSelf: 'center', backgroundColor: colors.background, padding: spacing.md, paddingBottom: spacing.lg, borderRadius: 24, shadowColor: '#0B1E18', shadowOpacity: 0.2, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 8 }, modalHandle: { width: 42, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: spacing.md }, modalHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: spacing.md }, modalTitle: { ...typography.h2 }, modalSubtitle: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 }, closeButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: colors.backgroundSecondary }, timeFields: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs }, timeField: { flex: 1 }, inputLabel: { ...typography.caption, color: colors.textSecondary, fontWeight: '700', marginBottom: 5 }, input: { height: 48, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: spacing.sm, ...typography.body, backgroundColor: colors.backgroundSecondary, color: colors.text }, timePreview: { ...typography.caption, color: colors.primary, fontWeight: '700', marginTop: 5 }, arrow: { marginTop: 30 }, slotError: { ...typography.caption, color: colors.error, marginTop: spacing.sm }, modalActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg }, modalBtn: { flex: 1 },
+  modalKeyboardAvoider: { flex: 1 }, modalOverlay: { flex: 1, justifyContent: 'center', padding: spacing.md, backgroundColor: 'rgba(22, 32, 28, 0.46)' }, modalContent: { width: '100%', maxWidth: 460, alignSelf: 'center', backgroundColor: colors.background, padding: spacing.md, paddingBottom: spacing.lg, borderRadius: 24, shadowColor: '#0B1E18', shadowOpacity: 0.2, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 8 }, modalHandle: { width: 42, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: spacing.md }, modalHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: spacing.md }, modalTitle: { ...typography.h2 }, modalSubtitle: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 }, closeButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: colors.backgroundSecondary }, timeFields: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs }, timeField: { flex: 1 }, inputLabel: { ...typography.caption, color: colors.textSecondary, fontWeight: '700', marginBottom: 5 }, input: { height: 48, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: spacing.sm, ...typography.body, backgroundColor: colors.backgroundSecondary, color: colors.text }, periodPicker: { flexDirection: 'row', marginTop: 7, padding: 3, borderRadius: 10, backgroundColor: colors.backgroundSecondary, gap: 3 }, periodButton: { flex: 1, minHeight: 31, alignItems: 'center', justifyContent: 'center', borderRadius: 8 }, periodButtonActive: { backgroundColor: colors.primary }, periodText: { ...typography.caption, color: colors.textSecondary, fontWeight: '800' }, periodTextActive: { color: colors.textInverse }, timePreview: { ...typography.caption, color: colors.primary, fontWeight: '700', marginTop: spacing.sm, textAlign: 'center' }, arrow: { marginTop: 34 }, slotError: { ...typography.caption, color: colors.error, marginTop: spacing.sm }, modalActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg }, modalBtn: { flex: 1 },
 });

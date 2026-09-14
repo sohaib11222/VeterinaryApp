@@ -1,80 +1,46 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Keyboard, type KeyboardEvent, Platform, View } from 'react-native';
-
-type KeyboardFrame = { screenY: number; height: number };
+import { Keyboard, type KeyboardEvent, type LayoutChangeEvent, Platform, View } from 'react-native';
 
 /**
- * Keeps a chat composer above the keyboard without assuming whether Android
- * resized the window or overlaid the keyboard. The measurement is taken from
- * an untransformed composer wrapper, rather than the full screen, so stack
- * headers, safe areas, and tab layouts cannot skew the offset.
+ * Android uses `adjustPan` for chat screens, so the keyboard always overlays
+ * the window and its reported height is the exact composer offset. This avoids
+ * the mixed resize/overlay measurements that left part of the composer hidden
+ * on edge-to-edge Android devices.
  */
 export function useChatKeyboardInset() {
-  const composerRef = useRef<View>(null);
-  const keyboardTopRef = useRef<number | null>(null);
-  const syncTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
-  const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const containerRef = useRef<View>(null);
+  const [keyboardInset, setKeyboardInset] = useState(0);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
-  const clearSyncTimers = useCallback(() => {
-    syncTimersRef.current.forEach(clearTimeout);
-    syncTimersRef.current = [];
+  const handleKeyboardFrame = useCallback((event: KeyboardEvent) => {
+    const height = Number(event.endCoordinates?.height);
+    const isVisible = Number.isFinite(height) && height > 0;
+    setKeyboardVisible(isVisible);
+    if (!isVisible) {
+      setKeyboardInset(0);
+      return;
+    }
+    setKeyboardInset(Math.ceil(height));
   }, []);
-
-  const measureComposer = useCallback((keyboardTop: number) => {
-    requestAnimationFrame(() => {
-      composerRef.current?.measureInWindow((_x, y, _width, height) => {
-        // If Android resized the app window the overlap is already zero. If it
-        // overlaid the keyboard, translate exactly the covered part upward.
-        const overlap = Math.max(0, Math.round(y + height - keyboardTop));
-        const clearance = Platform.OS === 'ios' ? 8 : 12;
-        setKeyboardOffset((current) => {
-          const next = overlap + clearance;
-          return current === next ? current : next;
-        });
-      });
-    });
-  }, []);
-
-  const applyKeyboardFrame = useCallback((frame?: Partial<KeyboardFrame>) => {
-    const top = Number(frame?.screenY);
-    const height = Number(frame?.height);
-    if (!Number.isFinite(top) || !Number.isFinite(height) || height <= 0) return;
-    keyboardTopRef.current = top;
-    measureComposer(top);
-  }, [measureComposer]);
-
-  const syncFromKeyboardMetrics = useCallback(() => {
-    const metrics = Keyboard.metrics();
-    if (metrics) applyKeyboardFrame(metrics);
-  }, [applyKeyboardFrame]);
-
-  const onComposerFocus = useCallback(() => {
-    // Android can resize the window before the keyboard event reaches JS. A
-    // short sequence of metric reads covers both that timing and slow keyboards.
-    clearSyncTimers();
-    [0, 70, 160, 320, 560].forEach((delay) => {
-      syncTimersRef.current.push(setTimeout(syncFromKeyboardMetrics, delay));
-    });
-  }, [clearSyncTimers, syncFromKeyboardMetrics]);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillChangeFrame' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const show = Keyboard.addListener(showEvent, (event: KeyboardEvent) => applyKeyboardFrame(event.endCoordinates));
+    const show = Keyboard.addListener(showEvent, handleKeyboardFrame);
     const hide = Keyboard.addListener(hideEvent, () => {
-      clearSyncTimers();
-      keyboardTopRef.current = null;
-      setKeyboardOffset(0);
+      setKeyboardVisible(false);
+      setKeyboardInset(0);
     });
-
-    // Covers navigating back into a focused chat while the keyboard is open.
-    syncFromKeyboardMetrics();
     return () => {
-      clearSyncTimers();
       show.remove();
       hide.remove();
     };
-  }, [applyKeyboardFrame, clearSyncTimers, syncFromKeyboardMetrics]);
+  }, [handleKeyboardFrame]);
 
-  return { composerRef, keyboardOffset, onComposerFocus };
+  const onLayout = useCallback((_event: LayoutChangeEvent) => {}, []);
+
+  // Clearance keeps the whole composer border above gesture-navigation and
+  // keyboard edge rounding on every device.
+  const composerInset = keyboardVisible ? keyboardInset + (Platform.OS === 'ios' ? 8 : 12) : 0;
+  return { containerRef, keyboardInset: composerInset, keyboardVisible, onLayout };
 }

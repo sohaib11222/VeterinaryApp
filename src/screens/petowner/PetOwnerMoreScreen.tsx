@@ -10,6 +10,9 @@ import { useTranslation } from 'react-i18next';
 import { useSupportTicketUnreadCount } from '../../queries/supportTicketQueries';
 import { useUserById } from '../../queries/userQueries';
 import { getImageUrl } from '../../config/api';
+import { useNotifications } from '../../queries/notificationQueries';
+import { useMarkNotificationRead } from '../../mutations/notificationMutations';
+import { getUnreadReminders, remindersFor } from '../../utils/reminders';
 
 function getUnreadCount(payload: unknown): number {
   const outer = (payload as { data?: unknown })?.data ?? payload;
@@ -25,13 +28,18 @@ export function PetOwnerMoreScreen() {
   const headerSearch = useVetHeaderSearch();
   const { t } = useTranslation();
   const supportUnread = useSupportTicketUnreadCount({ refetchInterval: 15_000 });
+  const reminderQuery = useNotifications({ unreadOnly: true, page: 1, limit: 50 }, { refetchInterval: 15_000 });
+  const markNotificationRead = useMarkNotificationRead();
   const profileQuery = useUserById(user?.id, { enabled: !!user?.id });
   const supportBadge = getUnreadCount(supportUnread.data);
   const profilePayload: any = profileQuery.data;
   const profile = profilePayload?.data?.data ?? profilePayload?.data ?? profilePayload ?? {};
   const profileImage = profile?.profileImage ?? user?.profileImage;
+  const unreadReminders = getUnreadReminders(reminderQuery.data);
+  const rescheduleBadge = remindersFor(unreadReminders, ['RESCHEDULE']).length;
+  const orderBadge = remindersFor(unreadReminders, ['ORDER', 'SHIPPING', 'DELIVERY']).length;
 
-  const menuSections: { title: string; items: { label: string; icon: any; screen: string; description?: string; badge?: number }[] }[] = [
+  const menuSections: { title: string; items: { label: string; icon: any; screen: string; description?: string; badge?: number; reminderTerms?: string[] }[] }[] = [
     {
       title: t('more.petOwner.myPetsHealth'),
       items: [
@@ -45,14 +53,14 @@ export function PetOwnerMoreScreen() {
       items: [
         { label: t('menu.favoriteVets'), icon: 'heart-outline', screen: 'PetOwnerFavourites', description: t('moreMenu.descriptions.favouriteVets') },
         { label: t('menu.requestReschedule'), icon: 'calendar-outline', screen: 'PetOwnerRequestReschedule' },
-        { label: t('menu.rescheduleRequests'), icon: 'repeat-outline', screen: 'PetOwnerRescheduleRequests' },
+        { label: t('menu.rescheduleRequests'), icon: 'repeat-outline', screen: 'PetOwnerRescheduleRequests', badge: rescheduleBadge, reminderTerms: ['RESCHEDULE'] },
       ],
     },
     {
       title: t('more.petOwner.financeOrders'),
       items: [
         { label: t('menu.veterinaryInvoices'), icon: 'receipt-outline', screen: 'PetOwnerInvoices' },
-        { label: t('menu.petSupplyOrders'), icon: 'bag-handle-outline', screen: 'PetOwnerOrderHistory' },
+        { label: t('menu.petSupplyOrders'), icon: 'bag-handle-outline', screen: 'PetOwnerOrderHistory', badge: orderBadge, reminderTerms: ['ORDER', 'SHIPPING', 'DELIVERY'] },
       ],
     },
     {
@@ -92,7 +100,10 @@ export function PetOwnerMoreScreen() {
           accountLabel={t('moreMenu.account')}
           sections={menuSections.map((section) => ({
             title: section.title,
-          items: section.items.map((item) => ({ ...item, onPress: () => onMenuPress(item.screen) })),
+            items: section.items.map((item) => ({ ...item, onPress: () => {
+              if (item.reminderTerms) remindersFor(unreadReminders, item.reminderTerms).forEach((reminder) => markNotificationRead.mutate(reminder._id));
+              onMenuPress(item.screen);
+            } })),
           })) as AccountMoreMenuSection[]}
           logoutLabel={t('common.logout')}
           onLogout={logout}

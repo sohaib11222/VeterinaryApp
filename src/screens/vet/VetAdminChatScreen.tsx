@@ -100,7 +100,7 @@ export function VetAdminChatScreen() {
   const [pendingAttachment, setPendingAttachment] = useState<{ uri: string; name: string; type: string } | null>(null);
   const [pendingTempUri, setPendingTempUri] = useState<string | null>(null);
   const listRef = useRef<FlatList>(null);
-  const { composerRef, keyboardOffset, onComposerFocus } = useChatKeyboardInset();
+  const { containerRef, keyboardInset, keyboardVisible, onLayout } = useChatKeyboardInset();
   const lastMarkedReadRef = useRef<string | null>(null);
 
   const getOrCreate = useGetOrCreateConversation();
@@ -148,8 +148,7 @@ export function VetAdminChatScreen() {
     listRef,
     conversationId,
     messages,
-    messagesLoading,
-    keyboardOffset
+    messagesLoading
   );
 
   const handleSend = async () => {
@@ -244,8 +243,8 @@ export function VetAdminChatScreen() {
   const loading = getOrCreate.isPending || (conversationId && messagesLoading);
 
   return (
-    <View style={styles.container}>
-      <ScreenContainer style={styles.screenWrap} padded={false} keyboardAvoidance="none">
+    <View ref={containerRef} onLayout={onLayout} style={styles.container}>
+      <ScreenContainer style={styles.screenWrap} padded={false} keyboardAvoidance="none" bottomInset={keyboardVisible ? 0 : undefined}>
           {!conversationId && getOrCreate.isPending ? (
             <View style={styles.centered}>
               <ActivityIndicator size="large" color={colors.primary} />
@@ -260,7 +259,7 @@ export function VetAdminChatScreen() {
               ref={listRef}
               data={messages}
               keyExtractor={(item) => String(item._id)}
-              contentContainerStyle={[styles.messagesList, { paddingBottom: spacing.lg + keyboardOffset }]}
+              contentContainerStyle={styles.messagesList}
               onContentSizeChange={onContentSizeChange}
               onLayout={onListLayout}
               ListEmptyComponent={
@@ -336,8 +335,7 @@ export function VetAdminChatScreen() {
               </TouchableOpacity>
             </View>
           ) : null}
-          <View ref={composerRef} collapsable={false}>
-            <View style={[styles.inputRow, { transform: [{ translateY: -keyboardOffset }], zIndex: 5 }]}>
+          <View style={[styles.inputRow, { marginBottom: keyboardInset }]}>
             <TouchableOpacity
               style={styles.attachBtn}
               onPress={handleAttach}
@@ -351,10 +349,7 @@ export function VetAdminChatScreen() {
               placeholderTextColor={colors.textLight}
               value={message}
               onChangeText={setMessage}
-              onFocus={() => {
-                onComposerFocus();
-                scrollToLatest(true);
-              }}
+              onFocus={() => setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80)}
               multiline
               maxLength={2000}
               editable={!!adminId && !sendMessage.isPending}
@@ -366,7 +361,6 @@ export function VetAdminChatScreen() {
             >
               <Text style={styles.sendText}>{t('common.send')}</Text>
             </TouchableOpacity>
-            </View>
           </View>
       </ScreenContainer>
 

@@ -23,6 +23,9 @@ import { useGetOrCreateConversation } from '../../mutations/chatMutations';
 import { getImageUrl } from '../../config/api';
 import Toast from 'react-native-toast-message';
 import { useTranslation } from 'react-i18next';
+import { useNotifications } from '../../queries/notificationQueries';
+import { useMarkNotificationRead } from '../../mutations/notificationMutations';
+import { getUnreadReminders, remindersFor } from '../../utils/reminders';
 
 type Tab = 'all' | 'upcoming' | 'cancelled' | 'completed';
 
@@ -110,6 +113,8 @@ export function PetOwnerAppointmentsScreen() {
     refetch,
     isFetching,
   } = useAppointments({ limit: 50 }, { refetchInterval: 10_000, refetchIntervalInBackground: true });
+  const appointmentReminders = useNotifications({ type: 'APPOINTMENT', unreadOnly: true, page: 1, limit: 50 }, { refetchInterval: 15_000 });
+  const markNotificationRead = useMarkNotificationRead();
   const getOrCreateConversation = useGetOrCreateConversation();
 
   const appointments = useMemo(
@@ -157,6 +162,14 @@ export function PetOwnerAppointmentsScreen() {
       });
       return () => setHeaderSearchConfig?.(null);
     }, [searchQuery, t, setHeaderSearchConfig])
+  );
+
+  useFocusEffect(
+    React.useCallback(() => {
+      remindersFor(getUnreadReminders(appointmentReminders.data), ['APPOINTMENT', 'RESCHEDULE'])
+        .forEach((reminder) => markNotificationRead.mutate(reminder._id));
+      return () => {};
+    }, [appointmentReminders.data, markNotificationRead])
   );
 
   const tabs: { key: Tab; label: string }[] = [

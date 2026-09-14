@@ -92,7 +92,7 @@ export function PetOwnerChatDetailScreen() {
   const [message, setMessage] = useState('');
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null);
   const listRef = useRef<FlatList>(null);
-  const { composerRef, keyboardOffset, onComposerFocus } = useChatKeyboardInset();
+  const { containerRef, keyboardInset, keyboardVisible, onLayout } = useChatKeyboardInset();
   const lastMarkedReadRef = useRef<string | null>(null);
 
   const { data: messagesResponse, isLoading: messagesLoading } = useMessages(
@@ -117,8 +117,7 @@ export function PetOwnerChatDetailScreen() {
     listRef,
     conversationId,
     messages,
-    messagesLoading,
-    keyboardOffset
+    messagesLoading
   );
 
   const selectedConversation = (() => {
@@ -240,8 +239,8 @@ export function PetOwnerChatDetailScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <ScreenContainer style={styles.screenWrap} padded={false} keyboardAvoidance="none">
+    <View ref={containerRef} onLayout={onLayout} style={styles.container}>
+      <ScreenContainer style={styles.screenWrap} padded={false} keyboardAvoidance="none" bottomInset={keyboardVisible ? 0 : undefined}>
           {isConversationCompleted ? (
             <View style={styles.completedBanner}>
               <Ionicons name="lock-closed-outline" size={18} color={colors.warning} />
@@ -260,7 +259,7 @@ export function PetOwnerChatDetailScreen() {
               ref={listRef}
               data={messages}
               keyExtractor={(item) => String(item._id)}
-              contentContainerStyle={[styles.messagesList, { paddingBottom: spacing.lg + keyboardOffset }]}
+              contentContainerStyle={styles.messagesList}
               onContentSizeChange={onContentSizeChange}
               onLayout={onListLayout}
               ListEmptyComponent={
@@ -318,8 +317,7 @@ export function PetOwnerChatDetailScreen() {
               }}
             />
           )}
-          <View ref={composerRef} collapsable={false}>
-            <View style={[styles.inputRow, { transform: [{ translateY: -keyboardOffset }], zIndex: 5 }]}>
+          <View style={[styles.inputRow, { marginBottom: keyboardInset }]}>
             <TouchableOpacity
               style={[styles.attachBtn, isConversationCompleted && styles.attachBtnDisabled]}
               onPress={handleAttach}
@@ -333,10 +331,7 @@ export function PetOwnerChatDetailScreen() {
               placeholderTextColor={colors.textLight}
               value={message}
               onChangeText={setMessage}
-              onFocus={() => {
-                onComposerFocus();
-                scrollToLatest(true);
-              }}
+              onFocus={() => setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80)}
               multiline
               submitBehavior="submit"
               onSubmitEditing={() => { void handleSend(); }}
@@ -350,7 +345,6 @@ export function PetOwnerChatDetailScreen() {
             >
               <Ionicons name="send" size={18} color={colors.textInverse} />
             </TouchableOpacity>
-            </View>
           </View>
       </ScreenContainer>
 
